@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  :root {
+    --bg:#121213; --surface:#1e1e1e; --elevated:#272727; --text:#d7dadc;
+    --muted:#818488; --border:#3a3a3c; --success:#4c9fd6; --progress:#e0a83a;
+  }
+  [data-theme="dark"] {
+    --bg:#121213; --surface:#1e1e1e; --elevated:#272727; --text:#d7dadc;
+    --muted:#818488; --border:#3a3a3c; --success:#4c9fd6; --progress:#e0a83a;
+  }
+  [data-theme="light"] {
+    --bg:#ffffff; --surface:#f6f7f8; --elevated:#eef0f2; --text:#1a1a1b;
+    --muted:#787c7e; --border:#d3d6da; --success:#0072B2; --progress:#c77f00;
+  }
+  [data-success="orange"] { --success:#f5793a; }
+  ::selection { background: color-mix(in srgb, var(--success) 35%, transparent); }
+  @keyframes popIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fadeInWelcome { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-5px);} 40%{transform:translateX(5px);} 60%{transform:translateX(-4px);} 80%{transform:translateX(3px);} }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-success="{{ successKey }}" style="min-height:100vh;background:var(--bg);display:flex;justify-content:center;font-family:'Space Grotesk',sans-serif;color:var(--text)">
+  <div style="width:100%;max-width:440px;min-height:100vh;position:relative;display:flex;flex-direction:column;background:var(--bg);border-left:2px solid var(--border);border-right:2px solid var(--border);overflow:hidden">
+
+    <sc-if value="{{ showWelcome }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;padding:0 28px;animation:fadeInWelcome 300ms ease-out">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:26px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;animation:popIn 320ms cubic-bezier(0.34,1.4,0.64,1)">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+              <div style="min-width:88px;display:flex;flex-direction:column;align-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:16px;padding:10px 22px;background:var(--surface)"><span style="font-family:'Space Mono',monospace;font-weight:700;font-size:34px;line-height:1;color:var(--text);font-variant-numeric:tabular-nums">{{ start }}</span></div>
+              <div style="width:2px;height:14px;background:var(--border)"></div>
+              <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:12px;color:var(--muted);border-width:2px;border-style:dashed;border-color:var(--muted);padding:2px 12px;border-radius:999px">?</div>
+              <div style="width:2px;height:14px;background:var(--border)"></div>
+              <div style="min-width:88px;display:flex;flex-direction:column;align-items:center;border-width:2px;border-style:solid;border-color:var(--success);border-radius:16px;padding:10px 22px;background:color-mix(in srgb, var(--success) 12%, transparent)"><span style="font-family:'Space Mono',monospace;font-weight:700;font-size:34px;line-height:1;color:var(--success);font-variant-numeric:tabular-nums">{{ target }}</span></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'Fraunces',serif;font-weight:700;font-size:64px;letter-spacing:-1.5px;line-height:0.92;color:var(--text)">NUMLINK</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;line-height:1.4;color:var(--muted);margin-top:12px;max-width:300px">Chain the operations. Turn the start number into the target in as few moves as you can.</div>
+          </div>
+          <div style="display:flex;gap:10px;width:100%">
+            <div style="flex:1;border-width:2px;border-style:solid;border-color:var(--border);border-radius:14px;padding:12px 14px">
+              <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:24px;color:var(--success);font-variant-numeric:tabular-nums">{{ stats.streak }}</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">DAY STREAK</div>
+            </div>
+            <div style="flex:1;border-width:2px;border-style:solid;border-color:var(--border);border-radius:14px;padding:12px 14px">
+              <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:24px;color:var(--text);font-variant-numeric:tabular-nums">#{{ puzzleNo }}</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">{{ dateLabel }}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding-bottom:32px;display:flex;flex-direction:column;gap:12px">
+          <button onClick="{{ startGame }}" style="width:100%;padding:18px;border:none;background:var(--success);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.5px;border-radius:14px;cursor:pointer;text-align:center" style-hover="opacity:0.9">Play today's puzzle</button>
+          <button onClick="{{ openHow }}" style="width:100%;padding:14px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;border-radius:14px;cursor:pointer;text-align:center" style-hover="border-color:var(--success)">How to play</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 14px;border-bottom:2px solid var(--border)">
+      <div>
+        <div style="font-family:'Fraunces',serif;font-weight:700;font-size:26px;letter-spacing:-0.6px;line-height:1;color:var(--text)">NUMLINK</div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.5px;color:var(--muted);margin-top:5px">#{{ puzzleNo }} · {{ dateLabel }}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onClick="{{ openHow }}" aria-label="How to play" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--success)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
+        <button onClick="{{ openStats }}" aria-label="Stats" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--success)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="10"></line></svg></button>
+        <button onClick="{{ openSettings }}" aria-label="Settings" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--success)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg></button>
+      </div>
+    </div>
+
+    <div style="padding:16px 20px;border-bottom:2px solid var(--border);display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">GET TO</div>
+          <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:52px;line-height:0.95;font-variant-numeric:tabular-nums;color:var(--success)">{{ target }}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="text-align:left;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;padding:8px 12px;min-width:62px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--muted)">MOVES</div>
+            <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;color:var(--text)">{{ moves }}</div>
+          </div>
+          <div style="text-align:left;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;padding:8px 12px;min-width:62px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--muted)">PAR</div>
+            <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;color:var(--text)">{{ par }}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="height:8px;border-width:2px;border-style:solid;border-color:var(--border);border-radius:999px;overflow:hidden;background:var(--surface)">
+          <div style="height:100%;width:{{ heatPct }}%;background:{{ heatColor }};transition:width 260ms cubic-bezier(0.4,0,0.2,1)"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+          <span style="font-family:'Space Mono',monospace;font-size:12px;color:{{ heatColor }};font-variant-numeric:tabular-nums">{{ proximityText }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:22px 20px 12px;display:flex;flex-direction:column;align-items:center">
+      <sc-for list="{{ nodes }}" as="nd" hint-placeholder-count="1">
+        <sc-if value="{{ nd.hasEdge }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <div style="width:2px;height:12px;background:var(--border)"></div>
+            <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:13px;color:var(--text);border-width:2px;border-style:solid;border-color:var(--border);background:var(--elevated);padding:3px 12px;border-radius:999px;font-variant-numeric:tabular-nums">{{ nd.op }}</div>
+            <div style="width:2px;height:12px;background:var(--border)"></div>
+          </div>
+        </sc-if>
+        <div style="min-width:132px;display:flex;flex-direction:column;align-items:center;gap:3px;border-width:2px;border-style:solid;border-color:{{ nd.border }};background:{{ nd.bg }};padding:12px 26px;border-radius:18px;animation:popIn 240ms cubic-bezier(0.34,1.4,0.64,1)">
+          <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:40px;line-height:1;font-variant-numeric:tabular-nums;color:{{ nd.numColor }}">{{ nd.value }}</span>
+          <sc-if value="{{ nd.badge }}" hint-placeholder-val="{{ false }}">
+            <span style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;color:{{ nd.border }}">{{ nd.badge }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ showTarget }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:2px;height:12px;background:var(--muted);opacity:0.4"></div>
+          <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:13px;color:var(--muted);border-width:2px;border-style:dashed;border-color:var(--muted);padding:3px 12px;border-radius:999px">?</div>
+          <div style="width:2px;height:12px;background:var(--muted);opacity:0.4"></div>
+        </div>
+        <div style="min-width:132px;display:flex;flex-direction:column;align-items:center;gap:3px;border-width:2px;border-style:dashed;border-color:var(--muted);padding:12px 26px;border-radius:18px">
+          <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:40px;line-height:1;font-variant-numeric:tabular-nums;color:var(--muted)">{{ target }}</span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted)">TARGET</span>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ hasMessage }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:20px;right:20px;bottom:220px;background:var(--elevated);border-width:2px;border-style:solid;border-color:var(--progress);border-radius:12px;padding:10px 14px;text-align:center;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;color:var(--text);animation:popIn 160ms ease-out;z-index:15">{{ message }}</div>
+    </sc-if>
+
+    <div style="border-top:2px solid var(--border);padding:14px 20px 18px;background:var(--bg)">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+        <sc-for list="{{ ops }}" as="op" hint-placeholder-count="5">
+          <button onClick="{{ op.onTap }}" style="position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:11px 14px;border-width:2px;border-style:solid;border-color:var(--border);border-radius:14px;background:var(--surface);cursor:pointer;color:var(--text);opacity:{{ op.opacity }};animation:{{ op.anim }};transition:border-color 120ms ease-out" style-hover="border-color:var(--progress)">
+            <span style="position:absolute;top:7px;right:9px;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;color:{{ op.tokenColor }};font-variant-numeric:tabular-nums">{{ op.tokenLabel }}</span>
+            <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:23px;font-variant-numeric:tabular-nums">{{ op.label }}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">{{ op.preview }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onClick="{{ undo }}" style="flex:1;padding:12px 14px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;border-radius:12px;cursor:pointer;text-align:left" style-hover="border-color:var(--text)">UNDO</button>
+        <button onClick="{{ reset }}" style="flex:1;padding:12px 14px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;border-radius:12px;cursor:pointer;text-align:left" style-hover="border-color:var(--text)">RESET</button>
+        <button onClick="{{ openStats }}" style="flex:1;padding:12px 14px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;border-radius:12px;cursor:pointer;text-align:left" style-hover="border-color:var(--text)">STATS</button>
+      </div>
+    </div>
+
+    <sc-if value="{{ showWin }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:color-mix(in srgb,#000 55%,transparent);display:flex;align-items:flex-end;justify-content:center;z-index:50">
+        <div style="width:100%;background:var(--elevated);border-top-left-radius:24px;border-top-right-radius:24px;border-top:2px solid var(--border);padding:24px 24px 28px;animation:sheetUp 280ms cubic-bezier(0.34,1.2,0.64,1);max-height:92%;overflow-y:auto">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+            <div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--success)">CHAIN COMPLETE</div>
+              <div style="font-family:'Fraunces',serif;font-weight:700;font-size:38px;line-height:1;color:var(--text);margin-top:4px">Solved!</div>
+              <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--muted);margin-top:8px">{{ moves }} moves · par {{ par }} · {{ scoreLabel }}</div>
+            </div>
+            <button onClick="{{ close }}" aria-label="Close" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <pre style="font-family:'Space Mono',monospace;font-size:15px;line-height:1.5;color:var(--text);background:var(--surface);border-width:2px;border-style:solid;border-color:var(--border);border-radius:14px;padding:16px;margin:0 0 14px;white-space:pre-wrap">{{ shareText }}</pre>
+          <button onClick="{{ copyShare }}" style="width:100%;padding:15px 18px;border:none;background:var(--success);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.5px;border-radius:12px;cursor:pointer;text-align:left;margin-bottom:10px" style-hover="opacity:0.9">{{ copyLabel }}</button>
+          <div style="display:flex;gap:10px">
+            <button onClick="{{ openStats }}" style="flex:1;padding:13px 16px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.5px;border-radius:12px;cursor:pointer;text-align:left" style-hover="border-color:var(--text)">View stats</button>
+            <button onClick="{{ playAgain }}" style="flex:1;padding:13px 16px;border-width:2px;border-style:solid;border-color:var(--border);background:transparent;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.5px;border-radius:12px;cursor:pointer;text-align:left" style-hover="border-color:var(--text)">Play again</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showStats }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:color-mix(in srgb,#000 55%,transparent);display:flex;align-items:flex-end;justify-content:center;z-index:50">
+        <div style="width:100%;background:var(--elevated);border-top-left-radius:24px;border-top-right-radius:24px;border-top:2px solid var(--border);padding:24px 24px 28px;animation:sheetUp 280ms cubic-bezier(0.34,1.2,0.64,1);max-height:92%;overflow-y:auto">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div style="font-family:'Fraunces',serif;font-weight:700;font-size:28px;color:var(--text)">Statistics</div>
+            <button onClick="{{ close }}" aria-label="Close" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:22px">
+            <div style="text-align:left"><div style="font-family:'Space Mono',monospace;font-weight:700;font-size:28px;color:var(--text);font-variant-numeric:tabular-nums">{{ stats.played }}</div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">PLAYED</div></div>
+            <div style="text-align:left"><div style="font-family:'Space Mono',monospace;font-weight:700;font-size:28px;color:var(--text);font-variant-numeric:tabular-nums">{{ winRate }}</div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">WIN %</div></div>
+            <div style="text-align:left"><div style="font-family:'Space Mono',monospace;font-weight:700;font-size:28px;color:var(--success);font-variant-numeric:tabular-nums">{{ stats.streak }}</div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">STREAK</div></div>
+            <div style="text-align:left"><div style="font-family:'Space Mono',monospace;font-weight:700;font-size:28px;color:var(--text);font-variant-numeric:tabular-nums">{{ stats.maxStreak }}</div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-top:2px">BEST</div></div>
+          </div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px">MOVES vs PAR</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px">
+            <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:40px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--text);text-align:left">{{ b.label }}</span>
+                <div style="flex:1;height:26px;background:var(--surface);border-radius:6px;overflow:hidden;display:flex;align-items:center">
+                  <div style="height:100%;width:{{ b.pct }}%;min-width:26px;background:{{ b.color }};display:flex;align-items:center;justify-content:flex-end;padding-right:8px">
+                    <span style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums">{{ b.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <button onClick="{{ copyShare }}" style="width:100%;padding:15px 18px;border:none;background:var(--success);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.5px;border-radius:12px;cursor:pointer;text-align:left" style-hover="opacity:0.9">{{ copyLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showHow }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:color-mix(in srgb,#000 55%,transparent);display:flex;align-items:flex-end;justify-content:center;z-index:50">
+        <div style="width:100%;background:var(--elevated);border-top-left-radius:24px;border-top-right-radius:24px;border-top:2px solid var(--border);padding:24px 24px 28px;animation:sheetUp 280ms cubic-bezier(0.34,1.2,0.64,1);max-height:92%;overflow-y:auto">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-family:'Fraunces',serif;font-weight:700;font-size:28px;color:var(--text)">How to play</div>
+            <button onClick="{{ close }}" aria-label="Close" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <p style="font-family:'Space Grotesk',sans-serif;font-size:15px;line-height:1.5;color:var(--text);margin:0 0 18px">Chain operations to transform the <strong>start number</strong> into the <strong>target</strong>. Every tap adds a link. Match par to earn the birdie.</p>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--success);min-width:22px">1</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.45;color:var(--text)">Tap an operation (like <span style="font-family:'Space Mono',monospace;color:var(--text)">×3</span> or <span style="font-family:'Space Mono',monospace;color:var(--text)">+7</span>) to apply it to the current number.</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--success);min-width:22px">2</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.45;color:var(--text)">The chain grows downward. The <span style="color:var(--progress);font-weight:700">orange</span> node is where you are now.</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--success);min-width:22px">3</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.45;color:var(--text)"><span style="font-family:'Space Mono',monospace">÷</span> only works when it divides evenly — no fractions allowed.</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--success);min-width:22px">4</span>
+              <span style="font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.45;color:var(--text)">Land exactly on the target to close the chain. Fewer moves = better.</span>
+            </div>
+          </div>
+          <button onClick="{{ close }}" style="width:100%;padding:15px 18px;border:none;background:var(--success);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.5px;border-radius:12px;cursor:pointer;text-align:left;margin-top:22px" style-hover="opacity:0.9">Got it</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:color-mix(in srgb,#000 55%,transparent);display:flex;align-items:flex-end;justify-content:center;z-index:50">
+        <div style="width:100%;background:var(--elevated);border-top-left-radius:24px;border-top-right-radius:24px;border-top:2px solid var(--border);padding:24px 24px 28px;animation:sheetUp 280ms cubic-bezier(0.34,1.2,0.64,1);max-height:92%;overflow-y:auto">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div style="font-family:'Fraunces',serif;font-weight:700;font-size:28px;color:var(--text)">Settings</div>
+            <button onClick="{{ close }}" aria-label="Close" style="width:40px;height:40px;display:grid;place-items:center;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;background:transparent;color:var(--text);cursor:pointer" style-hover="border-color:var(--text)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:2px solid var(--border)">
+            <div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text)">Appearance</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--muted);margin-top:2px">Near-black dark base, no pure black</div>
+            </div>
+            <div style="display:flex;border-width:2px;border-style:solid;border-color:var(--border);border-radius:12px;overflow:hidden">
+              <button onClick="{{ setDark }}" style="padding:9px 14px;border:none;background:transparent;color:{{ darkSegColor }};font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;cursor:pointer;border-right:2px solid var(--border)">Dark</button>
+              <button onClick="{{ setLight }}" style="padding:9px 14px;border:none;background:transparent;color:{{ lightSegColor }};font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;cursor:pointer">Light</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:2px solid var(--border)">
+            <div style="max-width:66%">
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text)">High-contrast cues</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--muted);margin-top:2px">Colorblind-safe blue/orange with text labels on every state</div>
+            </div>
+            <button onClick="{{ toggleCb }}" aria-label="Toggle high contrast" style="width:52px;height:30px;border:none;border-radius:999px;background:{{ cbTrackBg }};position:relative;cursor:pointer;transition:background 160ms ease-out;flex-shrink:0">
+              <span style="position:absolute;top:3px;left:{{ cbKnobLeft }};width:24px;height:24px;border-radius:999px;background:#fff;transition:left 160ms cubic-bezier(0.4,0,0.2,1)"></span>
+            </button>
+          </div>
+          <div style="padding:16px 0 4px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;line-height:1.5;color:var(--muted)">NUMLINK #{{ puzzleNo }} · State colors follow the Okabe–Ito palette and every state carries a shape or label, not color alone.</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:440,&quot;height&quot;:900},&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;highContrastDefault&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;successHue&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Blue #0072B2&quot;,&quot;Orange #f5793a&quot;],&quot;default&quot;:&quot;Blue #0072B2&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.START = 2; this.TARGET = 26; this.PAR = 3; this.PUZZLE = 128; this.CAP = 999;
+    this.OPS = [
+      { id: 'm3', k: '\u00d7', n: 3, tokens: 2 },
+      { id: 'p7', k: '+', n: 7, tokens: 2 },
+      { id: 'm2', k: '\u00d7', n: 2, tokens: 3 },
+      { id: 's1', k: '\u2212', n: 1, tokens: 3 },
+      { id: 'd2', k: '\u00f7', n: 2, tokens: 2 },
+      { id: 'p5', k: '+', n: 5, tokens: 2 },
+    ];
+    this.state = {
+      chain: [{ value: this.START, opLabel: null }],
+      solved: false, overlay: null, theme: null, cb: null,
+      message: null, recorded: false, stats: null, copied: false, shake: null,
+      started: false, used: {},
+    };
+  }
+
+  componentDidMount() {
+    const dt = this.props.defaultTheme || 'dark';
+    const hc = this.props.highContrastDefault;
+    const cb = hc === undefined ? true : !!hc;
+    let stats = { played: 12, wins: 11, streak: 4, maxStreak: 7, dist: { par: 3, '+1': 5, '+2': 2, '+3+': 1 } };
+    try { const raw = localStorage.getItem('numlink_stats'); if (raw) stats = JSON.parse(raw); } catch (e) {}
+    this.setState({ theme: dt, cb, stats });
+  }
+
+  compute(cur, o) {
+    let r;
+    if (o.k === '\u00d7') r = cur * o.n;
+    else if (o.k === '+') r = cur + o.n;
+    else if (o.k === '\u2212') r = cur - o.n;
+    else r = cur / o.n;
+    if (!Number.isInteger(r) || r < 0 || r > this.CAP) return null;
+    return r;
+  }
+
+  apply(o) {
+    if (this.state.solved) return;
+    const usedN = this.state.used[o.id] || 0;
+    if (usedN >= o.tokens) { this.flash('No ' + o.k + o.n + ' tokens left'); this.shakeOp(o.id); return; }
+    const chain = this.state.chain;
+    const cur = chain[chain.length - 1].value;
+    const r = this.compute(cur, o);
+    if (r === null) {
+      this.flash(o.k === '\u00f7' ? "That doesn't divide evenly" : 'That goes out of range');
+      this.shakeOp(o.id);
+      return;
+    }
+    const nc = chain.concat([{ value: r, opLabel: o.k + o.n }]);
+    const used = Object.assign({}, this.state.used); used[o.id] = usedN + 1;
+    const solved = r === this.TARGET;
+    this.setState({ chain: nc, used: used });
+    if (solved) { this.recordWin(nc.length - 1); this.setState({ solved: true, overlay: 'win' }); }
+  }
+
+  flash(msg) { this.setState({ message: msg }); clearTimeout(this._mt); this._mt = setTimeout(() => this.setState({ message: null }), 1600); }
+  shakeOp(id) { this.setState({ shake: id }); clearTimeout(this._st); this._st = setTimeout(() => this.setState({ shake: null }), 340); }
+
+  undo() {
+    if (this.state.solved) return;
+    const c = this.state.chain; if (c.length <= 1) return;
+    const last = c[c.length - 1].opLabel;
+    const used = Object.assign({}, this.state.used);
+    const hit = this.OPS.find((o) => o.k + o.n === last);
+    if (hit && used[hit.id]) used[hit.id] = used[hit.id] - 1;
+    this.setState({ chain: c.slice(0, -1), used: used });
+  }
+  reset() { this.setState({ chain: [{ value: this.START, opLabel: null }], solved: false, recorded: false, used: {} }); }
+  playAgain() { this.reset(); this.setState({ overlay: null, copied: false }); }
+
+  recordWin(moves) {
+    if (this.state.recorded) return;
+    const s = Object.assign({}, this.state.stats);
+    s.played = (s.played || 0) + 1;
+    s.wins = (s.wins || 0) + 1;
+    s.streak = (s.streak || 0) + 1;
+    s.maxStreak = Math.max(s.maxStreak || 0, s.streak);
+    const over = moves - this.PAR;
+    const key = over <= 0 ? 'par' : over === 1 ? '+1' : over === 2 ? '+2' : '+3+';
+    s.dist = Object.assign({}, s.dist || {});
+    s.dist[key] = (s.dist[key] || 0) + 1;
+    try { localStorage.setItem('numlink_stats', JSON.stringify(s)); } catch (e) {}
+    this.setState({ stats: s, recorded: true });
+  }
+
+  startGame() { this.setState({ started: true, overlay: null }); }
+  toggleTheme(t) { this.setState({ theme: t }); }
+  toggleCb() { this.setState({ cb: !this.state.cb }); }
+  open(o) { this.setState({ overlay: o }); }
+  close() { this.setState({ overlay: null }); }
+
+  shareText() {
+    const moves = this.state.chain.length - 1;
+    const within = Math.min(moves, this.PAR);
+    const over = Math.max(0, moves - this.PAR);
+    let grid = '\ud83d\udfe6'.repeat(within) + '\ud83d\udfe7'.repeat(over);
+    if (this.state.solved) grid += ' \ud83c\udfaf';
+    return 'NUMLINK #' + this.PUZZLE + '\n' + moves + ' moves \u00b7 par ' + this.PAR + '\n' + grid;
+  }
+
+  copyShare() {
+    const t = this.shareText();
+    try { if (navigator.clipboard) navigator.clipboard.writeText(t); } catch (e) {}
+    this.setState({ copied: true });
+    clearTimeout(this._ct); this._ct = setTimeout(() => this.setState({ copied: false }), 1800);
+  }
+
+  renderVals() {
+    const theme = this.state.theme || this.props.defaultTheme || 'dark';
+    const cb = this.state.cb === null
+      ? (this.props.highContrastDefault === undefined ? true : !!this.props.highContrastDefault)
+      : this.state.cb;
+    const successKey = (this.props.successHue || '').indexOf('Orange') >= 0 ? 'orange' : 'blue';
+
+    const chain = this.state.chain;
+    const cur = chain[chain.length - 1].value;
+    const moves = chain.length - 1;
+    const solved = this.state.solved;
+
+    const initDist = Math.abs(this.TARGET - this.START) || 1;
+    const dist = Math.abs(this.TARGET - cur);
+    const heatPct = Math.max(6, Math.min(100, Math.round(100 * (1 - dist / initDist))));
+    const heatColor = dist === 0 ? 'var(--success)' : dist <= 3 ? 'var(--progress)' : 'var(--muted)';
+    const proximityText = solved ? 'On target' : (dist + ' away from target');
+
+    const nodes = chain.map((nd, i) => {
+      const isLast = i === chain.length - 1;
+      let border, badge, numColor, bg;
+      if (i === 0) { border = 'var(--border)'; badge = 'START'; numColor = 'var(--text)'; bg = 'transparent'; }
+      else if (isLast && solved) { border = 'var(--success)'; badge = cb ? 'TARGET \u00b7 SOLVED \u2713' : 'TARGET \u2713'; numColor = 'var(--success)'; bg = 'color-mix(in srgb, var(--success) 14%, transparent)'; }
+      else if (isLast) { border = 'var(--progress)'; badge = cb ? 'YOU ARE HERE' : ''; numColor = 'var(--text)'; bg = 'color-mix(in srgb, var(--progress) 12%, transparent)'; }
+      else { border = 'var(--border)'; badge = ''; numColor = 'var(--muted)'; bg = 'var(--surface)'; }
+      return { key: 'n' + i, value: nd.value, op: nd.opLabel, hasEdge: i > 0, border: border, badge: badge, numColor: numColor, bg: bg };
+    });
+
+    const targetNode = {
+      border: solved ? 'var(--success)' : 'var(--muted)',
+      style: solved ? 'solid' : 'dashed',
+      numColor: solved ? 'var(--success)' : 'var(--muted)',
+    };
+
+    const used = this.state.used || {};
+    const ops = this.OPS.map((o) => {
+      const r = this.compute(cur, o);
+      const remaining = o.tokens - (used[o.id] || 0);
+      const disabled = solved || r === null || remaining <= 0;
+      return {
+        key: o.id, label: o.k + o.n,
+        preview: r === null ? '\u2014' : ('\u2192 ' + r),
+        remaining: remaining, tokenLabel: remaining + '\u00d7', tokenColor: remaining <= 0 ? 'var(--muted)' : (remaining === 1 ? 'var(--progress)' : 'var(--text)'),
+        opacity: disabled ? 0.38 : 1,
+        anim: this.state.shake === o.id ? 'shake 0.34s ease-in-out' : 'none',
+        onTap: () => this.apply(o),
+      };
+    });
+
+    const stats = this.state.stats || { played: 0, wins: 0, streak: 0, maxStreak: 0, dist: {} };
+    const winRate = stats.played ? Math.round(100 * stats.wins / stats.played) : 0;
+    const dist2 = stats.dist || {};
+    const bucketKeys = ['par', '+1', '+2', '+3+'];
+    const maxCount = Math.max(1, ...bucketKeys.map((k) => dist2[k] || 0));
+    const over = moves - this.PAR;
+    const thisKey = over <= 0 ? 'par' : over === 1 ? '+1' : over === 2 ? '+2' : '+3+';
+    const buckets = bucketKeys.map((k) => ({
+      key: k, label: k === 'par' ? 'PAR' : k, count: dist2[k] || 0,
+      pct: Math.round(100 * (dist2[k] || 0) / maxCount),
+      color: (solved && k === thisKey) ? 'var(--success)' : 'var(--muted)',
+    }));
+
+    const scoreLabel = over <= -2 ? 'Eagle' : over === -1 ? 'Birdie' : over === 0 ? 'Par' : over === 1 ? 'Bogey' : over === 2 ? 'Double bogey' : ('+' + over);
+
+    return {
+      theme: theme, cb: cb, successKey: successKey,
+      puzzleNo: this.PUZZLE, dateLabel: 'AUG 8 2026',
+      target: this.TARGET, start: this.START, current: cur, moves: moves, par: this.PAR, solved: solved,
+      heatPct: heatPct, heatColor: heatColor, proximityText: proximityText,
+      nodes: nodes, targetNode: targetNode, ops: ops,
+      overlay: this.state.overlay,
+      showWelcome: !this.state.started,
+      showTarget: !solved,
+      startGame: () => this.startGame(),
+      showHow: this.state.overlay === 'how', showStats: this.state.overlay === 'stats',
+      showSettings: this.state.overlay === 'settings', showWin: this.state.overlay === 'win',
+      message: this.state.message, hasMessage: !!this.state.message,
+      shareText: this.shareText(), copied: this.state.copied,
+      copyLabel: this.state.copied ? 'Copied to clipboard' : 'Share result',
+      scoreLabel: scoreLabel,
+      stats: stats, winRate: winRate, buckets: buckets,
+      darkSegColor: theme === 'dark' ? 'var(--success)' : 'var(--muted)',
+      lightSegColor: theme === 'light' ? 'var(--success)' : 'var(--muted)',
+      cbTrackBg: cb ? 'var(--success)' : 'var(--border)',
+      cbKnobLeft: cb ? '25px' : '3px',
+      undo: () => this.undo(), reset: () => this.reset(), playAgain: () => this.playAgain(),
+      openHow: () => this.open('how'), openStats: () => this.open('stats'),
+      openSettings: () => this.open('settings'), close: () => this.close(),
+      setDark: () => this.toggleTheme('dark'), setLight: () => this.toggleTheme('light'),
+      toggleCb: () => this.toggleCb(), copyShare: () => this.copyShare(),
+    };
+  }
+}
+</script>
+</body>
+</html>

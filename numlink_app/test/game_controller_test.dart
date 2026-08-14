@@ -1,0 +1,139 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:numlink_app/data/stats_repository.dart';
+import 'package:numlink_app/game/game_controller.dart';
+import 'package:numlink_app/game/puzzle_repository.dart';
+import 'package:numlink_app/game/solver.dart';
+import 'package:numlink_app/models/game_stats.dart';
+import 'package:numlink_app/models/operation.dart';
+import 'package:numlink_app/services/feedback_service.dart';
+
+/// In-memory stats repo for tests.
+class FakeStatsRepository implements StatsRepository {
+  GameStats saved = GameStats.empty;
+  @override
+  Future<GameStats> load() async => saved;
+  @override
+  Future<void> save(GameStats stats) async => saved = stats;
+}
+
+Future<GameController> _controller() async {
+  final puzzle = await const LocalPuzzleRepository().today();
+  return GameController(
+    puzzle: puzzle,
+    statsRepo: FakeStatsRepository(),
+    feedback: FeedbackService(),
+    initialStats: GameStats.empty,
+  ).init();
+}
+
+Operation _op(GameController g, String id) =>
+    g.puzzle.ops.firstWhere((o) => o.id == id);
+
+void main() {
+  group('compute legality', () {
+    test('÷ rejects non-integer results', () async {
+      final g = await _controller();
+      // start = 2; ÷2 -> 1 legal, but +7 first -> 9, ÷2 illegal.
+      g.apply(_op(g, 'p7')); // 2 -> 9
+      expect(g.current, 9);
+      final before = g.chain.length;
+      g.apply(_op(g, 'd2')); // 9 ÷ 2 -> illegal
+      expect(g.chain.length, before, reason: 'illegal op must not change chain');
+      expect(g.message, isNotNull);
+    });
+
+    test('operations cannot exceed range 0..999', () async {
+      final g = await _controller();
+      // Force a large value via ×3 twice then ×2 thrice would exceed; but token
+      // caps limit us. Simpler: −1 below zero from start 2 twice is fine (0),
+      // a third −1 would go negative and be rejected.
+      g.apply(_op(g, 's1')); // 2 -> 1
+      g.apply(_op(g, 's1')); // 1 -> 0
+      final before = g.chain.length;
+      g.apply(_op(g, 's1')); // 0 -> -1 illegal
+      expect(g.chain.length, before);
+    });
+  });
+
+  group('tokens', () {
+    test('apply decrements and undo refunds', () async {
+      final g = await _controller();
+      final m3 = _op(g, 'm3');
+      expect(g.remaining(m3), 2);
+      g.apply(m3); // 2 -> 6
+      expect(g.remaining(m3), 1);
+      g.undo();
+      expect(g.remaining(m3), 2);
+      expect(g.current, 2);
+    });
+
+    test('running out of tokens disables the op', () async {
+      final g = await _controller();
+      final d2 = _op(g, 'd2'); // 2 tokens
+      g.apply(d2); // 2 -> 1
+      // reset value path: 1 ÷2 illegal, so build a divisible chain instead.
+      g.reset();
+      // 2 ×3 -> 6, ÷2 -> 3, ... use two ÷2 to exhaust tokens.
+      g.apply(_op(g, 'm2')); // 2 -> 4
+      g.apply(d2); // 4 -> 2  (token 1 used)
+      g.apply(_op(g, 'm2')); // 2 -> 4
+      g.apply(d2); // 4 -> 2  (token 2 used)
+      expect(g.remaining(d2), 0);
+      expect(g.isDisabled(d2), isTrue);
+    });
+  });
+
+  group('solve', () {
+    test('par-3 solution solves and records a win', () async {
+      final g = await _controller();
+      g.apply(_op(g, 'm3')); // 2 -> 6
+      g.apply(_op(g, 'p7')); // 6 -> 13
+      g.apply(_op(g, 'm2')); // 13 -> 26 == target
+      expect(g.solved, isTrue);
+      expect(g.moves, 3);
+      expect(g.overlay, SheetOverlay.win);
+      expect(g.stats.wins, 1);
+      expect(g.stats.streak, 1);
+      expect(g.scoreLabel, ScoreLabel.par);
+      expect(g.currentBucket, 'par');
+    });
+
+    test('applying ops after solve is a no-op', () async {
+      final g = await _controller();
+      g.apply(_op(g, 'm3'));
+      g.apply(_op(g, 'p7'));
+      g.apply(_op(g, 'm2')); // solved
+      final moves = g.moves;
+      g.apply(_op(g, 'm2'));
+      expect(g.moves, moves);
+    });
+  });
+
+  group('heat + share', () {
+    test('heat reaches 100 and onTarget when solved', () async {
+      final g = await _controller();
+      g.apply(_op(g, 'm3'));
+      g.apply(_op(g, 'p7'));
+      g.apply(_op(g, 'm2'));
+      expect(g.heat, Heat.onTarget);
+      expect(g.heatPercent, 100);
+    });
+
+    test('share grid is spoiler-free', () async {
+      final g = await _controller();
+      g.apply(_op(g, 'm3'));
+      g.apply(_op(g, 'p7'));
+      g.apply(_op(g, 'm2'));
+      final txt = g.shareText();
+      expect(txt, contains('NUMLINK #128'));
+      expect(txt, contains('3 moves · par 3'));
+      expect(txt, contains('🟦🟦🟦'));
+      expect(txt, contains('🎯'));
+    });
+  });
+
+  test('solver reports honest par of 3', () async {
+    final puzzle = await const LocalPuzzleRepository().today();
+    expect(minMoves(puzzle), 3);
+  });
+}

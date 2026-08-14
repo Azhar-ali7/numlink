@@ -1,0 +1,9 @@
+# Claude Code local config / plans / memory
+.claude/
+
+# OS
+.DS_Store
+
+# Flutter build artifacts (the app has its own .gitignore too)
+numlink_app/build/
+numlink_app/.dart_tool/

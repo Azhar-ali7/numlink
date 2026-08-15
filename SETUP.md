@@ -80,6 +80,11 @@ cd numlink_app && flutter build apk --release
 # → build/app/outputs/flutter-apk/app-release.apk
 ```
 
+**Status:** ✅ built — `app-release.apk`, 20.9 MB, zip-verified (contains
+`classes.dex` + `AndroidManifest.xml`). First build also auto-installed SDK
+Platform 35 + CMake 3.22.1 via Gradle; subsequent builds skip those.
+The APK is a build artifact and is gitignored (not committed).
+
 ## Claude Code tooling
 
 - **Ponytail** (laziness/YAGNI reviewer) — installed as a Claude Code plugin;

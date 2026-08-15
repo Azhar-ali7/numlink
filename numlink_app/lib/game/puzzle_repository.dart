@@ -1,31 +1,112 @@
-import '../models/operation.dart';
 import '../models/puzzle.dart';
+import 'game_mode.dart';
+import 'generator.dart';
 
-/// Source of daily puzzles. Swap [LocalPuzzleRepository] for a remote impl
-/// later without touching the game controller.
+/// Source of puzzles. Swap [LocalPuzzleRepository] for a remote impl later
+/// without touching the game controller.
 abstract class PuzzleRepository {
+  /// Today's shared daily puzzle.
   Future<Puzzle> today();
+
+  /// The deterministic daily puzzle for [date] — identical for everyone.
+  Future<Puzzle> daily(DateTime date);
+
+  /// A fresh puzzle at tier [d]. Deterministic when [seed] is given.
+  Future<Puzzle> generate(Difficulty d, {int? seed});
+
+  /// Reproduce a past daily by its number.
+  Future<Puzzle> archive(int puzzleNo);
+
+  /// Past daily numbers available to replay, newest first, excluding today.
+  List<int> archiveNumbers();
+
+  /// An escalating sequence of [count] puzzles for the timed ladder,
+  /// deterministic in [runSeed].
+  List<Puzzle> ladder(int count, {required int runSeed});
 }
 
-/// Hardcoded puzzle #128, matching the design prototype exactly.
-/// Par-3 solution: 2 ×3→6 +7→13 ×2→26.
+/// On-device puzzles via [PuzzleGenerator]. Daily/archive are seeded by date/
+/// number so they're reproducible and identical for every player.
 class LocalPuzzleRepository implements PuzzleRepository {
   const LocalPuzzleRepository();
 
+  static const _gen = PuzzleGenerator();
+
+  /// Launch epoch anchored so #128 lands on 2026-08-08 (the handoff daily).
+  static final DateTime _epoch = DateTime.utc(2026, 8, 8);
+  static const int _epochNo = 128;
+
+  /// Fixed daily tier (no weekday ramp — see the locked difficulty-UX decision).
+  static const Difficulty _dailyTier = Difficulty.medium;
+
+  static const _months = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+  ];
+
+  int _numberFor(DateTime date) =>
+      _dateOnly(date).difference(_epoch).inDays + _epochNo;
+
+  DateTime _dateOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
+
+  String _labelFor(DateTime date) =>
+      '${_months[date.month - 1]} ${date.day} ${date.year}';
+
+  DateTime _dateForNumber(int no) =>
+      _epoch.add(Duration(days: no - _epochNo));
+
   @override
-  Future<Puzzle> today() async => const Puzzle(
-        no: 128,
-        dateLabel: 'AUG 8 2026',
-        start: 2,
-        target: 26,
-        par: 3,
-        ops: [
-          Operation(id: 'm3', symbol: '×', n: 3, tokens: 2),
-          Operation(id: 'p7', symbol: '+', n: 7, tokens: 2),
-          Operation(id: 'm2', symbol: '×', n: 2, tokens: 3),
-          Operation(id: 's1', symbol: '−', n: 1, tokens: 3),
-          Operation(id: 'd2', symbol: '÷', n: 2, tokens: 2),
-          Operation(id: 'p5', symbol: '+', n: 5, tokens: 2),
-        ],
-      );
+  Future<Puzzle> today() => daily(DateTime.now());
+
+  @override
+  Future<Puzzle> daily(DateTime date) async {
+    final no = _numberFor(date);
+    return _gen.generate(
+      _dailyTier,
+      no: no,
+      dateLabel: _labelFor(date),
+      seed: no, // same number → same puzzle for everyone
+    );
+  }
+
+  @override
+  Future<Puzzle> generate(Difficulty d, {int? seed}) async =>
+      _gen.generate(d, seed: seed);
+
+  @override
+  Future<Puzzle> archive(int puzzleNo) async {
+    final date = _dateForNumber(puzzleNo);
+    return _gen.generate(
+      _dailyTier,
+      no: puzzleNo,
+      dateLabel: _labelFor(date),
+      seed: puzzleNo,
+    );
+  }
+
+  @override
+  List<int> archiveNumbers() {
+    final todayNo = _numberFor(DateTime.now());
+    return [for (var n = todayNo - 1; n >= _epochNo; n--) n];
+  }
+
+  @override
+  List<Puzzle> ladder(int count, {required int runSeed}) {
+    // Escalate easy → medium → hard, cycling on hard for long runs.
+    const ramp = [
+      Difficulty.easy,
+      Difficulty.easy,
+      Difficulty.medium,
+      Difficulty.medium,
+      Difficulty.hard,
+    ];
+    return [
+      for (var i = 0; i < count; i++)
+        _gen.generate(
+          ramp[i < ramp.length ? i : ramp.length - 1],
+          no: i + 1,
+          seed: runSeed * 1000 + i,
+        ),
+    ];
+  }
 }

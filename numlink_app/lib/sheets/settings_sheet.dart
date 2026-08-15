@@ -48,6 +48,18 @@ class SettingsSheet extends StatelessWidget {
           subtitle: 'Vibration feedback on supported devices',
           trailing: _Pill(value: s.haptics, onTap: () => s.setHaptics(!s.haptics)),
         ),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            g.close();
+            s.openTutorial();
+          },
+          child: _Row(
+            title: 'How to play',
+            subtitle: 'Replay the intro walkthrough',
+            trailing: Icon(Icons.chevron_right, color: t.muted),
+          ),
+        ),
         const SizedBox(height: 12),
         Text(
           'NUMLINK #${g.puzzle.no} · State colors follow the Okabe–Ito palette '

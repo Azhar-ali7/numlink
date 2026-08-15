@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../data/stats_repository.dart';
+import '../models/achievement.dart';
 import '../models/chain_node.dart';
 import '../models/game_stats.dart';
 import '../models/operation.dart';
 import '../models/puzzle.dart';
 import '../services/feedback_service.dart';
+import 'game_mode.dart';
+import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, win }
+enum SheetOverlay { how, stats, settings, win, archive }
 
 /// Golf-style score verdicts.
 enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
@@ -33,16 +36,51 @@ enum Heat { onTarget, near, far }
 /// `Component` class (see `NUMLINK.dc.html`).
 class GameController extends ChangeNotifier {
   GameController({
-    required this.puzzle,
+    required Puzzle puzzle,
     required StatsRepository statsRepo,
     required this.feedback,
     required GameStats initialStats,
-  })  : _statsRepo = statsRepo,
+    this.puzzleRepo = const LocalPuzzleRepository(),
+  })  : _puzzle = puzzle,
+        _dailyPuzzle = puzzle,
+        _statsRepo = statsRepo,
         _stats = initialStats;
 
-  final Puzzle puzzle;
+  Puzzle _puzzle;
+
+  /// The daily puzzle (captured at construction), for Home-hub display even
+  /// while another mode's board is loaded.
+  final Puzzle _dailyPuzzle;
+  Puzzle get dailyPuzzle => _dailyPuzzle;
   final StatsRepository _statsRepo;
   final FeedbackService feedback;
+
+  /// Source for generated puzzles (Practice/Zen "new puzzle", ladder).
+  final PuzzleRepository puzzleRepo;
+
+  GameMode _mode = GameMode.daily;
+  Difficulty _difficulty = Difficulty.medium;
+
+  Puzzle get puzzle => _puzzle;
+  GameMode get mode => _mode;
+  Difficulty get difficulty => _difficulty;
+
+  /// Header title/subtitle for the active mode.
+  String get modeTitle => switch (_mode) {
+        GameMode.daily => 'NUMLINK',
+        GameMode.practice => 'Practice',
+        GameMode.zen => 'Zen',
+        GameMode.timed => 'Timed',
+        GameMode.archive => 'Archive',
+      };
+
+  String get modeSubtitle => switch (_mode) {
+        GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+        GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
+        GameMode.zen => 'Free play · ${_difficulty.label}',
+        GameMode.timed => 'Stage $stage / $stageCount',
+        GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+      };
 
   List<ChainNode> _chain = [];
   final Map<String, int> _used = {};
@@ -61,6 +99,41 @@ class GameController extends ChangeNotifier {
   Timer? _messageTimer;
   Timer? _shakeTimer;
   Timer? _copyTimer;
+
+  // ---- Timed ladder state -------------------------------------------------
+
+  /// Number of stages in one timed run.
+  static const int _ladderLength = 8;
+
+  List<Puzzle> _ladder = [];
+  int _stage = 0; // 0-based index of the stage currently being played
+  int _elapsedSeconds = 0;
+  int _bestStage = 0;
+  int _bestTime = 0; // seconds of the fastest full run (0 = none yet)
+  Timer? _tickTimer;
+
+  /// 1-based current stage for display.
+  int get stage => _stage + 1;
+  int get stageCount => _ladder.length;
+  int get elapsedSeconds => _elapsedSeconds;
+  int get bestStage => _bestStage;
+  int get bestTime => _bestTime;
+  bool get isTimed => _mode == GameMode.timed;
+  bool get isZen => _mode == GameMode.zen;
+
+  /// m:ss elapsed clock for the timed bar.
+  String get elapsedLabel {
+    final m = _elapsedSeconds ~/ 60;
+    final s = _elapsedSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  /// Mode-aware win-sheet summary — Zen drops par/score language entirely.
+  String get winSummary => switch (_mode) {
+        GameMode.zen => '$moves moves',
+        GameMode.timed => '$stageCount stages · $elapsedLabel',
+        _ => '$moves moves · par $par · ${scoreLabel.text(scoreOver)}',
+      };
 
   GameController init() {
     _chain = [ChainNode(puzzle.start)];
@@ -148,10 +221,14 @@ class GameController extends ChangeNotifier {
     _chain = [..._chain, ChainNode(r, o.label)];
     _used[o.id] = (_used[o.id] ?? 0) + 1;
     if (r == puzzle.target) {
+      if (_mode == GameMode.timed) {
+        _solveTimed(); // advances the ladder or finishes the run (self-notifies)
+        return;
+      }
       _solved = true;
       _overlay = SheetOverlay.win;
       _winPulse++;
-      _recordWin(moves);
+      _recordSolve();
       feedback.onSolve();
     } else {
       feedback.onTap();
@@ -173,14 +250,137 @@ class GameController extends ChangeNotifier {
   }
 
   void reset() {
-    _chain = [ChainNode(puzzle.start)];
-    _used.clear();
-    _solved = false;
-    _recorded = false;
+    _resetBoard();
     notifyListeners();
   }
 
+  void _resetBoard() {
+    _chain = [ChainNode(_puzzle.start)];
+    _used.clear();
+    _solved = false;
+    _recorded = false;
+  }
+
+  /// Swaps in a new puzzle and clears the board — the seam for Practice/Zen/
+  /// Timed and Archive. [mode]/[difficulty] tag the session for stat routing
+  /// and mode-aware UI.
+  void load(Puzzle p, {GameMode mode = GameMode.daily, Difficulty? difficulty}) {
+    _puzzle = p;
+    _mode = mode;
+    if (difficulty != null) _difficulty = difficulty;
+    _resetBoard();
+    _overlay = null;
+    _copied = false;
+    _message = null;
+    _started = true;
+    notifyListeners();
+  }
+
+  /// Daily tile from the Home hub: resume in-progress daily, or (re)load it
+  /// after a detour through another mode.
+  Future<void> startDaily() async {
+    if (_mode == GameMode.daily) {
+      _started = true;
+      _overlay = null;
+      notifyListeners();
+      return;
+    }
+    load(await puzzleRepo.today(), mode: GameMode.daily);
+  }
+
+  /// Return to the Home hub without discarding the current board. Also stops
+  /// the timed clock — leaving a run ends it.
+  void goHome() {
+    _tickTimer?.cancel();
+    _started = false;
+    _overlay = null;
+    notifyListeners();
+  }
+
+  /// Practice: generate a fresh puzzle at tier [d] and start it.
+  Future<void> startPractice(Difficulty d) async {
+    final p = await puzzleRepo.generate(d);
+    load(p, mode: GameMode.practice, difficulty: d);
+  }
+
+  /// Zen: like Practice but pressure-free — no par/score/streak (win recording
+  /// is already gated to daily; the UI hides par/heat for this mode).
+  Future<void> startZen(Difficulty d) async {
+    final p = await puzzleRepo.generate(d);
+    load(p, mode: GameMode.zen, difficulty: d);
+  }
+
+  /// Timed: build a fresh escalating ladder and start the clock.
+  Future<void> startTimed() async {
+    _tickTimer?.cancel();
+    final runSeed = DateTime.now().millisecondsSinceEpoch % 100000;
+    _ladder = puzzleRepo.ladder(_ladderLength, runSeed: runSeed);
+    _stage = 0;
+    _elapsedSeconds = 0;
+    load(_ladder[0], mode: GameMode.timed);
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _elapsedSeconds++;
+      notifyListeners();
+    });
+  }
+
+  /// A timed stage was solved: bank progress, then advance or finish the run.
+  void _solveTimed() {
+    final completed = _stage + 1;
+    if (completed > _bestStage) _bestStage = completed;
+    _winPulse++; // confetti pulse between stages
+    feedback.onSolve();
+    // Persist best stage (drives the Ladder Climber badge); best time stays
+    // session-only. ponytail: best-time is a min, not a max — no min-counter
+    // helper yet; add one if it needs to survive restarts.
+    _stats = _stats.setCounterMax('timedBestStage', completed);
+    final done = completed >= _ladder.length;
+    if (done) {
+      _tickTimer?.cancel();
+      _solved = true;
+      _overlay = SheetOverlay.win;
+      if (_bestTime == 0 || _elapsedSeconds < _bestTime) {
+        _bestTime = _elapsedSeconds;
+      }
+      _stats = _stats.bumpCounter('timedRuns');
+    }
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
+    _statsRepo.save(_stats);
+    if (done) {
+      notifyListeners();
+    } else {
+      _stage = completed;
+      load(_ladder[_stage], mode: GameMode.timed); // self-notifies
+    }
+  }
+
+  /// Archive: replay a past daily by number. Never affects the streak; a solve
+  /// is banked in the archive-completion set instead.
+  Future<void> startArchive(int no) async {
+    load(await puzzleRepo.archive(no), mode: GameMode.archive);
+  }
+
+  /// Past daily numbers available to replay (newest first, excluding today).
+  List<int> get archiveNumbers => puzzleRepo.archiveNumbers();
+
+  /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
+  Future<void> newPuzzle() async {
+    final p = await puzzleRepo.generate(_difficulty);
+    load(p, mode: _mode, difficulty: _difficulty);
+  }
+
   void playAgain() {
+    // Timed restarts the whole run; Zen serves a fresh puzzle; others retry the
+    // same board.
+    if (_mode == GameMode.timed) {
+      startTimed();
+      return;
+    }
+    if (_mode == GameMode.zen) {
+      newPuzzle();
+      return;
+    }
     reset();
     _overlay = null;
     _copied = false;
@@ -205,12 +405,32 @@ class GameController extends ChangeNotifier {
 
   // ---- Stats --------------------------------------------------------------
 
-  Future<void> _recordWin(int moves) async {
-    if (_recorded) return;
-    _recorded = true;
-    _stats = _stats.recordWin(moves, par);
-    await _statsRepo.save(_stats);
-    notifyListeners();
+  /// Whether the current chain used a `÷` op (for the Purist achievement).
+  bool get _usedDivision =>
+      puzzle.ops.any((o) => o.symbol == '÷' && (_used[o.id] ?? 0) > 0);
+
+  /// Records a solve for the active mode. Only Daily touches the streak/dist;
+  /// other modes bump their own counters or the archive-completion set. Every
+  /// mode re-evaluates achievements. (Timed records per-stage in [_solveTimed].)
+  void _recordSolve() {
+    final ctx =
+        SolveContext(scoreOver: scoreOver, usedDivision: _usedDivision);
+    switch (_mode) {
+      case GameMode.daily:
+        if (_recorded) return;
+        _recorded = true;
+        _stats = _stats.recordWin(moves, par);
+      case GameMode.practice:
+        _stats = _stats.bumpCounter('practice');
+      case GameMode.zen:
+        _stats = _stats.bumpCounter('zen');
+      case GameMode.archive:
+        _stats = _stats.markArchive(_puzzle.no);
+      case GameMode.timed:
+        return; // recorded per-stage in _solveTimed
+    }
+    _stats = _stats.withUnlocked(earnedAchievements(_stats, ctx));
+    _statsRepo.save(_stats);
   }
 
   /// Bucket key for the just-finished game (for histogram highlighting).
@@ -263,6 +483,7 @@ class GameController extends ChangeNotifier {
     _messageTimer?.cancel();
     _shakeTimer?.cancel();
     _copyTimer?.cancel();
+    _tickTimer?.cancel();
     super.dispose();
   }
 }

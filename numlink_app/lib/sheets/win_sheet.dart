@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
+import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/next_daily_countdown.dart';
 import 'bottom_sheet_shell.dart';
 
 class WinSheet extends StatelessWidget {
@@ -33,7 +35,7 @@ class WinSheet extends StatelessWidget {
               style: Fonts.display(size: 38, color: t.text, height: 1)),
           const SizedBox(height: 8),
           Text(
-            '${g.moves} moves · par ${g.par} · ${g.scoreLabel.text(g.scoreOver)}',
+            g.winSummary,
             style: Fonts.mono(size: 14, color: t.muted),
           ),
         ],
@@ -71,6 +73,10 @@ class WinSheet extends StatelessWidget {
                     label: 'Play again', onTap: g.playAgain)),
           ],
         ),
+        if (g.mode == GameMode.daily) ...[
+          const SizedBox(height: 16),
+          const Center(child: NextDailyCountdown(center: true)),
+        ],
       ],
     );
   }

@@ -33,7 +33,7 @@ class WinSheet extends StatelessWidget {
               style: Fonts.display(size: 38, color: t.text, height: 1)),
           const SizedBox(height: 8),
           Text(
-            '${g.moves} moves · par ${g.par} · ${g.scoreLabel.text(g.scoreOver)}',
+            g.winSummary,
             style: Fonts.mono(size: 14, color: t.muted),
           ),
         ],

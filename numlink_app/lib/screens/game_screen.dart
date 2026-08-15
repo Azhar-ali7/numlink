@@ -129,16 +129,29 @@ class _TargetBar extends StatelessWidget {
                 g.moves,
                 style: Fonts.mono(size: 22, color: t.text, weight: FontWeight.w700),
               )),
-              const SizedBox(width: 8),
-              _StatCell(label: 'PAR', child: Text('${g.par}',
-                  style: Fonts.mono(size: 22, color: t.text, weight: FontWeight.w700))),
+              // Zen drops par entirely; Timed swaps par for stage + a live clock.
+              if (g.isTimed) ...[
+                const SizedBox(width: 8),
+                _StatCell(label: 'STAGE', child: Text('${g.stage}/${g.stageCount}',
+                    style: Fonts.mono(size: 22, color: t.text, weight: FontWeight.w700))),
+                const SizedBox(width: 8),
+                _StatCell(label: 'TIME', child: Text(g.elapsedLabel,
+                    style: Fonts.mono(size: 22, color: t.text, weight: FontWeight.w700))),
+              ] else if (!g.isZen) ...[
+                const SizedBox(width: 8),
+                _StatCell(label: 'PAR', child: Text('${g.par}',
+                    style: Fonts.mono(size: 22, color: t.text, weight: FontWeight.w700))),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
-          HeatBar(percent: g.heatPercent, heat: g.heat),
-          const SizedBox(height: 6),
-          Text(g.proximityText,
-              style: Fonts.mono(size: 12, color: _heatColor(t, g.heat))),
+          // Heat/proximity is score-pressure feedback — hidden in Zen.
+          if (!g.isZen) ...[
+            const SizedBox(height: 12),
+            HeatBar(percent: g.heatPercent, heat: g.heat),
+            const SizedBox(height: 6),
+            Text(g.proximityText,
+                style: Fonts.mono(size: 12, color: _heatColor(t, g.heat))),
+          ],
         ],
       ),
     );

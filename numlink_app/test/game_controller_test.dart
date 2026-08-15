@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/data/stats_repository.dart';
 import 'package:numlink_app/game/game_controller.dart';
 import 'package:numlink_app/game/game_mode.dart';
+import 'package:numlink_app/game/puzzle_repository.dart';
 import 'package:numlink_app/game/solver.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/models/operation.dart';
@@ -15,6 +16,30 @@ class FakeStatsRepository implements StatsRepository {
   Future<GameStats> load() async => saved;
   @override
   Future<void> save(GameStats stats) async => saved = stats;
+}
+
+/// Repo that hands out trivial 1-move puzzles (1 +1→ 2), so timed-ladder
+/// progression is deterministic without knowing generated solutions.
+class FakePuzzleRepository implements PuzzleRepository {
+  Puzzle _trivial(int no) => Puzzle(
+        no: no,
+        dateLabel: '',
+        start: 1,
+        target: 2,
+        par: 1,
+        ops: const [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+      );
+  @override
+  Future<Puzzle> today() async => _trivial(1);
+  @override
+  Future<Puzzle> daily(DateTime date) async => _trivial(1);
+  @override
+  Future<Puzzle> generate(Difficulty d, {int? seed}) async => _trivial(1);
+  @override
+  Future<Puzzle> archive(int puzzleNo) async => _trivial(puzzleNo);
+  @override
+  List<Puzzle> ladder(int count, {required int runSeed}) =>
+      [for (var i = 0; i < count; i++) _trivial(i + 1)];
 }
 
 /// Fixed reference puzzle (the handoff #128) so tests don't depend on the
@@ -199,6 +224,83 @@ void main() {
       expect(g.solved, isTrue);
       expect(g.stats.streak, streakBefore);
       expect(g.stats.wins, winsBefore);
+    });
+  });
+
+  group('zen mode', () {
+    test('startZen tags the session zen with no par pressure', () async {
+      final g = await _controller();
+      await g.startZen(Difficulty.easy);
+      expect(g.mode, GameMode.zen);
+      expect(g.isZen, isTrue);
+      expect(g.solved, isFalse);
+    });
+
+    test('zen wins skip the streak and the summary omits par', () async {
+      final g = await _controller();
+      final streakBefore = g.stats.streak;
+      g.load(
+        const Puzzle(
+          no: 0,
+          dateLabel: '',
+          start: 1,
+          target: 2,
+          par: 1,
+          ops: [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+        ),
+        mode: GameMode.zen,
+        difficulty: Difficulty.easy,
+      );
+      g.apply(_op(g, 'p1')); // solved
+      expect(g.solved, isTrue);
+      expect(g.stats.streak, streakBefore);
+      expect(g.stats.wins, 0);
+      expect(g.winSummary, contains('moves'));
+      expect(g.winSummary, isNot(contains('par')));
+    });
+  });
+
+  group('timed ladder', () {
+    Future<GameController> timedController(FakeStatsRepository stats) async {
+      return GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: stats,
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        puzzleRepo: FakePuzzleRepository(),
+      ).init();
+    }
+
+    test('each solve advances a stage, last solve finishes the run', () async {
+      final g = await timedController(FakeStatsRepository());
+      await g.startTimed();
+      expect(g.mode, GameMode.timed);
+      expect(g.stage, 1);
+      final n = g.stageCount;
+      expect(n, greaterThan(1));
+
+      for (var i = 1; i < n; i++) {
+        g.apply(_op(g, 'p1')); // solve stage i
+        expect(g.solved, isFalse, reason: 'mid-ladder should not finish');
+        expect(g.stage, i + 1, reason: 'should advance to next stage');
+      }
+      g.apply(_op(g, 'p1')); // solve final stage
+      expect(g.solved, isTrue);
+      expect(g.overlay, SheetOverlay.win);
+      expect(g.bestStage, n);
+      expect(g.winSummary, contains('stages'));
+    });
+
+    test('timed wins do not touch the daily streak', () async {
+      final stats = FakeStatsRepository();
+      final g = await timedController(stats);
+      final streakBefore = g.stats.streak;
+      await g.startTimed();
+      for (var i = 0; i < g.stageCount; i++) {
+        g.apply(_op(g, 'p1'));
+      }
+      expect(g.stats.streak, streakBefore);
+      expect(g.stats.wins, 0);
     });
   });
 }

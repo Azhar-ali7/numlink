@@ -89,7 +89,25 @@ class WelcomeScreen extends StatelessWidget {
           onTap: g.startDaily,
         ),
         const SizedBox(height: 20),
-        const _PracticeCard(),
+        _ModeCard(
+          tag: 'PRACTICE',
+          blurb: 'Unlimited puzzles at your pace',
+          verb: 'practice',
+          onStart: g.startPractice,
+        ),
+        const SizedBox(height: 14),
+        _ModeCard(
+          tag: 'ZEN',
+          blurb: 'Relax — no clock, no par, no streak',
+          verb: 'zen',
+          onStart: g.startZen,
+        ),
+        const SizedBox(height: 14),
+        _WelcomeButton(
+          label: 'Start timed ladder',
+          filled: false,
+          onTap: g.startTimed,
+        ),
         const SizedBox(height: 14),
         _WelcomeButton(
           label: 'How to play',
@@ -247,21 +265,31 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Practice launcher: pick a difficulty, then generate an unlimited puzzle.
-class _PracticeCard extends StatefulWidget {
-  const _PracticeCard();
+/// Difficulty-picker launcher shared by Practice and Zen: pick a tier, then
+/// [onStart] generates a puzzle in that mode.
+class _ModeCard extends StatefulWidget {
+  const _ModeCard({
+    required this.tag,
+    required this.blurb,
+    required this.verb,
+    required this.onStart,
+  });
+
+  final String tag; // section label, e.g. 'PRACTICE'
+  final String blurb; // one-line description
+  final String verb; // button verb, e.g. 'practice' → 'Start Medium practice'
+  final void Function(Difficulty) onStart;
 
   @override
-  State<_PracticeCard> createState() => _PracticeCardState();
+  State<_ModeCard> createState() => _ModeCardState();
 }
 
-class _PracticeCardState extends State<_PracticeCard> {
+class _ModeCardState extends State<_ModeCard> {
   Difficulty _selected = Difficulty.medium;
 
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    final g = context.read<GameController>();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
@@ -271,7 +299,7 @@ class _PracticeCardState extends State<_PracticeCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('PRACTICE',
+          Text(widget.tag,
               style: Fonts.ui(
                   size: 11,
                   color: t.muted,
@@ -279,7 +307,7 @@ class _PracticeCardState extends State<_PracticeCard> {
                   letterSpacing: 1.5,
                   height: 1)),
           const SizedBox(height: 4),
-          Text('Unlimited puzzles at your pace',
+          Text(widget.blurb,
               style: Fonts.ui(size: 13, color: t.text, height: 1.3)),
           const SizedBox(height: 12),
           _DifficultyPicker(
@@ -288,9 +316,9 @@ class _PracticeCardState extends State<_PracticeCard> {
           ),
           const SizedBox(height: 12),
           _WelcomeButton(
-            label: 'Start ${_selected.label} practice',
+            label: 'Start ${_selected.label} ${widget.verb}',
             filled: true,
-            onTap: () => g.startPractice(_selected),
+            onTap: () => widget.onStart(_selected),
           ),
         ],
       ),

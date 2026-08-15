@@ -76,7 +76,7 @@ class GameController extends ChangeNotifier {
         GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
         GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
         GameMode.zen => 'Free play · ${_difficulty.label}',
-        GameMode.timed => 'Ladder',
+        GameMode.timed => 'Stage $stage / $stageCount',
       };
 
   List<ChainNode> _chain = [];
@@ -96,6 +96,41 @@ class GameController extends ChangeNotifier {
   Timer? _messageTimer;
   Timer? _shakeTimer;
   Timer? _copyTimer;
+
+  // ---- Timed ladder state -------------------------------------------------
+
+  /// Number of stages in one timed run.
+  static const int _ladderLength = 8;
+
+  List<Puzzle> _ladder = [];
+  int _stage = 0; // 0-based index of the stage currently being played
+  int _elapsedSeconds = 0;
+  int _bestStage = 0;
+  int _bestTime = 0; // seconds of the fastest full run (0 = none yet)
+  Timer? _tickTimer;
+
+  /// 1-based current stage for display.
+  int get stage => _stage + 1;
+  int get stageCount => _ladder.length;
+  int get elapsedSeconds => _elapsedSeconds;
+  int get bestStage => _bestStage;
+  int get bestTime => _bestTime;
+  bool get isTimed => _mode == GameMode.timed;
+  bool get isZen => _mode == GameMode.zen;
+
+  /// m:ss elapsed clock for the timed bar.
+  String get elapsedLabel {
+    final m = _elapsedSeconds ~/ 60;
+    final s = _elapsedSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  /// Mode-aware win-sheet summary — Zen drops par/score language entirely.
+  String get winSummary => switch (_mode) {
+        GameMode.zen => '$moves moves',
+        GameMode.timed => '$stageCount stages · $elapsedLabel',
+        _ => '$moves moves · par $par · ${scoreLabel.text(scoreOver)}',
+      };
 
   GameController init() {
     _chain = [ChainNode(puzzle.start)];
@@ -183,6 +218,10 @@ class GameController extends ChangeNotifier {
     _chain = [..._chain, ChainNode(r, o.label)];
     _used[o.id] = (_used[o.id] ?? 0) + 1;
     if (r == puzzle.target) {
+      if (_mode == GameMode.timed) {
+        _solveTimed(); // advances the ladder or finishes the run (self-notifies)
+        return;
+      }
       _solved = true;
       _overlay = SheetOverlay.win;
       _winPulse++;
@@ -246,8 +285,10 @@ class GameController extends ChangeNotifier {
     load(await puzzleRepo.today(), mode: GameMode.daily);
   }
 
-  /// Return to the Home hub without discarding the current board.
+  /// Return to the Home hub without discarding the current board. Also stops
+  /// the timed clock — leaving a run ends it.
   void goHome() {
+    _tickTimer?.cancel();
     _started = false;
     _overlay = null;
     notifyListeners();
@@ -259,6 +300,47 @@ class GameController extends ChangeNotifier {
     load(p, mode: GameMode.practice, difficulty: d);
   }
 
+  /// Zen: like Practice but pressure-free — no par/score/streak (win recording
+  /// is already gated to daily; the UI hides par/heat for this mode).
+  Future<void> startZen(Difficulty d) async {
+    final p = await puzzleRepo.generate(d);
+    load(p, mode: GameMode.zen, difficulty: d);
+  }
+
+  /// Timed: build a fresh escalating ladder and start the clock.
+  Future<void> startTimed() async {
+    _tickTimer?.cancel();
+    final runSeed = DateTime.now().millisecondsSinceEpoch % 100000;
+    _ladder = puzzleRepo.ladder(_ladderLength, runSeed: runSeed);
+    _stage = 0;
+    _elapsedSeconds = 0;
+    load(_ladder[0], mode: GameMode.timed);
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _elapsedSeconds++;
+      notifyListeners();
+    });
+  }
+
+  /// A timed stage was solved: bank progress, then advance or finish the run.
+  void _solveTimed() {
+    final completed = _stage + 1;
+    if (completed > _bestStage) _bestStage = completed;
+    _winPulse++; // confetti pulse between stages
+    feedback.onSolve();
+    if (completed >= _ladder.length) {
+      _tickTimer?.cancel();
+      _solved = true;
+      _overlay = SheetOverlay.win;
+      if (_bestTime == 0 || _elapsedSeconds < _bestTime) {
+        _bestTime = _elapsedSeconds;
+      }
+      notifyListeners();
+    } else {
+      _stage = completed;
+      load(_ladder[_stage], mode: GameMode.timed); // self-notifies
+    }
+  }
+
   /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
   Future<void> newPuzzle() async {
     final p = await puzzleRepo.generate(_difficulty);
@@ -266,6 +348,16 @@ class GameController extends ChangeNotifier {
   }
 
   void playAgain() {
+    // Timed restarts the whole run; Zen serves a fresh puzzle; others retry the
+    // same board.
+    if (_mode == GameMode.timed) {
+      startTimed();
+      return;
+    }
+    if (_mode == GameMode.zen) {
+      newPuzzle();
+      return;
+    }
     reset();
     _overlay = null;
     _copied = false;
@@ -348,6 +440,7 @@ class GameController extends ChangeNotifier {
     _messageTimer?.cancel();
     _shakeTimer?.cancel();
     _copyTimer?.cancel();
+    _tickTimer?.cancel();
     super.dispose();
   }
 }

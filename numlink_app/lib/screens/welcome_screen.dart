@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
+import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -24,12 +25,12 @@ class WelcomeScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _PreviewNode(
-              value: '${g.puzzle.start}', color: t.text, border: t.border),
+              value: '${g.dailyPuzzle.start}', color: t.text, border: t.border),
           _Connector(color: t.border),
           _DashedQ(color: t.muted),
           _Connector(color: t.border),
           _PreviewNode(
-            value: '${g.puzzle.target}',
+            value: '${g.dailyPuzzle.target}',
             color: t.success,
             border: t.success,
             bg: tint(t.success, 0.12),
@@ -74,20 +75,22 @@ class WelcomeScreen extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _StatCard(
-                value: '#${g.puzzle.no}',
-                label: g.puzzle.dateLabel,
+                value: '#${g.dailyPuzzle.no}',
+                label: g.dailyPuzzle.dateLabel,
                 valueColor: t.text,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 36),
         _WelcomeButton(
           label: "Play today's puzzle",
           filled: true,
-          onTap: g.startGame,
+          onTap: g.startDaily,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
+        const _PracticeCard(),
+        const SizedBox(height: 14),
         _WelcomeButton(
           label: 'How to play',
           filled: false,
@@ -238,6 +241,104 @@ class _StatCard extends StatelessWidget {
                   weight: FontWeight.w700,
                   letterSpacing: 1,
                   height: 1)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Practice launcher: pick a difficulty, then generate an unlimited puzzle.
+class _PracticeCard extends StatefulWidget {
+  const _PracticeCard();
+
+  @override
+  State<_PracticeCard> createState() => _PracticeCardState();
+}
+
+class _PracticeCardState extends State<_PracticeCard> {
+  Difficulty _selected = Difficulty.medium;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    final g = context.read<GameController>();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: t.border, width: 2),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('PRACTICE',
+              style: Fonts.ui(
+                  size: 11,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  height: 1)),
+          const SizedBox(height: 4),
+          Text('Unlimited puzzles at your pace',
+              style: Fonts.ui(size: 13, color: t.text, height: 1.3)),
+          const SizedBox(height: 12),
+          _DifficultyPicker(
+            selected: _selected,
+            onSelect: (d) => setState(() => _selected = d),
+          ),
+          const SizedBox(height: 12),
+          _WelcomeButton(
+            label: 'Start ${_selected.label} practice',
+            filled: true,
+            onTap: () => g.startPractice(_selected),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Three-way difficulty segmented control (settings-sheet visual language).
+class _DifficultyPicker extends StatelessWidget {
+  const _DifficultyPicker({required this.selected, required this.onSelect});
+
+  final Difficulty selected;
+  final ValueChanged<Difficulty> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: t.border, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          for (final d in Difficulty.values)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(d),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: d == selected ? tint(t.success, 0.14) : null,
+                    border: d == Difficulty.hard
+                        ? null
+                        : Border(right: BorderSide(color: t.border, width: 2)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(d.label,
+                      style: Fonts.ui(
+                          size: 13,
+                          color: d == selected ? t.success : t.muted,
+                          weight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          height: 1)),
+                ),
+              ),
+            ),
         ],
       ),
     );

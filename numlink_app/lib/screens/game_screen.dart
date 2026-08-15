@@ -41,7 +41,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.read<GameController>();
+    final g = context.watch<GameController>();
     final t = NumTheme.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
@@ -51,15 +51,20 @@ class _Header extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          IconSquareButton(
+              icon: Icons.arrow_back,
+              semanticLabel: 'Home',
+              onTap: g.goHome),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('NUMLINK',
+                Text(g.modeTitle,
                     style: Fonts.display(
                         size: 26, color: t.text, letterSpacing: -0.6, height: 1)),
                 const SizedBox(height: 5),
-                Text('#${g.puzzle.no} · ${g.puzzle.dateLabel}',
+                Text(g.modeSubtitle,
                     style: Fonts.mono(size: 11, color: t.muted, letterSpacing: 0.5)),
               ],
             ),

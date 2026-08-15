@@ -1,4 +1,3 @@
-import '../models/operation.dart';
 import '../models/puzzle.dart';
 import 'game_mode.dart';
 import 'generator.dart';
@@ -53,24 +52,8 @@ class LocalPuzzleRepository implements PuzzleRepository {
   DateTime _dateForNumber(int no) =>
       _epoch.add(Duration(days: no - _epochNo));
 
-  // ponytail: today() still serves the fixed handoff puzzle #128. Phase 2
-  // swaps it to daily(DateTime.now()) once the Home hub + daily UI land.
   @override
-  Future<Puzzle> today() async => const Puzzle(
-        no: 128,
-        dateLabel: 'AUG 8 2026',
-        start: 2,
-        target: 26,
-        par: 3,
-        ops: [
-          Operation(id: 'm3', symbol: '×', n: 3, tokens: 2),
-          Operation(id: 'p7', symbol: '+', n: 7, tokens: 2),
-          Operation(id: 'm2', symbol: '×', n: 2, tokens: 3),
-          Operation(id: 's1', symbol: '−', n: 1, tokens: 3),
-          Operation(id: 'd2', symbol: '÷', n: 2, tokens: 2),
-          Operation(id: 'p5', symbol: '+', n: 5, tokens: 2),
-        ],
-      );
+  Future<Puzzle> today() => daily(DateTime.now());
 
   @override
   Future<Puzzle> daily(DateTime date) async {

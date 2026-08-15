@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/data/stats_repository.dart';
 import 'package:numlink_app/game/game_controller.dart';
 import 'package:numlink_app/game/game_mode.dart';
-import 'package:numlink_app/game/puzzle_repository.dart';
 import 'package:numlink_app/game/solver.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/models/operation.dart';
@@ -18,10 +17,27 @@ class FakeStatsRepository implements StatsRepository {
   Future<void> save(GameStats stats) async => saved = stats;
 }
 
+/// Fixed reference puzzle (the handoff #128) so tests don't depend on the
+/// live generated daily. Par-3: 2 ×3→6 +7→13 ×2→26.
+const Puzzle kReferencePuzzle = Puzzle(
+  no: 128,
+  dateLabel: 'AUG 8 2026',
+  start: 2,
+  target: 26,
+  par: 3,
+  ops: [
+    Operation(id: 'm3', symbol: '×', n: 3, tokens: 2),
+    Operation(id: 'p7', symbol: '+', n: 7, tokens: 2),
+    Operation(id: 'm2', symbol: '×', n: 2, tokens: 3),
+    Operation(id: 's1', symbol: '−', n: 1, tokens: 3),
+    Operation(id: 'd2', symbol: '÷', n: 2, tokens: 2),
+    Operation(id: 'p5', symbol: '+', n: 5, tokens: 2),
+  ],
+);
+
 Future<GameController> _controller() async {
-  final puzzle = await const LocalPuzzleRepository().today();
   return GameController(
-    puzzle: puzzle,
+    puzzle: kReferencePuzzle,
     statsRepo: FakeStatsRepository(),
     feedback: FeedbackService(),
     initialStats: GameStats.empty,
@@ -135,8 +151,7 @@ void main() {
   });
 
   test('solver reports honest par of 3', () async {
-    final puzzle = await const LocalPuzzleRepository().today();
-    expect(minMoves(puzzle), 3);
+    expect(minMoves(kReferencePuzzle), 3);
   });
 
   group('practice mode', () {

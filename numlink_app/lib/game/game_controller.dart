@@ -41,10 +41,16 @@ class GameController extends ChangeNotifier {
     required GameStats initialStats,
     this.puzzleRepo = const LocalPuzzleRepository(),
   })  : _puzzle = puzzle,
+        _dailyPuzzle = puzzle,
         _statsRepo = statsRepo,
         _stats = initialStats;
 
   Puzzle _puzzle;
+
+  /// The daily puzzle (captured at construction), for Home-hub display even
+  /// while another mode's board is loaded.
+  final Puzzle _dailyPuzzle;
+  Puzzle get dailyPuzzle => _dailyPuzzle;
   final StatsRepository _statsRepo;
   final FeedbackService feedback;
 
@@ -57,6 +63,21 @@ class GameController extends ChangeNotifier {
   Puzzle get puzzle => _puzzle;
   GameMode get mode => _mode;
   Difficulty get difficulty => _difficulty;
+
+  /// Header title/subtitle for the active mode.
+  String get modeTitle => switch (_mode) {
+        GameMode.daily => 'NUMLINK',
+        GameMode.practice => 'Practice',
+        GameMode.zen => 'Zen',
+        GameMode.timed => 'Timed',
+      };
+
+  String get modeSubtitle => switch (_mode) {
+        GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+        GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
+        GameMode.zen => 'Free play · ${_difficulty.label}',
+        GameMode.timed => 'Ladder',
+      };
 
   List<ChainNode> _chain = [];
   final Map<String, int> _used = {};
@@ -209,6 +230,26 @@ class GameController extends ChangeNotifier {
     _overlay = null;
     _copied = false;
     _message = null;
+    _started = true;
+    notifyListeners();
+  }
+
+  /// Daily tile from the Home hub: resume in-progress daily, or (re)load it
+  /// after a detour through another mode.
+  Future<void> startDaily() async {
+    if (_mode == GameMode.daily) {
+      _started = true;
+      _overlay = null;
+      notifyListeners();
+      return;
+    }
+    load(await puzzleRepo.today(), mode: GameMode.daily);
+  }
+
+  /// Return to the Home hub without discarding the current board.
+  void goHome() {
+    _started = false;
+    _overlay = null;
     notifyListeners();
   }
 

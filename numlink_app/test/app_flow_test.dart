@@ -2,21 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/app.dart';
 import 'package:numlink_app/data/settings_controller.dart';
 import 'package:numlink_app/game/game_controller.dart';
-import 'package:numlink_app/game/puzzle_repository.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/services/feedback_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'game_controller_test.dart' show FakeStatsRepository;
+import 'game_controller_test.dart' show FakeStatsRepository, kReferencePuzzle;
 
 Future<GameController> _pumpApp(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   final feedback = FeedbackService();
-  final puzzle = await const LocalPuzzleRepository().today();
   final game = GameController(
-    puzzle: puzzle,
+    puzzle: kReferencePuzzle,
     statsRepo: FakeStatsRepository(),
     feedback: feedback,
     initialStats: GameStats.seed,
@@ -90,6 +88,33 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Statistics'), findsOneWidget);
     expect(find.text('MOVES vs PAR'), findsOneWidget);
+
+    await _drain(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('hub → practice → back to home', (tester) async {
+    final game = await _pumpApp(tester);
+
+    // Hub shows the practice launcher.
+    expect(find.text('PRACTICE'), findsOneWidget);
+    expect(find.text('Start Medium practice'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Start Medium practice'));
+    await tester.pump();
+    await tester.tap(find.text('Start Medium practice'));
+    await tester.pump(); // resolve the async generate() future
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(game.started, isTrue);
+    expect(game.mode.name, 'practice');
+    expect(find.text('GET TO'), findsOneWidget);
+    expect(find.text('Practice'), findsOneWidget); // header title
+
+    // Back to Home via the header button.
+    game.goHome();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(game.started, isFalse);
+    expect(find.text("Play today's puzzle"), findsOneWidget);
 
     await _drain(tester);
     expect(tester.takeException(), isNull);

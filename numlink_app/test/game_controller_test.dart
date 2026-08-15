@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/data/stats_repository.dart';
 import 'package:numlink_app/game/game_controller.dart';
+import 'package:numlink_app/game/game_mode.dart';
 import 'package:numlink_app/game/puzzle_repository.dart';
 import 'package:numlink_app/game/solver.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/models/operation.dart';
+import 'package:numlink_app/models/puzzle.dart';
 import 'package:numlink_app/services/feedback_service.dart';
 
 /// In-memory stats repo for tests.
@@ -135,5 +137,53 @@ void main() {
   test('solver reports honest par of 3', () async {
     final puzzle = await const LocalPuzzleRepository().today();
     expect(minMoves(puzzle), 3);
+  });
+
+  group('practice mode', () {
+    test('startPractice loads a solvable puzzle at the chosen tier', () async {
+      final g = await _controller();
+      await g.startPractice(Difficulty.easy);
+      expect(g.mode, GameMode.practice);
+      expect(g.difficulty, Difficulty.easy);
+      expect(g.moves, 0);
+      expect(g.solved, isFalse);
+      final min = minMoves(g.puzzle);
+      expect(min, equals(g.puzzle.par)); // honest par
+      expect(g.puzzle.par, inInclusiveRange(2, 3)); // easy band
+    });
+
+    test('newPuzzle swaps the board and keeps difficulty', () async {
+      final g = await _controller();
+      await g.startPractice(Difficulty.hard);
+      final first = g.puzzle;
+      await g.newPuzzle();
+      expect(g.difficulty, Difficulty.hard);
+      expect(g.moves, 0);
+      // Overwhelmingly likely to differ (random seed); at minimum board reset.
+      expect(identical(g.puzzle, first), isFalse);
+    });
+
+    test('practice wins do not touch the daily streak', () async {
+      final g = await _controller();
+      final streakBefore = g.stats.streak;
+      final winsBefore = g.stats.wins;
+      // Handcrafted 1-move puzzle so the solve is deterministic.
+      g.load(
+        const Puzzle(
+          no: 0,
+          dateLabel: '',
+          start: 1,
+          target: 2,
+          par: 1,
+          ops: [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+        ),
+        mode: GameMode.practice,
+        difficulty: Difficulty.easy,
+      );
+      g.apply(_op(g, 'p1')); // 1 -> 2 == target, solved
+      expect(g.solved, isTrue);
+      expect(g.stats.streak, streakBefore);
+      expect(g.stats.wins, winsBefore);
+    });
   });
 }

@@ -8,6 +8,8 @@ import '../models/game_stats.dart';
 import '../models/operation.dart';
 import '../models/puzzle.dart';
 import '../services/feedback_service.dart';
+import 'game_mode.dart';
+import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
 enum SheetOverlay { how, stats, settings, win }
@@ -33,16 +35,28 @@ enum Heat { onTarget, near, far }
 /// `Component` class (see `NUMLINK.dc.html`).
 class GameController extends ChangeNotifier {
   GameController({
-    required this.puzzle,
+    required Puzzle puzzle,
     required StatsRepository statsRepo,
     required this.feedback,
     required GameStats initialStats,
-  })  : _statsRepo = statsRepo,
+    this.puzzleRepo = const LocalPuzzleRepository(),
+  })  : _puzzle = puzzle,
+        _statsRepo = statsRepo,
         _stats = initialStats;
 
-  final Puzzle puzzle;
+  Puzzle _puzzle;
   final StatsRepository _statsRepo;
   final FeedbackService feedback;
+
+  /// Source for generated puzzles (Practice/Zen "new puzzle", ladder).
+  final PuzzleRepository puzzleRepo;
+
+  GameMode _mode = GameMode.daily;
+  Difficulty _difficulty = Difficulty.medium;
+
+  Puzzle get puzzle => _puzzle;
+  GameMode get mode => _mode;
+  Difficulty get difficulty => _difficulty;
 
   List<ChainNode> _chain = [];
   final Map<String, int> _used = {};
@@ -151,7 +165,7 @@ class GameController extends ChangeNotifier {
       _solved = true;
       _overlay = SheetOverlay.win;
       _winPulse++;
-      _recordWin(moves);
+      if (_mode == GameMode.daily) _recordWin(moves);
       feedback.onSolve();
     } else {
       feedback.onTap();
@@ -173,11 +187,41 @@ class GameController extends ChangeNotifier {
   }
 
   void reset() {
-    _chain = [ChainNode(puzzle.start)];
+    _resetBoard();
+    notifyListeners();
+  }
+
+  void _resetBoard() {
+    _chain = [ChainNode(_puzzle.start)];
     _used.clear();
     _solved = false;
     _recorded = false;
+  }
+
+  /// Swaps in a new puzzle and clears the board — the seam for Practice/Zen/
+  /// Timed and Archive. [mode]/[difficulty] tag the session for stat routing
+  /// and mode-aware UI.
+  void load(Puzzle p, {GameMode mode = GameMode.daily, Difficulty? difficulty}) {
+    _puzzle = p;
+    _mode = mode;
+    if (difficulty != null) _difficulty = difficulty;
+    _resetBoard();
+    _overlay = null;
+    _copied = false;
+    _message = null;
     notifyListeners();
+  }
+
+  /// Practice: generate a fresh puzzle at tier [d] and start it.
+  Future<void> startPractice(Difficulty d) async {
+    final p = await puzzleRepo.generate(d);
+    load(p, mode: GameMode.practice, difficulty: d);
+  }
+
+  /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
+  Future<void> newPuzzle() async {
+    final p = await puzzleRepo.generate(_difficulty);
+    load(p, mode: _mode, difficulty: _difficulty);
   }
 
   void playAgain() {

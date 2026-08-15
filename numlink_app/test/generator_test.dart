@@ -20,7 +20,7 @@ void main() {
               reason: '$d #$i par ${p.par} outside band');
           expect(p.target, lessThanOrEqualTo(spec.maxTarget));
           expect(p.start, isNot(equals(p.target)));
-          expect(p.ops.length, equals(spec.opCount));
+          expect(p.ops.length, equals(6));
         }
       });
     }

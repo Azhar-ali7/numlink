@@ -20,7 +20,6 @@ class DifficultySpec {
     required this.startMax,
     required this.allowDivide,
     required this.extraTokens,
-    this.opCount = 6,
   });
 
   /// Inclusive par band (solution length).
@@ -40,10 +39,6 @@ class DifficultySpec {
   /// Token headroom above each op's actual usage in the solution. Smaller =
   /// tighter = harder (hard = 0 = exactly enough).
   final int extraTokens;
-
-  /// How many operation buttons the pad shows; unused slots become decoys
-  /// (red herrings). 6 fills the 3-column grid cleanly.
-  final int opCount;
 
   static const Map<Difficulty, DifficultySpec> table = {
     Difficulty.easy: DifficultySpec(

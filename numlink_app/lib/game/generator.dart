@@ -83,7 +83,7 @@ class PuzzleGenerator {
     });
     final ids = ops.map((o) => o.id).toSet();
     var guard = 0;
-    while (ops.length < spec.opCount && guard++ < 200) {
+    while (ops.length < 6 && guard++ < 200) { // 6 ops fill the 3-col pad
       final o = _randomOp(rng, spec);
       if (ids.add(o.id)) {
         ops.add(Operation(

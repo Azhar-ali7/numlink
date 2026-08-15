@@ -5,6 +5,7 @@ import 'data/settings_controller.dart';
 import 'game/game_controller.dart';
 import 'screens/game_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'sheets/archive_sheet.dart';
 import 'sheets/how_to_play_sheet.dart';
 import 'sheets/settings_sheet.dart';
 import 'sheets/stats_sheet.dart';
@@ -92,6 +93,8 @@ class _AppShell extends StatelessWidget {
                     const Positioned.fill(child: HowToPlaySheet()),
                   if (g.overlay == SheetOverlay.settings)
                     const Positioned.fill(child: SettingsSheet()),
+                  if (g.overlay == SheetOverlay.archive)
+                    const Positioned.fill(child: ArchiveSheet()),
                 ],
               ),
             ),

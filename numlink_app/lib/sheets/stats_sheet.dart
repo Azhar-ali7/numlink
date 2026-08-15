@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
+import '../models/achievement.dart';
 import '../models/game_stats.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -95,6 +96,29 @@ class StatsSheet extends StatelessWidget {
             ),
           );
         }),
+        const SizedBox(height: 22),
+        _SectionLabel('BY MODE'),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _StatCell(
+                value: '${s.counters['practice'] ?? 0}', label: 'PRACTICE'),
+            _StatCell(value: '${s.counters['zen'] ?? 0}', label: 'ZEN'),
+            _StatCell(
+                value: '${s.archiveSolved.length}', label: 'ARCHIVE'),
+            _StatCell(
+                value: '${s.counters['timedBestStage'] ?? 0}',
+                label: 'TIMED BEST'),
+          ],
+        ),
+        const SizedBox(height: 22),
+        _SectionLabel('BADGES'),
+        const SizedBox(height: 12),
+        ...kAchievements.map((a) => _BadgeRow(
+              achievement: a,
+              unlocked: s.unlocked.contains(a.id),
+            )),
         const SizedBox(height: 14),
         PrimaryButton(
           label: g.copied ? 'Copied to clipboard' : 'Share result',
@@ -104,6 +128,73 @@ class StatsSheet extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Text(text,
+        style: Fonts.ui(
+            size: 11,
+            color: t.muted,
+            weight: FontWeight.w700,
+            letterSpacing: 1.5,
+            height: 1));
+  }
+}
+
+class _BadgeRow extends StatelessWidget {
+  const _BadgeRow({required this.achievement, required this.unlocked});
+
+  final Achievement achievement;
+  final bool unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    final c = unlocked ? t.text : t.muted;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: unlocked ? tint(t.success, 0.14) : t.surface,
+              border: Border.all(
+                  color: unlocked ? t.success : t.border, width: 2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(unlocked ? '★' : '☆',
+                style: Fonts.mono(
+                    size: 15,
+                    color: unlocked ? t.success : t.muted,
+                    weight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(achievement.name,
+                    style: Fonts.ui(
+                        size: 14, color: c, weight: FontWeight.w700, height: 1.1)),
+                const SizedBox(height: 2),
+                Text(achievement.desc,
+                    style: Fonts.ui(size: 12, color: t.muted, height: 1.2)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

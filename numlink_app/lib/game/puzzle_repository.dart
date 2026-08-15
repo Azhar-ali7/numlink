@@ -17,6 +17,9 @@ abstract class PuzzleRepository {
   /// Reproduce a past daily by its number.
   Future<Puzzle> archive(int puzzleNo);
 
+  /// Past daily numbers available to replay, newest first, excluding today.
+  List<int> archiveNumbers();
+
   /// An escalating sequence of [count] puzzles for the timed ladder,
   /// deterministic in [runSeed].
   List<Puzzle> ladder(int count, {required int runSeed});
@@ -79,6 +82,12 @@ class LocalPuzzleRepository implements PuzzleRepository {
       dateLabel: _labelFor(date),
       seed: puzzleNo,
     );
+  }
+
+  @override
+  List<int> archiveNumbers() {
+    final todayNo = _numberFor(DateTime.now());
+    return [for (var n = todayNo - 1; n >= _epochNo; n--) n];
   }
 
   @override

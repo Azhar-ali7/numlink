@@ -40,6 +40,8 @@ class FakePuzzleRepository implements PuzzleRepository {
   @override
   List<Puzzle> ladder(int count, {required int runSeed}) =>
       [for (var i = 0; i < count; i++) _trivial(i + 1)];
+  @override
+  List<int> archiveNumbers() => [3, 2, 1];
 }
 
 /// Fixed reference puzzle (the handoff #128) so tests don't depend on the
@@ -301,6 +303,77 @@ void main() {
       }
       expect(g.stats.streak, streakBefore);
       expect(g.stats.wins, 0);
+    });
+  });
+
+  group('phase 4 — archive, counters, achievements', () {
+    Future<GameController> repoController() async {
+      return GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: FakeStatsRepository(),
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        puzzleRepo: FakePuzzleRepository(),
+      ).init();
+    }
+
+    test('archiveNumbers surfaces the repo list', () async {
+      final g = await repoController();
+      expect(g.archiveNumbers, [3, 2, 1]);
+    });
+
+    test('solving an archived daily marks it, no streak change', () async {
+      final g = await repoController();
+      final streakBefore = g.stats.streak;
+      final winsBefore = g.stats.wins;
+      await g.startArchive(2);
+      expect(g.mode, GameMode.archive);
+      g.apply(_op(g, 'p1')); // trivial 1 +1 -> 2, solved
+      expect(g.solved, isTrue);
+      expect(g.stats.archiveSolved.contains(2), isTrue);
+      expect(g.stats.streak, streakBefore);
+      expect(g.stats.wins, winsBefore);
+    });
+
+    test('practice solves bump the practice counter', () async {
+      final g = await _controller();
+      await g.startPractice(Difficulty.easy);
+      final before = g.stats.counters['practice'] ?? 0;
+      g.load(
+        const Puzzle(
+          no: 0,
+          dateLabel: '',
+          start: 1,
+          target: 2,
+          par: 1,
+          ops: [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+        ),
+        mode: GameMode.practice,
+        difficulty: Difficulty.easy,
+      );
+      g.apply(_op(g, 'p1'));
+      expect(g.stats.counters['practice'], before + 1);
+    });
+
+    test('beating par unlocks Birdie and Eagle', () async {
+      final g = await _controller();
+      // Par 3 but solvable in a single move → 2 under par.
+      g.load(
+        const Puzzle(
+          no: 0,
+          dateLabel: '',
+          start: 1,
+          target: 2,
+          par: 3,
+          ops: [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+        ),
+        mode: GameMode.practice,
+        difficulty: Difficulty.easy,
+      );
+      g.apply(_op(g, 'p1')); // solved, scoreOver = 1 - 3 = -2
+      expect(g.solved, isTrue);
+      expect(g.stats.unlocked, contains('birdie'));
+      expect(g.stats.unlocked, contains('eagle'));
     });
   });
 }

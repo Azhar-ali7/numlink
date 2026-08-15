@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../data/stats_repository.dart';
+import '../models/achievement.dart';
 import '../models/chain_node.dart';
 import '../models/game_stats.dart';
 import '../models/operation.dart';
@@ -12,7 +13,7 @@ import 'game_mode.dart';
 import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, win }
+enum SheetOverlay { how, stats, settings, win, archive }
 
 /// Golf-style score verdicts.
 enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
@@ -70,6 +71,7 @@ class GameController extends ChangeNotifier {
         GameMode.practice => 'Practice',
         GameMode.zen => 'Zen',
         GameMode.timed => 'Timed',
+        GameMode.archive => 'Archive',
       };
 
   String get modeSubtitle => switch (_mode) {
@@ -77,6 +79,7 @@ class GameController extends ChangeNotifier {
         GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
         GameMode.zen => 'Free play · ${_difficulty.label}',
         GameMode.timed => 'Stage $stage / $stageCount',
+        GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
       };
 
   List<ChainNode> _chain = [];
@@ -225,7 +228,7 @@ class GameController extends ChangeNotifier {
       _solved = true;
       _overlay = SheetOverlay.win;
       _winPulse++;
-      if (_mode == GameMode.daily) _recordWin(moves);
+      _recordSolve();
       feedback.onSolve();
     } else {
       feedback.onTap();
@@ -327,19 +330,39 @@ class GameController extends ChangeNotifier {
     if (completed > _bestStage) _bestStage = completed;
     _winPulse++; // confetti pulse between stages
     feedback.onSolve();
-    if (completed >= _ladder.length) {
+    // Persist best stage (drives the Ladder Climber badge); best time stays
+    // session-only. ponytail: best-time is a min, not a max — no min-counter
+    // helper yet; add one if it needs to survive restarts.
+    _stats = _stats.setCounterMax('timedBestStage', completed);
+    final done = completed >= _ladder.length;
+    if (done) {
       _tickTimer?.cancel();
       _solved = true;
       _overlay = SheetOverlay.win;
       if (_bestTime == 0 || _elapsedSeconds < _bestTime) {
         _bestTime = _elapsedSeconds;
       }
+      _stats = _stats.bumpCounter('timedRuns');
+    }
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
+    _statsRepo.save(_stats);
+    if (done) {
       notifyListeners();
     } else {
       _stage = completed;
       load(_ladder[_stage], mode: GameMode.timed); // self-notifies
     }
   }
+
+  /// Archive: replay a past daily by number. Never affects the streak; a solve
+  /// is banked in the archive-completion set instead.
+  Future<void> startArchive(int no) async {
+    load(await puzzleRepo.archive(no), mode: GameMode.archive);
+  }
+
+  /// Past daily numbers available to replay (newest first, excluding today).
+  List<int> get archiveNumbers => puzzleRepo.archiveNumbers();
 
   /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
   Future<void> newPuzzle() async {
@@ -382,12 +405,32 @@ class GameController extends ChangeNotifier {
 
   // ---- Stats --------------------------------------------------------------
 
-  Future<void> _recordWin(int moves) async {
-    if (_recorded) return;
-    _recorded = true;
-    _stats = _stats.recordWin(moves, par);
-    await _statsRepo.save(_stats);
-    notifyListeners();
+  /// Whether the current chain used a `÷` op (for the Purist achievement).
+  bool get _usedDivision =>
+      puzzle.ops.any((o) => o.symbol == '÷' && (_used[o.id] ?? 0) > 0);
+
+  /// Records a solve for the active mode. Only Daily touches the streak/dist;
+  /// other modes bump their own counters or the archive-completion set. Every
+  /// mode re-evaluates achievements. (Timed records per-stage in [_solveTimed].)
+  void _recordSolve() {
+    final ctx =
+        SolveContext(scoreOver: scoreOver, usedDivision: _usedDivision);
+    switch (_mode) {
+      case GameMode.daily:
+        if (_recorded) return;
+        _recorded = true;
+        _stats = _stats.recordWin(moves, par);
+      case GameMode.practice:
+        _stats = _stats.bumpCounter('practice');
+      case GameMode.zen:
+        _stats = _stats.bumpCounter('zen');
+      case GameMode.archive:
+        _stats = _stats.markArchive(_puzzle.no);
+      case GameMode.timed:
+        return; // recorded per-stage in _solveTimed
+    }
+    _stats = _stats.withUnlocked(earnedAchievements(_stats, ctx));
+    _statsRepo.save(_stats);
   }
 
   /// Bucket key for the just-finished game (for histogram highlighting).

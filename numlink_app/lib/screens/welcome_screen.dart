@@ -110,6 +110,12 @@ class WelcomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _WelcomeButton(
+          label: 'Archive',
+          filled: false,
+          onTap: () => g.open(SheetOverlay.archive),
+        ),
+        const SizedBox(height: 14),
+        _WelcomeButton(
           label: 'How to play',
           filled: false,
           onTap: () => g.open(SheetOverlay.how),

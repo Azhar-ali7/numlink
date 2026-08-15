@@ -62,7 +62,6 @@ class OperationButton extends StatelessWidget {
                   Text(op.label,
                       style: Fonts.mono(
                           size: 23, color: t.text, weight: FontWeight.w700)),
-                  const SizedBox(height: 1),
                   Text(previewText,
                       style: Fonts.mono(size: 12, color: t.muted)),
                 ],

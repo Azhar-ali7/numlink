@@ -6,6 +6,7 @@ import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
+import '../widgets/next_daily_countdown.dart';
 import '../widgets/streak_flame.dart';
 
 /// Branded landing shown before play: mini chain preview, wordmark, streak +
@@ -88,6 +89,8 @@ class WelcomeScreen extends StatelessWidget {
           filled: true,
           onTap: g.startDaily,
         ),
+        const SizedBox(height: 12),
+        const Center(child: NextDailyCountdown(center: true)),
         const SizedBox(height: 20),
         _ModeCard(
           tag: 'PRACTICE',

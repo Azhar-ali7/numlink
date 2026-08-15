@@ -45,11 +45,19 @@ class SettingsController extends ChangeNotifier {
   }) : _prefs = prefs {
     _settings = _load();
     _apply();
+    _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
+    _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
   }
 
   final SharedPreferences _prefs;
   final FeedbackService feedback;
   late AppSettings _settings;
+
+  // First-run intro carousel: [_tutorialSeen] is persisted once dismissed;
+  // [_tutorialOpen] is transient visibility (also toggled by "Replay" in
+  // Settings).
+  late bool _tutorialSeen;
+  bool _tutorialOpen = false;
 
   AppSettings get settings => _settings;
   ThemeMode get themeMode => _settings.themeMode;
@@ -57,6 +65,21 @@ class SettingsController extends ChangeNotifier {
   bool get orangeSuccess => _settings.orangeSuccess;
   bool get sound => _settings.sound;
   bool get haptics => _settings.haptics;
+  bool get tutorialOpen => _tutorialOpen;
+
+  void openTutorial() {
+    _tutorialOpen = true;
+    notifyListeners();
+  }
+
+  void dismissTutorial() {
+    _tutorialOpen = false;
+    if (!_tutorialSeen) {
+      _tutorialSeen = true;
+      _prefs.setBool('tutorialSeen', true);
+    }
+    notifyListeners();
+  }
 
   AppSettings _load() => AppSettings(
         themeMode: (_prefs.getString('theme') ?? 'dark') == 'light'

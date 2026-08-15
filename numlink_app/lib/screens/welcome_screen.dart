@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
+import '../game/game_mode.dart';
+import '../sheets/bottom_sheet_shell.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
+import '../widgets/next_daily_countdown.dart';
 import '../widgets/streak_flame.dart';
 
 /// Branded landing shown before play: mini chain preview, wordmark, streak +
@@ -24,12 +27,12 @@ class WelcomeScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _PreviewNode(
-              value: '${g.puzzle.start}', color: t.text, border: t.border),
+              value: '${g.dailyPuzzle.start}', color: t.text, border: t.border),
           _Connector(color: t.border),
           _DashedQ(color: t.muted),
           _Connector(color: t.border),
           _PreviewNode(
-            value: '${g.puzzle.target}',
+            value: '${g.dailyPuzzle.target}',
             color: t.success,
             border: t.success,
             bg: tint(t.success, 0.12),
@@ -74,24 +77,75 @@ class WelcomeScreen extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _StatCard(
-                value: '#${g.puzzle.no}',
-                label: g.puzzle.dateLabel,
+                value: '#${g.dailyPuzzle.no}',
+                label: g.dailyPuzzle.dateLabel,
                 valueColor: t.text,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 36),
         _WelcomeButton(
           label: "Play today's puzzle",
           filled: true,
-          onTap: g.startGame,
+          onTap: g.startDaily,
         ),
         const SizedBox(height: 12),
-        _WelcomeButton(
-          label: 'How to play',
-          filled: false,
-          onTap: () => g.open(SheetOverlay.how),
+        const Center(child: NextDailyCountdown(center: true)),
+        const SizedBox(height: 28),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('MORE MODES',
+              style: Fonts.ui(
+                  size: 11,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  height: 1)),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.55,
+          children: [
+            _ModeTile(
+              tag: 'PRACTICE',
+              blurb: 'Unlimited puzzles at your pace',
+              onTap: () => _showDifficultySheet(context, g.startPractice),
+            ),
+            _ModeTile(
+              tag: 'ZEN',
+              blurb: 'No clock, no par, no streak',
+              onTap: () => _showDifficultySheet(context, g.startZen),
+            ),
+            _ModeTile(
+              tag: 'TIMED',
+              blurb: 'Climb the escalating ladder',
+              onTap: g.startTimed,
+            ),
+            _ModeTile(
+              tag: 'ARCHIVE',
+              blurb: 'Replay past daily puzzles',
+              onTap: () => g.open(SheetOverlay.archive),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        Center(
+          child: GestureDetector(
+            onTap: () => g.open(SheetOverlay.how),
+            child: Text('How to play',
+                style: Fonts.ui(
+                        size: 14,
+                        color: t.muted,
+                        weight: FontWeight.w700,
+                        height: 1)
+                    .copyWith(decoration: TextDecoration.underline)),
+          ),
         ),
         const SizedBox(height: 32),
       ],
@@ -107,7 +161,7 @@ class WelcomeScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: box.maxHeight),
-            child: IntrinsicHeight(child: content),
+            child: content,
           ),
         ),
       ),
@@ -238,6 +292,144 @@ class _StatCard extends StatelessWidget {
                   weight: FontWeight.w700,
                   letterSpacing: 1,
                   height: 1)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact home-grid tile for a secondary mode.
+class _ModeTile extends StatelessWidget {
+  const _ModeTile({
+    required this.tag,
+    required this.blurb,
+    required this.onTap,
+  });
+
+  final String tag;
+  final String blurb;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: t.border, width: 2),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(tag,
+                  style: Fonts.ui(
+                      size: 13,
+                      color: t.text,
+                      weight: FontWeight.w700,
+                      letterSpacing: 1,
+                      height: 1)),
+              Text(blurb,
+                  style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick difficulty chooser for Practice/Zen: pick a tier, then [onStart]
+/// generates a puzzle in that mode. Self-contained modal — no controller state.
+void _showDifficultySheet(
+    BuildContext context, void Function(Difficulty) onStart) {
+  final t = NumTheme.of(context);
+  var selected = Difficulty.medium;
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx, setSheet) => Container(
+        decoration: BoxDecoration(
+          color: t.elevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: t.border, width: 2)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(sheetCtx).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Choose difficulty',
+                style: Fonts.display(size: 24, color: t.text)),
+            const SizedBox(height: 16),
+            _DifficultyPicker(
+              selected: selected,
+              onSelect: (d) => setSheet(() => selected = d),
+            ),
+            const SizedBox(height: 18),
+            PrimaryButton(
+              label: 'Start ${selected.label}',
+              center: true,
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                onStart(selected);
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Three-way difficulty segmented control (settings-sheet visual language).
+class _DifficultyPicker extends StatelessWidget {
+  const _DifficultyPicker({required this.selected, required this.onSelect});
+
+  final Difficulty selected;
+  final ValueChanged<Difficulty> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: t.border, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          for (final d in Difficulty.values)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(d),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: d == selected ? tint(t.success, 0.14) : null,
+                    border: d == Difficulty.hard
+                        ? null
+                        : Border(right: BorderSide(color: t.border, width: 2)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(d.label,
+                      style: Fonts.ui(
+                          size: 13,
+                          color: d == selected ? t.success : t.muted,
+                          weight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          height: 1)),
+                ),
+              ),
+            ),
         ],
       ),
     );

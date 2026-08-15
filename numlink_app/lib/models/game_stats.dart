@@ -7,6 +7,9 @@ class GameStats {
     required this.streak,
     required this.maxStreak,
     required this.dist,
+    this.counters = const <String, int>{},
+    this.archiveSolved = const <int>{},
+    this.unlocked = const <String>{},
   });
 
   final int played;
@@ -17,9 +20,59 @@ class GameStats {
   /// Distribution over buckets: `par`, `+1`, `+2`, `+3+`.
   final Map<String, int> dist;
 
+  /// Lightweight per-mode counters (e.g. `practice`, `zen`, `timedBestStage`,
+  /// `timedRuns`). Keeps the daily streak/dist above untouched by other modes.
+  final Map<String, int> counters;
+
+  /// Past daily numbers the player has replayed to a solve.
+  final Set<int> archiveSolved;
+
+  /// Unlocked achievement ids (sticky once earned).
+  final Set<String> unlocked;
+
   static const List<String> bucketKeys = ['par', '+1', '+2', '+3+'];
 
   int get winRate => played == 0 ? 0 : (100 * wins / played).round();
+
+  /// Solves across every mode (drives cumulative achievements). Timed is a
+  /// run, not a single-puzzle solve, so it's excluded here.
+  int get totalSolves =>
+      wins +
+      (counters['practice'] ?? 0) +
+      (counters['zen'] ?? 0) +
+      archiveSolved.length;
+
+  GameStats _with({
+    Map<String, int>? counters,
+    Set<int>? archiveSolved,
+    Set<String>? unlocked,
+  }) =>
+      GameStats(
+        played: played,
+        wins: wins,
+        streak: streak,
+        maxStreak: maxStreak,
+        dist: dist,
+        counters: counters ?? this.counters,
+        archiveSolved: archiveSolved ?? this.archiveSolved,
+        unlocked: unlocked ?? this.unlocked,
+      );
+
+  /// +[by] to counter [key].
+  GameStats bumpCounter(String key, [int by = 1]) =>
+      _with(counters: {...counters, key: (counters[key] ?? 0) + by});
+
+  /// Raise counter [key] to [v] if higher (for "best" values like stage).
+  GameStats setCounterMax(String key, int v) =>
+      v > (counters[key] ?? 0) ? _with(counters: {...counters, key: v}) : this;
+
+  GameStats markArchive(int no) =>
+      _with(archiveSolved: {...archiveSolved, no});
+
+  /// Union newly-earned achievement [ids] into the unlocked set.
+  GameStats withUnlocked(Set<String> ids) => ids.difference(unlocked).isEmpty
+      ? this
+      : _with(unlocked: {...unlocked, ...ids});
 
   /// Demo seed used on first run, matching the prototype.
   static const GameStats seed = GameStats(
@@ -59,6 +112,9 @@ class GameStats {
       streak: nextStreak,
       maxStreak: nextStreak > maxStreak ? nextStreak : maxStreak,
       dist: newDist,
+      counters: counters,
+      archiveSolved: archiveSolved,
+      unlocked: unlocked,
     );
   }
 
@@ -68,6 +124,9 @@ class GameStats {
         'streak': streak,
         'maxStreak': maxStreak,
         'dist': dist,
+        'counters': counters,
+        'archiveSolved': archiveSolved.toList(),
+        'unlocked': unlocked.toList(),
       };
 
   factory GameStats.fromJson(Map<String, dynamic> j) => GameStats(
@@ -79,5 +138,14 @@ class GameStats {
               (k, v) => MapEntry(k as String, (v as num).toInt()),
             ) ??
             {},
+        counters: (j['counters'] as Map?)?.map(
+              (k, v) => MapEntry(k as String, (v as num).toInt()),
+            ) ??
+            {},
+        archiveSolved: ((j['archiveSolved'] as List?) ?? [])
+            .map((e) => (e as num).toInt())
+            .toSet(),
+        unlocked:
+            ((j['unlocked'] as List?) ?? []).map((e) => e as String).toSet(),
       );
 }

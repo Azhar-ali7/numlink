@@ -13,7 +13,7 @@ import 'game_controller_test.dart' show FakeStatsRepository;
 void main() {
   testWidgets('welcome screen shows on first load, then game after start',
       (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'tutorialSeen': true});
     final prefs = await SharedPreferences.getInstance();
     final feedback = FeedbackService();
     final puzzle = await const LocalPuzzleRepository().today();

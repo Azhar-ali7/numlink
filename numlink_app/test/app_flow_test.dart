@@ -1,7 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/app.dart';
 import 'package:numlink_app/data/settings_controller.dart';
 import 'package:numlink_app/game/game_controller.dart';
+import 'package:numlink_app/game/game_mode.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/services/feedback_service.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'game_controller_test.dart' show FakeStatsRepository, kReferencePuzzle;
 
 Future<GameController> _pumpApp(WidgetTester tester) async {
-  SharedPreferences.setMockInitialValues({});
+  // Flow tests exercise the game, not onboarding: mark the intro seen so the
+  // first-run carousel doesn't cover the hub. Carousel behavior is covered in
+  // settings_controller_test.dart.
+  SharedPreferences.setMockInitialValues({'tutorialSeen': true});
   final prefs = await SharedPreferences.getInstance();
   final feedback = FeedbackService();
   final game = GameController(
@@ -96,13 +101,19 @@ void main() {
   testWidgets('hub → practice → back to home', (tester) async {
     final game = await _pumpApp(tester);
 
-    // Hub shows the practice launcher.
+    // Hub shows the practice tile; tapping it opens the difficulty popup.
     expect(find.text('PRACTICE'), findsOneWidget);
-    expect(find.text('Start Medium practice'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Start Medium practice'));
+    await tester.ensureVisible(find.text('PRACTICE'));
     await tester.pump();
-    await tester.tap(find.text('Start Medium practice'));
+    await tester.tap(find.text('PRACTICE'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Choose difficulty'), findsOneWidget);
+    expect(find.text('Start Medium'), findsOneWidget);
+
+    // The popup's Start button does exactly this (pop + startPractice); the
+    // headless surface renders it below the root bounds, so drive it directly.
+    Navigator.of(tester.element(find.text('Choose difficulty'))).pop();
+    await game.startPractice(Difficulty.medium);
     await tester.pump(); // resolve the async generate() future
     await tester.pump(const Duration(milliseconds: 400));
     expect(game.started, isTrue);

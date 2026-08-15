@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
 import '../game/game_mode.dart';
+import '../sheets/bottom_sheet_shell.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -91,37 +92,60 @@ class WelcomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Center(child: NextDailyCountdown(center: true)),
-        const SizedBox(height: 20),
-        _ModeCard(
-          tag: 'PRACTICE',
-          blurb: 'Unlimited puzzles at your pace',
-          verb: 'practice',
-          onStart: g.startPractice,
+        const SizedBox(height: 28),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('MORE MODES',
+              style: Fonts.ui(
+                  size: 11,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  height: 1)),
         ),
-        const SizedBox(height: 14),
-        _ModeCard(
-          tag: 'ZEN',
-          blurb: 'Relax — no clock, no par, no streak',
-          verb: 'zen',
-          onStart: g.startZen,
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.55,
+          children: [
+            _ModeTile(
+              tag: 'PRACTICE',
+              blurb: 'Unlimited puzzles at your pace',
+              onTap: () => _showDifficultySheet(context, g.startPractice),
+            ),
+            _ModeTile(
+              tag: 'ZEN',
+              blurb: 'No clock, no par, no streak',
+              onTap: () => _showDifficultySheet(context, g.startZen),
+            ),
+            _ModeTile(
+              tag: 'TIMED',
+              blurb: 'Climb the escalating ladder',
+              onTap: g.startTimed,
+            ),
+            _ModeTile(
+              tag: 'ARCHIVE',
+              blurb: 'Replay past daily puzzles',
+              onTap: () => g.open(SheetOverlay.archive),
+            ),
+          ],
         ),
-        const SizedBox(height: 14),
-        _WelcomeButton(
-          label: 'Start timed ladder',
-          filled: false,
-          onTap: g.startTimed,
-        ),
-        const SizedBox(height: 14),
-        _WelcomeButton(
-          label: 'Archive',
-          filled: false,
-          onTap: () => g.open(SheetOverlay.archive),
-        ),
-        const SizedBox(height: 14),
-        _WelcomeButton(
-          label: 'How to play',
-          filled: false,
-          onTap: () => g.open(SheetOverlay.how),
+        const SizedBox(height: 22),
+        Center(
+          child: GestureDetector(
+            onTap: () => g.open(SheetOverlay.how),
+            child: Text('How to play',
+                style: Fonts.ui(
+                        size: 14,
+                        color: t.muted,
+                        weight: FontWeight.w700,
+                        height: 1)
+                    .copyWith(decoration: TextDecoration.underline)),
+          ),
         ),
         const SizedBox(height: 32),
       ],
@@ -274,65 +298,95 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Difficulty-picker launcher shared by Practice and Zen: pick a tier, then
-/// [onStart] generates a puzzle in that mode.
-class _ModeCard extends StatefulWidget {
-  const _ModeCard({
+/// A compact home-grid tile for a secondary mode.
+class _ModeTile extends StatelessWidget {
+  const _ModeTile({
     required this.tag,
     required this.blurb,
-    required this.verb,
-    required this.onStart,
+    required this.onTap,
   });
 
-  final String tag; // section label, e.g. 'PRACTICE'
-  final String blurb; // one-line description
-  final String verb; // button verb, e.g. 'practice' → 'Start Medium practice'
-  final void Function(Difficulty) onStart;
-
-  @override
-  State<_ModeCard> createState() => _ModeCardState();
-}
-
-class _ModeCardState extends State<_ModeCard> {
-  Difficulty _selected = Difficulty.medium;
+  final String tag;
+  final String blurb;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: t.border, width: 2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(widget.tag,
-              style: Fonts.ui(
-                  size: 11,
-                  color: t.muted,
-                  weight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  height: 1)),
-          const SizedBox(height: 4),
-          Text(widget.blurb,
-              style: Fonts.ui(size: 13, color: t.text, height: 1.3)),
-          const SizedBox(height: 12),
-          _DifficultyPicker(
-            selected: _selected,
-            onSelect: (d) => setState(() => _selected = d),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: t.border, width: 2),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 12),
-          _WelcomeButton(
-            label: 'Start ${_selected.label} ${widget.verb}',
-            filled: true,
-            onTap: () => widget.onStart(_selected),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(tag,
+                  style: Fonts.ui(
+                      size: 13,
+                      color: t.text,
+                      weight: FontWeight.w700,
+                      letterSpacing: 1,
+                      height: 1)),
+              Text(blurb,
+                  style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
+
+/// Quick difficulty chooser for Practice/Zen: pick a tier, then [onStart]
+/// generates a puzzle in that mode. Self-contained modal — no controller state.
+void _showDifficultySheet(
+    BuildContext context, void Function(Difficulty) onStart) {
+  final t = NumTheme.of(context);
+  var selected = Difficulty.medium;
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx, setSheet) => Container(
+        decoration: BoxDecoration(
+          color: t.elevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: t.border, width: 2)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(sheetCtx).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Choose difficulty',
+                style: Fonts.display(size: 24, color: t.text)),
+            const SizedBox(height: 16),
+            _DifficultyPicker(
+              selected: selected,
+              onSelect: (d) => setSheet(() => selected = d),
+            ),
+            const SizedBox(height: 18),
+            PrimaryButton(
+              label: 'Start ${selected.label}',
+              center: true,
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                onStart(selected);
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Three-way difficulty segmented control (settings-sheet visual language).

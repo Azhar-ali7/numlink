@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'data/settings_controller.dart';
 import 'game/game_controller.dart';
 import 'screens/game_screen.dart';
+import 'screens/intro_carousel.dart';
 import 'screens/welcome_screen.dart';
 import 'sheets/archive_sheet.dart';
 import 'sheets/how_to_play_sheet.dart';
@@ -47,6 +48,7 @@ class _AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = context.watch<GameController>();
+    final settings = context.watch<SettingsController>();
     final t = NumTheme.of(context);
 
     return Scaffold(
@@ -95,6 +97,10 @@ class _AppShell extends StatelessWidget {
                     const Positioned.fill(child: SettingsSheet()),
                   if (g.overlay == SheetOverlay.archive)
                     const Positioned.fill(child: ArchiveSheet()),
+
+                  // First-run intro carousel — above everything else.
+                  if (settings.tutorialOpen)
+                    const Positioned.fill(child: IntroCarousel()),
                 ],
               ),
             ),

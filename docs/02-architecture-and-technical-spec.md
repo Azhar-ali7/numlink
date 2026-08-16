@@ -214,7 +214,10 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
 - `GameStats { played, wins, streak, maxStreak, dist, counters, archiveSolved,
   unlocked, levelStars }`; bucket keys `['par','+1','+2','+3+']`; derived
   `winRate`, `totalSolves`, `campaignStars`, `campaignCleared`,
-  `levelUnlocked(n)` (linear gate: `n == 1 || levelStars` has `n-1`); mutators
+  `levelUnlocked(n)` (linear gate: `n == 1 || levelStars` has `n-1`), and the
+  **XP** family — `xp` (`counters['xp']`), static `xpForLevel(L) = 25·L·(L-1)`
+  and its inverse `levelForXp(xp)`, `playerLevel`, `xpIntoLevel`, `xpLevelSpan`,
+  `levelProgress`; mutators
   `recordWin`, `bumpCounter`, `setCounterMax`, `markArchive`, `withUnlocked`,
   `recordLevel(n, stars)` (keeps the max); `toJson`/`fromJson`. `levelStars` is
   a `Map<int,int>` (level → best stars; JSON keys stringified like

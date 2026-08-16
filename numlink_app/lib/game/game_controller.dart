@@ -115,6 +115,9 @@ class GameController extends ChangeNotifier {
   /// Bumped whenever a solve happens, so the UI can fire a confetti burst.
   int _winPulse = 0;
 
+  /// XP granted by the most recent solve (shown on the win sheet).
+  int _lastXpGain = 0;
+
   Timer? _messageTimer;
   Timer? _shakeTimer;
   Timer? _copyTimer;
@@ -479,6 +482,7 @@ class GameController extends ChangeNotifier {
         _bestTime = _elapsedSeconds;
       }
       _stats = _stats.bumpCounter('timedRuns');
+      _awardXp(completed * 5); // whole-run XP: 5 per stage cleared
     }
     _stats = _stats.withUnlocked(earnedAchievements(
         _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
@@ -627,9 +631,33 @@ class GameController extends ChangeNotifier {
       case GameMode.timed:
         return; // recorded per-stage in _solveTimed
     }
+    _awardXp(_xpForSolve());
     _stats = _stats.withUnlocked(earnedAchievements(_stats, ctx));
     _statsRepo.save(_stats);
   }
+
+  /// XP for one puzzle solve. Base + a bonus for beating par; zen (no par) is
+  /// flat; campaign adds a per-star bonus. ponytail: tunable reward knobs.
+  int _xpForSolve() {
+    if (isZen) return 10;
+    final under = par - moves;
+    var xp = 10 + (under > 0 ? under * 5 : 0);
+    if (_mode == GameMode.campaign) xp += (starsFor(moves, par) - 1) * 5;
+    return xp;
+  }
+
+  /// Grant [amount] XP and remember it for the win sheet. Level-up is surfaced
+  /// by the home XP bar advancing (the win sheet shows the gain + new level).
+  void _awardXp(int amount) {
+    _lastXpGain = amount;
+    _stats = _stats.bumpCounter('xp', amount);
+  }
+
+  /// XP awarded by the most recent solve.
+  int get lastXpGain => _lastXpGain;
+
+  /// Current player level (from lifetime XP).
+  int get playerLevel => _stats.playerLevel;
 
   /// Bucket key for the just-finished game (for histogram highlighting).
   String get currentBucket => GameStats.bucketFor(moves, par);

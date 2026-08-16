@@ -135,6 +135,18 @@ Campaign levels re-rank the same golf score as **1–3 stars** via
 so replaying a level can only improve it. These bands are a `ponytail:` tuning
 knob.
 
+## Player XP & levels
+
+Every solve grants XP (all modes), accumulated in `counters['xp']`:
+
+- **Base 10** per puzzle solve; **+5 per stroke under par** (scored modes);
+  **zen** is a flat 10 (no par); **campaign** adds **+5 per star above one**;
+  **timed** grants **5 per stage cleared** on run completion. (`ponytail:`
+  tunable reward knobs.)
+- Lifetime XP maps to a **player level** via a triangular curve
+  (`xpForLevel(L) = 25·L·(L−1)`: L1=0, L2=50, L3=150, …), so each level costs 50
+  XP more than the last. XP and levels never decrease.
+
 ## Difficulty tiers
 
 `DifficultySpec` bounds the generator (see architecture doc for the table):

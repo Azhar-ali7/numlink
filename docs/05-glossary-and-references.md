@@ -102,6 +102,10 @@ better score.
 **Eagle / Birdie / Par / Bogey / Double bogey / Over** — the score bands
 (`ScoreLabel`): par−2+, par−1, par, par+1, par+2, par+3+ respectively.
 
+**XP / Player level** — cross-mode progression. Every solve grants **XP**
+(`counters['xp']`); a triangular curve (`xpForLevel(L) = 25·L·(L−1)`) maps
+lifetime XP to a **player level** shown on the home XP bar. Never decreases.
+
 **Par-distribution histogram** — the stats chart of how often you finish at
 `par / +1 / +2 / +3+` (the `bucketKeys` in `GameStats`).
 

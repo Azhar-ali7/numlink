@@ -70,6 +70,11 @@ arithmetic.
   **linear unlock gate** opens the next level, and any level is replayable to
   chase a better star rating. Deterministic seeds mean every player gets the
   same levels.
+- **Player XP & levels:** every solve (any mode) grants XP — a flat base plus a
+  bonus for beating par (and per-star in campaign); a triangular curve maps
+  lifetime XP to a **player level**. Home shows an **XP bar** (level # + progress
+  to next) and the win sheet shows the **+XP** earned. Cross-session progression
+  the game previously lacked.
 - **Decluttered board:** one-line header with a single `⋯` overflow menu
   (How/Stats/Settings) and a trimmed action row, giving the chain more room.
 - All five modes: Daily, Practice, Zen, Timed ladder, Archive replay.
@@ -106,4 +111,5 @@ stats + achievements → `feat(phase5)` next-daily countdown → `feat(home)`
 Hero Daily + mode grid + first-run intro carousel → `feat(hints)` answer
 path + live hints + earned reveal + resume → `refactor(ui)` compact header →
 `feat(ops)` four new operators → `feat(milestones)` in-order checkpoints →
-`feat(campaign)` levels roadmap with star ratings + linear unlock.
+`feat(campaign)` levels roadmap with star ratings + linear unlock →
+`feat(xp)` player XP + level curve with home bar.

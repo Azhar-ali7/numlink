@@ -30,4 +30,33 @@ void main() {
     expect(GameStats.bucketFor(5, 3), '+2');
     expect(GameStats.bucketFor(7, 3), '+3+');
   });
+
+  group('XP / player level', () {
+    test('xpForLevel is the triangular curve, level 1 at 0', () {
+      expect(GameStats.xpForLevel(1), 0);
+      expect(GameStats.xpForLevel(2), 50);
+      expect(GameStats.xpForLevel(3), 150);
+      expect(GameStats.xpForLevel(4), 300);
+    });
+
+    test('levelForXp inverts xpForLevel and is monotonic', () {
+      expect(GameStats.levelForXp(0), 1);
+      expect(GameStats.levelForXp(49), 1);
+      expect(GameStats.levelForXp(50), 2);
+      expect(GameStats.levelForXp(149), 2);
+      expect(GameStats.levelForXp(150), 3);
+      // Every threshold lands exactly on its level.
+      for (var l = 1; l <= 20; l++) {
+        expect(GameStats.levelForXp(GameStats.xpForLevel(l)), l);
+      }
+    });
+
+    test('derived progress fields track XP within a level', () {
+      final s = GameStats.empty.bumpCounter('xp', 75); // level 2 (50..150)
+      expect(s.playerLevel, 2);
+      expect(s.xpIntoLevel, 25); // 75 - 50
+      expect(s.xpLevelSpan, 100); // 150 - 50
+      expect(s.levelProgress, 0.25);
+    });
+  });
 }

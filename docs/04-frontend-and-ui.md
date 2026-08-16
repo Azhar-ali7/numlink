@@ -22,6 +22,8 @@ Top → bottom:
 1. **Preview chain** — a mini `_PreviewNode`/`_Connector` illustration.
 2. **Wordmark** `NUMLINK` + one-line description.
 3. **Stat cards** — streak · puzzle #/date (`_StatCard`).
+   - Below them an **XP bar** (`_XpBar`): player level, a `LinearProgressIndicator`
+     fill toward the next level, and the `into / span XP` readout.
 4. **Hero** — filled `_WelcomeButton("Play today's puzzle")` starting the Daily,
    with `NextDailyCountdown(center: true)` right beneath it.
 5. **`MORE MODES`** section label.
@@ -74,9 +76,10 @@ Get-started call `settings.dismissTutorial()`. Shown once on first launch
 All share `BottomSheetShell` (a `PrimaryButton` for primary actions):
 
 - **Win** — score label (Eagle…Over), moves vs par, **share text** button,
-  play-again / new-puzzle, achievements just earned. In **campaign** mode it also
-  shows the earned **star row** (`_StarRow`) and a **"Next level →"** button when
-  a further level exists.
+  play-again / new-puzzle, achievements just earned, and a **+XP · Level** pill
+  (`g.lastXpGain`) for the solve. In **campaign** mode it also shows the earned
+  **star row** (`_StarRow`) and a **"Next level →"** button when a further level
+  exists.
 - **Roadmap** (`roadmap_sheet.dart`) — the campaign path: a header showing total
   ⭐ / max and `cleared/total`, then a vertical list of `_LevelNode`s joined by
   connectors. Each node shows the level #, tier label (+ new-operator hint on

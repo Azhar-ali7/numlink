@@ -84,6 +84,13 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 14),
+        _XpBar(
+          level: g.stats.playerLevel,
+          progress: g.stats.levelProgress,
+          into: g.stats.xpIntoLevel,
+          span: g.stats.xpLevelSpan,
+        ),
         const SizedBox(height: 36),
         _WelcomeButton(
           label: "Play today's puzzle",
@@ -347,6 +354,56 @@ class _ModeTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Player-level XP bar: level number, a progress fill toward the next level,
+/// and the raw XP-into/span readout (the Zeigarnik "almost there" nudge).
+class _XpBar extends StatelessWidget {
+  const _XpBar({
+    required this.level,
+    required this.progress,
+    required this.into,
+    required this.span,
+  });
+
+  final int level;
+  final double progress;
+  final int into;
+  final int span;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('LEVEL $level',
+                style: Fonts.ui(
+                    size: 11,
+                    color: t.text,
+                    weight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    height: 1)),
+            Text('$into / $span XP',
+                style: Fonts.mono(size: 11, color: t.muted, height: 1)),
+          ],
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 8,
+            backgroundColor: tint(t.border, 0.5),
+            valueColor: AlwaysStoppedAnimation<Color>(t.progress),
+          ),
+        ),
+      ],
     );
   }
 }

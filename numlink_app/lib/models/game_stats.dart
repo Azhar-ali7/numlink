@@ -84,6 +84,37 @@ class GameStats {
         levelStars: {...levelStars, n: max(stars, levelStars[n] ?? 0)},
       );
 
+  // ---- XP / player level ---------------------------------------------------
+  // A single triangular curve, kept in the shared `counters` map (no schema
+  // change). ponytail: one formula — tune the 25 constant once we have feel.
+
+  /// Total lifetime XP (accrues on every solve, across all modes).
+  int get xp => counters['xp'] ?? 0;
+
+  /// Cumulative XP required to *be at* [level] (level 1 = 0). Gaps widen by 50
+  /// each level: L1=0, L2=50, L3=150, L4=300, L5=500…
+  static int xpForLevel(int level) => 25 * level * (level - 1);
+
+  /// The player level [xp] buys (largest L with `xpForLevel(L) <= xp`).
+  static int levelForXp(int xp) {
+    var l = 1;
+    while (xpForLevel(l + 1) <= xp) {
+      l++;
+    }
+    return l;
+  }
+
+  int get playerLevel => levelForXp(xp);
+
+  /// XP earned into the current level (0 at each level-up).
+  int get xpIntoLevel => xp - xpForLevel(playerLevel);
+
+  /// XP the current level spans (from this level-up to the next).
+  int get xpLevelSpan => xpForLevel(playerLevel + 1) - xpForLevel(playerLevel);
+
+  /// 0..1 progress toward the next level (drives the home XP bar).
+  double get levelProgress => xpIntoLevel / xpLevelSpan;
+
   /// +[by] to counter [key].
   GameStats bumpCounter(String key, [int by = 1]) =>
       _with(counters: {...counters, key: (counters[key] ?? 0) + by});

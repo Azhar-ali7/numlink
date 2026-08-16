@@ -45,6 +45,26 @@ class WinSheet extends StatelessWidget {
           _StarRow(earned: g.earnedStars),
           const SizedBox(height: 14),
         ],
+        if (g.lastXpGain > 0) ...[
+          Center(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: tint(t.progress, 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text('+${g.lastXpGain} XP  ·  Level ${g.playerLevel}',
+                  style: Fonts.ui(
+                      size: 13,
+                      color: t.progress,
+                      weight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      height: 1)),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
         Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),

@@ -471,6 +471,40 @@ void main() {
     });
   });
 
+  group('XP accrual', () {
+    test('every solve grants XP and advances the player level', () async {
+      final g = await _controller();
+      expect(g.stats.xp, 0);
+      expect(g.playerLevel, 1);
+      // Par-3 solve at par → base 10 + 0 under-par bonus.
+      g.apply(_op(g, 'm3'));
+      g.apply(_op(g, 'p7'));
+      g.apply(_op(g, 'm2'));
+      expect(g.solved, isTrue);
+      expect(g.lastXpGain, 10);
+      expect(g.stats.xp, 10);
+    });
+
+    test('beating par grants a bonus', () async {
+      final g = await _controller();
+      // Par 3, solvable in 1 → 2 under par → 10 + 2*5 = 20.
+      g.load(
+        const Puzzle(
+          no: 0,
+          dateLabel: '',
+          start: 1,
+          target: 2,
+          par: 3,
+          ops: [Operation(id: 'p1', symbol: '+', n: 1, tokens: 1)],
+        ),
+        mode: GameMode.practice,
+        difficulty: Difficulty.easy,
+      );
+      g.apply(_op(g, 'p1'));
+      expect(g.lastXpGain, 20);
+    });
+  });
+
   group('hints', () {
     test('hint points at the next best move from the current board', () async {
       final g = await _controller(); // medium: 3 hints

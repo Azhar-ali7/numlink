@@ -298,6 +298,7 @@ class _OperationPad extends StatelessWidget {
                 remaining: g.remaining(op),
                 disabled: g.isDisabled(op),
                 shake: g.shakeOpId == op.id,
+                highlighted: g.hintOpId == op.id,
                 onTap: () => g.apply(op),
               );
             }).toList(),
@@ -311,9 +312,22 @@ class _OperationPad extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                   child: _TextButton(
+                      label: 'HINT·${g.hintsLeft}', onTap: g.hint)),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: _TextButton(
                       label: 'STATS', onTap: () => g.open(SheetOverlay.stats))),
             ],
           ),
+          // Reveal is earned: unlocks after enough resets / spent hints.
+          if (g.canReveal) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: _TextButton(
+                  label: 'SHOW SOLUTION', onTap: g.revealSolution),
+            ),
+          ],
         ],
       ),
     );

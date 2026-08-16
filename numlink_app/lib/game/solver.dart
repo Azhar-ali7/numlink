@@ -1,30 +1,35 @@
 import '../models/operation.dart';
 import '../models/puzzle.dart';
 
-// ponytail: intentional YAGNI — only a test calls this today. Kept as the
-// production seam for server-generated puzzles with honest, BFS-verified par.
-/// BFS solver over the op set — the seam for the production path, where the
-/// daily puzzle is generated server-side and par must be honest (the true
-/// minimum move count) and solvability guaranteed.
+/// BFS solver over the op set. [solvePath] returns the op-id sequence of a
+/// shortest solution (the puzzle's honest answer path); [minMoves] is just its
+/// length. Used at generation time to guarantee solvability + honest par, and
+/// at play time to power hints ("next best move from here") and the reveal.
 ///
-/// Returns the minimum number of moves to reach [Puzzle.target] from
-/// [Puzzle.start] respecting token caps, or null if unsolvable.
-int? minMoves(Puzzle p) {
+/// Returns the sequence of [Operation.id]s of a shortest path from [from]
+/// (default [Puzzle.start]) to [Puzzle.target], respecting token caps and any
+/// tokens already spent in [used]. Null if unreachable.
+List<String>? solvePath(Puzzle p, {int? from, Map<String, int>? used}) {
   final caps = {for (final o in p.ops) o.id: o.tokens};
 
   // State: current value + tokens consumed per op. Encode used-counts as a key.
-  String key(int value, Map<String, int> used) {
-    final parts = p.ops.map((o) => used[o.id] ?? 0).join(',');
+  String key(int value, Map<String, int> u) {
+    final parts = p.ops.map((o) => u[o.id] ?? 0).join(',');
     return '$value|$parts';
   }
 
-  final start = <String, int>{};
-  final seen = <String>{key(p.start, start)};
-  var frontier = <_State>[_State(p.start, start)];
+  final startVal = from ?? p.start;
+  final startUsed = <String, int>{if (used != null) ...used};
+  final seen = <String>{key(startVal, startUsed)};
+  var frontier = <_State>[_State(startVal, startUsed, const [])];
   var depth = 0;
 
   while (frontier.isNotEmpty) {
-    if (frontier.any((s) => s.value == p.target)) return depth;
+    // Level-order BFS: the first frontier state on target carries a shortest
+    // path (checked here so the start==target case returns an empty path).
+    for (final s in frontier) {
+      if (s.value == p.target) return s.path;
+    }
     final next = <_State>[];
     for (final s in frontier) {
       for (final Operation o in p.ops) {
@@ -34,7 +39,7 @@ int? minMoves(Puzzle p) {
         if (r == null) continue;
         final nextUsed = Map<String, int>.from(s.used)..[o.id] = usedN + 1;
         final k = key(r, nextUsed);
-        if (seen.add(k)) next.add(_State(r, nextUsed));
+        if (seen.add(k)) next.add(_State(r, nextUsed, [...s.path, o.id]));
       }
     }
     frontier = next;
@@ -44,8 +49,13 @@ int? minMoves(Puzzle p) {
   return null;
 }
 
+/// Minimum number of moves to reach [Puzzle.target] from [Puzzle.start]
+/// respecting token caps, or null if unsolvable.
+int? minMoves(Puzzle p) => solvePath(p)?.length;
+
 class _State {
-  const _State(this.value, this.used);
+  const _State(this.value, this.used, this.path);
   final int value;
   final Map<String, int> used;
+  final List<String> path;
 }

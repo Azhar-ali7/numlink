@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:numlink_app/data/session_repository.dart';
 import 'package:numlink_app/data/stats_repository.dart';
 import 'package:numlink_app/game/game_controller.dart';
 import 'package:numlink_app/game/game_mode.dart';
 import 'package:numlink_app/game/puzzle_repository.dart';
 import 'package:numlink_app/game/solver.dart';
+import 'package:numlink_app/models/chain_node.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/models/operation.dart';
 import 'package:numlink_app/models/puzzle.dart';
@@ -16,6 +20,21 @@ class FakeStatsRepository implements StatsRepository {
   Future<GameStats> load() async => saved;
   @override
   Future<void> save(GameStats stats) async => saved = stats;
+}
+
+/// In-memory session repo for tests — records saves and clears.
+class FakeSessionRepository implements SessionRepository {
+  GameSession? saved;
+  bool cleared = false;
+  @override
+  Future<GameSession?> load() async => saved;
+  @override
+  Future<void> save(GameSession s) async => saved = s;
+  @override
+  Future<void> clear() async {
+    saved = null;
+    cleared = true;
+  }
 }
 
 /// Repo that hands out trivial 1-move puzzles (1 +1→ 2), so timed-ladder
@@ -374,6 +393,165 @@ void main() {
       expect(g.solved, isTrue);
       expect(g.stats.unlocked, contains('birdie'));
       expect(g.stats.unlocked, contains('eagle'));
+    });
+  });
+
+  group('hints', () {
+    test('hint points at the next best move from the current board', () async {
+      final g = await _controller(); // medium: 3 hints
+      expect(g.hintsLeft, 3);
+      g.hint();
+      // Reference solution is 2 ×3→6 +7→13 ×2→26, so the first move is m3.
+      expect(g.hintOpId, 'm3');
+      expect(g.puzzle.ops.any((o) => o.id == g.hintOpId), isTrue);
+      expect(g.hintsLeft, 2);
+    });
+
+    test('hint tracks the board — after ×3 it points at +7', () async {
+      final g = await _controller();
+      g.apply(_op(g, 'm3')); // 2 -> 6
+      g.hint();
+      expect(g.hintOpId, 'p7');
+    });
+
+    test('hints deplete then flash "No hints left"', () async {
+      final g = await _controller();
+      g.hint();
+      g.hint();
+      g.hint();
+      expect(g.hintsLeft, 0);
+      g.hint(); // over the cap
+      expect(g.message, contains('No hints'));
+    });
+  });
+
+  group('reveal-on-fail', () {
+    test('locked until enough failed attempts', () async {
+      final g = await _controller(); // medium: revealAfter 3
+      expect(g.canReveal, isFalse);
+    });
+
+    test('unlocks after revealAfter resets of a touched board', () async {
+      final g = await _controller();
+      for (var i = 0; i < 3; i++) {
+        g.apply(_op(g, 'm3')); // a move so the reset counts as a failure
+        g.reset();
+      }
+      expect(g.canReveal, isTrue);
+      g.revealSolution();
+      expect(g.overlay, SheetOverlay.solution);
+      expect(g.revealed, isTrue);
+    });
+
+    test('spending all hints also unlocks the reveal', () async {
+      final g = await _controller();
+      g.hint();
+      g.hint();
+      g.hint();
+      expect(g.canReveal, isTrue);
+    });
+
+    test('a reset on an untouched board is not a failed attempt', () async {
+      final g = await _controller();
+      g.reset(); // no moves made
+      g.reset();
+      g.reset();
+      expect(g.canReveal, isFalse);
+    });
+
+    test('answerPath replays start → target', () async {
+      final g = await _controller();
+      final path = g.answerPath;
+      expect(path.map((o) => o.id), ['m3', 'p7', 'm2']);
+      var v = g.puzzle.start;
+      for (final o in path) {
+        v = o.apply(v, cap: g.puzzle.cap)!;
+      }
+      expect(v, g.puzzle.target);
+    });
+  });
+
+  group('resume / session persistence', () {
+    Future<GameController> sessionController(FakeSessionRepository repo) async {
+      return GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: FakeStatsRepository(),
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        sessionRepo: repo,
+      ).init();
+    }
+
+    test('progress is persisted, solving clears the session', () async {
+      final repo = FakeSessionRepository();
+      final g = await sessionController(repo);
+      g.apply(_op(g, 'm3')); // progress -> persisted
+      expect(repo.saved, isNotNull);
+      expect(repo.saved!.chain.length, 2);
+
+      g.apply(_op(g, 'p7'));
+      g.apply(_op(g, 'm2')); // solved -> cleared
+      expect(g.solved, isTrue);
+      expect(repo.cleared, isTrue);
+      expect(repo.saved, isNull);
+    });
+
+    test('an untouched board is not persisted', () async {
+      final repo = FakeSessionRepository();
+      final g = await sessionController(repo);
+      g.goHome(); // nothing played
+      expect(repo.saved, isNull);
+    });
+
+    test('GameSession round-trips through JSON', () {
+      final session = GameSession(
+        mode: GameMode.practice,
+        difficulty: Difficulty.hard,
+        puzzle: kReferencePuzzle,
+        chain: const [ChainNode(2), ChainNode(6, '×3')],
+        used: const {'m3': 1},
+        hintsUsed: 2,
+        resets: 1,
+      );
+      final back = GameSession.fromJson(
+          jsonDecode(jsonEncode(session.toJson())) as Map<String, dynamic>);
+      expect(back.mode, GameMode.practice);
+      expect(back.difficulty, Difficulty.hard);
+      expect(back.puzzle.target, kReferencePuzzle.target);
+      expect(back.puzzle.solution, kReferencePuzzle.solution);
+      expect(back.chain.length, 2);
+      expect(back.chain.last.value, 6);
+      expect(back.chain.last.opLabel, '×3');
+      expect(back.used['m3'], 1);
+      expect(back.hintsUsed, 2);
+      expect(back.resets, 1);
+    });
+
+    test('resumeFrom re-seeds the board mid-game', () async {
+      final repo = FakeSessionRepository();
+      final session = GameSession(
+        mode: GameMode.practice,
+        difficulty: Difficulty.hard,
+        puzzle: kReferencePuzzle,
+        chain: const [ChainNode(2), ChainNode(6, '×3')],
+        used: const {'m3': 1},
+        hintsUsed: 1,
+        resets: 2,
+      );
+      final g = GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: FakeStatsRepository(),
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        sessionRepo: repo,
+      ).resumeFrom(session);
+      expect(g.started, isTrue);
+      expect(g.mode, GameMode.practice);
+      expect(g.difficulty, Difficulty.hard);
+      expect(g.current, 6);
+      expect(g.moves, 1);
+      expect(g.remaining(_op(g, 'm3')), 1); // one ×3 token already spent
+      expect(g.hintsLeft, 2); // hard: 3 hints, 1 used
     });
   });
 }

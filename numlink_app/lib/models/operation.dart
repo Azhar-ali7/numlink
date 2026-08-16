@@ -42,4 +42,14 @@ class Operation {
     if (r != r.roundToDouble() || r < 0 || r > cap) return null;
     return r.toInt();
   }
+
+  Map<String, dynamic> toJson() =>
+      {'id': id, 'symbol': symbol, 'n': n, 'tokens': tokens};
+
+  factory Operation.fromJson(Map<String, dynamic> j) => Operation(
+        id: j['id'] as String,
+        symbol: j['symbol'] as String,
+        n: j['n'] as int,
+        tokens: j['tokens'] as int,
+      );
 }

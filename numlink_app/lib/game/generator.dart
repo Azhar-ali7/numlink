@@ -106,8 +106,11 @@ class PuzzleGenerator {
       ops: ops,
       cap: _cap,
     );
-    final trueMin = minMoves(probe);
-    if (trueMin == null) return null; // unreachable — a chain exists by build
+    // One BFS yields both the honest par and the answer path — so the op
+    // choices and the stored solution are always in sync.
+    final path = solvePath(probe);
+    if (path == null) return null; // unreachable — a chain exists by build
+    final trueMin = path.length;
 
     if (relaxed) {
       if (trueMin < 2) return null;
@@ -124,6 +127,7 @@ class PuzzleGenerator {
       par: trueMin,
       ops: ops,
       cap: _cap,
+      solution: path,
     );
   }
 
@@ -173,6 +177,7 @@ class PuzzleGenerator {
         start: 2,
         target: 26,
         par: 3,
+        solution: const ['m3', 'p7', 'm2'], // 2 →×3→ 6 →+7→ 13 →×2→ 26
         ops: const [
           Operation(id: 'm3', symbol: '×', n: 3, tokens: 2),
           Operation(id: 'p7', symbol: '+', n: 7, tokens: 2),

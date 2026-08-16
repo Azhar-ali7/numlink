@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../data/session_repository.dart';
 import '../data/stats_repository.dart';
 import '../models/achievement.dart';
 import '../models/chain_node.dart';
@@ -11,9 +12,10 @@ import '../models/puzzle.dart';
 import '../services/feedback_service.dart';
 import 'game_mode.dart';
 import 'puzzle_repository.dart';
+import 'solver.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, win, archive }
+enum SheetOverlay { how, stats, settings, win, archive, solution }
 
 /// Golf-style score verdicts.
 enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
@@ -41,6 +43,7 @@ class GameController extends ChangeNotifier {
     required this.feedback,
     required GameStats initialStats,
     this.puzzleRepo = const LocalPuzzleRepository(),
+    this.sessionRepo,
   })  : _puzzle = puzzle,
         _dailyPuzzle = puzzle,
         _statsRepo = statsRepo,
@@ -57,6 +60,9 @@ class GameController extends ChangeNotifier {
 
   /// Source for generated puzzles (Practice/Zen "new puzzle", ladder).
   final PuzzleRepository puzzleRepo;
+
+  /// Persists the in-progress game so it survives an app kill. Null in tests.
+  final SessionRepository? sessionRepo;
 
   GameMode _mode = GameMode.daily;
   Difficulty _difficulty = Difficulty.medium;
@@ -92,6 +98,13 @@ class GameController extends ChangeNotifier {
   String? _message;
   String? _shakeOpId;
   bool _copied = false;
+
+  // Hints / reveal-on-fail (per-puzzle; reset in [load]).
+  int _hintsUsed = 0;
+  int _resets = 0;
+  bool _revealed = false;
+  String? _hintOpId; // op the current hint is pointing at (highlighted)
+  Timer? _hintTimer;
 
   /// Bumped whenever a solve happens, so the UI can fire a confetti burst.
   int _winPulse = 0;
@@ -152,6 +165,37 @@ class GameController extends ChangeNotifier {
   String? get shakeOpId => _shakeOpId;
   bool get copied => _copied;
   int get winPulse => _winPulse;
+
+  // ---- Hints / reveal -----------------------------------------------------
+
+  DifficultySpec get _spec => DifficultySpec.of(_difficulty);
+
+  /// Hints remaining for this puzzle.
+  int get hintsLeft => (_spec.hints - _hintsUsed).clamp(0, _spec.hints);
+
+  /// Op id the active hint is pointing at (for button highlight), or null.
+  String? get hintOpId => _hintOpId;
+
+  bool get revealed => _revealed;
+
+  /// "Show solution" unlocks after enough failed attempts — [DifficultySpec]
+  /// scales the threshold. 3 resets OR all hints used, per the design.
+  bool get canReveal =>
+      !_solved && (_resets >= _spec.revealAfter || _hintsUsed >= _spec.hints);
+
+  /// The full canonical answer path from the puzzle's start — what the reveal
+  /// shows. Uses the stored solution; falls back to a live solve for legacy
+  /// puzzles that predate [Puzzle.solution].
+  List<Operation> get answerPath {
+    final ids = _puzzle.solution.isNotEmpty
+        ? _puzzle.solution
+        : (solvePath(_puzzle) ?? const <String>[]);
+    return [
+      for (final id in ids)
+        _puzzle.ops.firstWhere((o) => o.id == id,
+            orElse: () => Operation(id: id, symbol: '?', n: 0, tokens: 0)),
+    ];
+  }
 
   int get current => _chain.last.value;
   int get moves => _chain.length - 1;
@@ -230,8 +274,10 @@ class GameController extends ChangeNotifier {
       _winPulse++;
       _recordSolve();
       feedback.onSolve();
+      _clearSession();
     } else {
       feedback.onTap();
+      _persist();
     }
     notifyListeners();
   }
@@ -250,8 +296,11 @@ class GameController extends ChangeNotifier {
   }
 
   void reset() {
+    // A reset of a started-but-unsolved board counts as a failed attempt.
+    if (moves > 0 && !_solved) _resets++;
     _resetBoard();
     notifyListeners();
+    _persist();
   }
 
   void _resetBoard() {
@@ -259,6 +308,43 @@ class GameController extends ChangeNotifier {
     _used.clear();
     _solved = false;
     _recorded = false;
+    _hintOpId = null;
+    _hintTimer?.cancel();
+  }
+
+  /// Point the player at the next best move from where they are. Costs a hint;
+  /// re-solves live so it's always valid even after they've diverged.
+  void hint() {
+    if (_solved) return;
+    if (hintsLeft <= 0) {
+      _flash('No hints left');
+      notifyListeners();
+      return;
+    }
+    final ids = solvePath(_puzzle, from: current, used: _used);
+    if (ids == null || ids.isEmpty) {
+      _flash('No hint available');
+      notifyListeners();
+      return;
+    }
+    _hintsUsed++;
+    _hintOpId = ids.first;
+    feedback.onTap();
+    notifyListeners();
+    _hintTimer?.cancel();
+    _hintTimer = Timer(const Duration(milliseconds: 2500), () {
+      _hintOpId = null;
+      notifyListeners();
+    });
+    _persist();
+  }
+
+  /// Give up and show the full remaining answer path. Only meaningful once
+  /// [canReveal] is true (the UI gates the button on it).
+  void revealSolution() {
+    _revealed = true;
+    _overlay = SheetOverlay.solution;
+    notifyListeners();
   }
 
   /// Swaps in a new puzzle and clears the board — the seam for Practice/Zen/
@@ -269,11 +355,16 @@ class GameController extends ChangeNotifier {
     _mode = mode;
     if (difficulty != null) _difficulty = difficulty;
     _resetBoard();
+    // Fresh puzzle → fresh hint/reveal allowance.
+    _hintsUsed = 0;
+    _resets = 0;
+    _revealed = false;
     _overlay = null;
     _copied = false;
     _message = null;
     _started = true;
     notifyListeners();
+    _persist();
   }
 
   /// Daily tile from the Home hub: resume in-progress daily, or (re)load it
@@ -295,6 +386,7 @@ class GameController extends ChangeNotifier {
     _started = false;
     _overlay = null;
     notifyListeners();
+    _persist(); // durability if the app is killed from the hub
   }
 
   /// Practice: generate a fresh puzzle at tier [d] and start it.
@@ -339,6 +431,7 @@ class GameController extends ChangeNotifier {
       _tickTimer?.cancel();
       _solved = true;
       _overlay = SheetOverlay.win;
+      _clearSession();
       if (_bestTime == 0 || _elapsedSeconds < _bestTime) {
         _bestTime = _elapsedSeconds;
       }
@@ -402,6 +495,44 @@ class GameController extends ChangeNotifier {
     _overlay = null;
     notifyListeners();
   }
+
+  // ---- Resume persistence -------------------------------------------------
+
+  /// Re-seed the board from a saved snapshot (called once at startup). Keeps
+  /// the freshly-loaded [dailyPuzzle] for the hub; swaps the *active* board to
+  /// the in-progress puzzle and lands the player back on it.
+  GameController resumeFrom(GameSession s) {
+    _puzzle = s.puzzle;
+    _mode = s.mode;
+    _difficulty = s.difficulty;
+    _chain = s.chain.isEmpty ? [ChainNode(s.puzzle.start)] : List.of(s.chain);
+    _used
+      ..clear()
+      ..addAll(s.used);
+    _hintsUsed = s.hintsUsed;
+    _resets = s.resets;
+    _solved = false;
+    _started = true;
+    return this;
+  }
+
+  /// Save the in-progress board (fire-and-forget). Skips solved boards and
+  /// untouched ones (nothing worth resuming).
+  void _persist() {
+    if (sessionRepo == null || _solved) return;
+    if (moves == 0 && _hintsUsed == 0 && _resets == 0) return;
+    sessionRepo!.save(GameSession(
+      mode: _mode,
+      difficulty: _difficulty,
+      puzzle: _puzzle,
+      chain: _chain,
+      used: _used,
+      hintsUsed: _hintsUsed,
+      resets: _resets,
+    ));
+  }
+
+  void _clearSession() => sessionRepo?.clear();
 
   // ---- Stats --------------------------------------------------------------
 
@@ -484,6 +615,7 @@ class GameController extends ChangeNotifier {
     _shakeTimer?.cancel();
     _copyTimer?.cancel();
     _tickTimer?.cancel();
+    _hintTimer?.cancel();
     super.dispose();
   }
 }

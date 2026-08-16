@@ -41,6 +41,10 @@ class WinSheet extends StatelessWidget {
         ],
       ),
       children: [
+        if (g.mode == GameMode.campaign) ...[
+          _StarRow(earned: g.earnedStars),
+          const SizedBox(height: 14),
+        ],
         Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 14),
@@ -70,13 +74,44 @@ class WinSheet extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
                 child: SecondaryButton(
-                    label: 'Play again', onTap: g.playAgain)),
+                    label: g.mode == GameMode.campaign ? 'Retry' : 'Play again',
+                    onTap: g.playAgain)),
           ],
         ),
+        if (g.mode == GameMode.campaign && g.hasNextLevel) ...[
+          const SizedBox(height: 10),
+          PrimaryButton(label: 'Next level →', onTap: g.nextLevel),
+        ],
         if (g.mode == GameMode.daily) ...[
           const SizedBox(height: 16),
           const Center(child: NextDailyCountdown(center: true)),
         ],
+      ],
+    );
+  }
+}
+
+/// Three stars, filled up to [earned] (1–3), for a campaign-level result.
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.earned});
+
+  final int earned;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 1; i <= 3; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(
+              i <= earned ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: 44,
+              color: i <= earned ? t.progress : t.border,
+            ),
+          ),
       ],
     );
   }

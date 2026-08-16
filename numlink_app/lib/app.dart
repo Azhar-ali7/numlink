@@ -8,6 +8,7 @@ import 'screens/intro_carousel.dart';
 import 'screens/welcome_screen.dart';
 import 'sheets/archive_sheet.dart';
 import 'sheets/how_to_play_sheet.dart';
+import 'sheets/roadmap_sheet.dart';
 import 'sheets/settings_sheet.dart';
 import 'sheets/solution_sheet.dart';
 import 'sheets/stats_sheet.dart';
@@ -98,6 +99,8 @@ class _AppShell extends StatelessWidget {
                     const Positioned.fill(child: SettingsSheet()),
                   if (g.overlay == SheetOverlay.archive)
                     const Positioned.fill(child: ArchiveSheet()),
+                  if (g.overlay == SheetOverlay.roadmap)
+                    const Positioned.fill(child: RoadmapSheet()),
                   if (g.overlay == SheetOverlay.solution)
                     const Positioned.fill(child: SolutionSheet()),
 

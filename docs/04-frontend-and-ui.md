@@ -25,11 +25,14 @@ Top → bottom:
 4. **Hero** — filled `_WelcomeButton("Play today's puzzle")` starting the Daily,
    with `NextDailyCountdown(center: true)` right beneath it.
 5. **`MORE MODES`** section label.
-6. **2×2 mode grid** (`_ModeTile`): Practice, Zen, Timed, Archive.
+6. **`LEVELS` entry** (`_LevelsEntry`) — a full-width, success-tinted card above
+   the grid showing campaign progress (`cleared/total` · total ⭐); taps open the
+   roadmap sheet.
+7. **2×2 mode grid** (`_ModeTile`): Practice, Zen, Timed, Archive.
    - Practice / Zen → a native `showModalBottomSheet` **difficulty popup**
      (reused `_DifficultyPicker` + a Start button) *before* starting.
    - Timed → `startTimed()`; Archive → opens the archive sheet.
-7. **How-to link** at the bottom (opens the quick-reference sheet).
+8. **How-to link** at the bottom (opens the quick-reference sheet).
 
 The page is a `SingleChildScrollView` over a `ConstrainedBox(minHeight)` — it
 scrolls rather than overflowing (an earlier `IntrinsicHeight` was removed to fix
@@ -71,7 +74,14 @@ Get-started call `settings.dismissTutorial()`. Shown once on first launch
 All share `BottomSheetShell` (a `PrimaryButton` for primary actions):
 
 - **Win** — score label (Eagle…Over), moves vs par, **share text** button,
-  play-again / new-puzzle, achievements just earned.
+  play-again / new-puzzle, achievements just earned. In **campaign** mode it also
+  shows the earned **star row** (`_StarRow`) and a **"Next level →"** button when
+  a further level exists.
+- **Roadmap** (`roadmap_sheet.dart`) — the campaign path: a header showing total
+  ⭐ / max and `cleared/total`, then a vertical list of `_LevelNode`s joined by
+  connectors. Each node shows the level #, tier label (+ new-operator hint on
+  boundary levels), and either earned **mini-stars**, a **PLAY** cue, or a
+  **lock** (dimmed) per the linear gate. Tapping an unlocked node starts it.
 - **Stats** — played, win rate, streak/max streak, the **par-distribution
   histogram** (buckets `par / +1 / +2 / +3+`), per-mode counters, achievement
   badges.

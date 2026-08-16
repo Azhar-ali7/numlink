@@ -127,6 +127,14 @@ Your score is your move count relative to par:
 Because par is honest, beating par (birdie/eagle) means genuinely out-solving
 the optimal BFS solver — it's real, not inflated.
 
+### Campaign stars
+
+Campaign levels re-rank the same golf score as **1–3 stars** via
+`starsFor(moves, par)`: **≤ par → 3★**, **+1 → 2★**, **+2 or worse → 1★**
+(clearing always earns at least one). `recordLevel` keeps the **best** rating,
+so replaying a level can only improve it. These bands are a `ponytail:` tuning
+knob.
+
 ## Difficulty tiers
 
 `DifficultySpec` bounds the generator (see architecture doc for the table):
@@ -171,6 +179,16 @@ If 300 strict + 300 relaxed (`par ≥ 2`) attempts fail, a fixed fallback puzzle
 | Zen | **no** | no | no | no par/score/clock — pure play |
 | Timed | yes | **yes** | no | 8-stage ladder, per-second tick; own counters |
 | Archive | yes | no | no | replay any past daily by number; marks solved |
+| Campaign | yes | no | no | curated roadmap level; earns 1–3 stars, replayable |
+
+### Campaign / roadmap rules
+
+- The campaign is a fixed, ordered list of curated levels (`kCampaign`), the
+  same for every player (deterministic seeds).
+- **Linear unlock:** level 1 is always open; level `n` unlocks only once level
+  `n − 1` is cleared (`levelUnlocked(n)`).
+- Clearing a level records its best star rating; the roadmap shows earned stars
+  per level and the running total. Campaign play never touches the daily streak.
 
 ## Streak rules
 

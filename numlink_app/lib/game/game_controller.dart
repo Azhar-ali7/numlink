@@ -10,12 +10,13 @@ import '../models/game_stats.dart';
 import '../models/operation.dart';
 import '../models/puzzle.dart';
 import '../services/feedback_service.dart';
+import 'campaign.dart';
 import 'game_mode.dart';
 import 'puzzle_repository.dart';
 import 'solver.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, win, archive, solution }
+enum SheetOverlay { how, stats, settings, win, archive, solution, roadmap }
 
 /// Golf-style score verdicts.
 enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
@@ -78,6 +79,7 @@ class GameController extends ChangeNotifier {
         GameMode.zen => 'Zen',
         GameMode.timed => 'Timed',
         GameMode.archive => 'Archive',
+        GameMode.campaign => 'Level $levelNo',
       };
 
   String get modeSubtitle => switch (_mode) {
@@ -86,6 +88,7 @@ class GameController extends ChangeNotifier {
         GameMode.zen => 'Free play · ${_difficulty.label}',
         GameMode.timed => 'Stage $stage / $stageCount',
         GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+        GameMode.campaign => '${_difficulty.label} · par ${_puzzle.par}',
       };
 
   List<ChainNode> _chain = [];
@@ -497,6 +500,26 @@ class GameController extends ChangeNotifier {
   /// Past daily numbers available to replay (newest first, excluding today).
   List<int> get archiveNumbers => puzzleRepo.archiveNumbers();
 
+  /// Campaign: start (or replay) level [n] from the roadmap. The generated
+  /// puzzle carries `no == n`, so [levelNo] recovers it (resume-safe).
+  Future<void> startCampaign(int n) async {
+    load(await puzzleRepo.campaign(n),
+        mode: GameMode.campaign, difficulty: kCampaign[n - 1].tier);
+  }
+
+  /// Active campaign level number (only meaningful in campaign mode).
+  int get levelNo => _puzzle.no;
+  int get campaignCount => puzzleRepo.campaignCount;
+
+  /// Stars (1–3) the just-finished run earned for this level.
+  int get earnedStars => starsFor(moves, par);
+
+  /// Whether a next campaign level exists after the current one.
+  bool get hasNextLevel => levelNo < campaignCount;
+
+  /// Advance to the next campaign level (used by the win sheet).
+  Future<void> nextLevel() => startCampaign(levelNo + 1);
+
   /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
   Future<void> newPuzzle() async {
     final p = await puzzleRepo.generate(_difficulty);
@@ -599,6 +622,8 @@ class GameController extends ChangeNotifier {
         _stats = _stats.bumpCounter('zen');
       case GameMode.archive:
         _stats = _stats.markArchive(_puzzle.no);
+      case GameMode.campaign:
+        _stats = _stats.recordLevel(_puzzle.no, starsFor(moves, par));
       case GameMode.timed:
         return; // recorded per-stage in _solveTimed
     }

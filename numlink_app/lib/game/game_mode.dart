@@ -1,8 +1,9 @@
 /// The play modes. `daily` is the shared, deterministic puzzle of the day;
 /// `practice` is unlimited generated puzzles at a chosen difficulty; `zen` is
 /// pressure-free (no par/score); `timed` is an escalating ladder against a
-/// clock; `archive` replays a past daily (no streak effect).
-enum GameMode { daily, practice, zen, timed, archive }
+/// clock; `archive` replays a past daily (no streak effect); `campaign` is a
+/// curated, star-rated level from the roadmap.
+enum GameMode { daily, practice, zen, timed, archive, campaign }
 
 /// Difficulty tiers for generated puzzles. Player-chosen in practice/zen; the
 /// timed ladder walks up these; daily uses a fixed tier ([Difficulty.daily]).

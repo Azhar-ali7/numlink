@@ -61,6 +61,10 @@ class FakePuzzleRepository implements PuzzleRepository {
       [for (var i = 0; i < count; i++) _trivial(i + 1)];
   @override
   List<int> archiveNumbers() => [3, 2, 1];
+  @override
+  int get campaignCount => 3;
+  @override
+  Future<Puzzle> campaign(int levelNo) async => _trivial(levelNo);
 }
 
 /// Fixed reference puzzle (the handoff #128) so tests don't depend on the
@@ -423,6 +427,47 @@ void main() {
       expect(g.solved, isTrue);
       expect(g.stats.unlocked, contains('birdie'));
       expect(g.stats.unlocked, contains('eagle'));
+    });
+  });
+
+  group('campaign', () {
+    Future<GameController> repoController() async {
+      return GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: FakeStatsRepository(),
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        puzzleRepo: FakePuzzleRepository(),
+      ).init();
+    }
+
+    test('startCampaign loads the level and records stars on solve', () async {
+      final g = await repoController();
+      await g.startCampaign(1);
+      expect(g.mode, GameMode.campaign);
+      expect(g.levelNo, 1);
+      expect(g.hasNextLevel, isTrue);
+      g.apply(_op(g, 'p1')); // trivial 1 +1 -> 2, solved in 1 (== par) → 3 stars
+      expect(g.solved, isTrue);
+      expect(g.earnedStars, 3);
+      expect(g.stats.levelStars[1], 3);
+      // Daily streak/wins untouched by campaign.
+      expect(g.stats.streak, 0);
+      expect(g.stats.wins, 0);
+    });
+
+    test('clearing a level unlocks the next', () async {
+      final g = await repoController();
+      expect(g.stats.levelUnlocked(2), isFalse);
+      await g.startCampaign(1);
+      g.apply(_op(g, 'p1'));
+      expect(g.stats.levelUnlocked(2), isTrue);
+    });
+
+    test('last level has no next', () async {
+      final g = await repoController();
+      await g.startCampaign(3); // campaignCount == 3
+      expect(g.hasNextLevel, isFalse);
     });
   });
 

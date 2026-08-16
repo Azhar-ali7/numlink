@@ -1,3 +1,5 @@
+import 'dart:math' show max;
+
 /// Persisted player statistics, mirroring the prototype's `numlink_stats`
 /// localStorage shape.
 class GameStats {
@@ -10,6 +12,7 @@ class GameStats {
     this.counters = const <String, int>{},
     this.archiveSolved = const <int>{},
     this.unlocked = const <String>{},
+    this.levelStars = const <int, int>{},
   });
 
   final int played;
@@ -30,6 +33,10 @@ class GameStats {
   /// Unlocked achievement ids (sticky once earned).
   final Set<String> unlocked;
 
+  /// Best star rating (1–3) earned per campaign level; a present key means the
+  /// level is cleared. Drives the roadmap's unlock gate and star totals.
+  final Map<int, int> levelStars;
+
   static const List<String> bucketKeys = ['par', '+1', '+2', '+3+'];
 
   int get winRate => played == 0 ? 0 : (100 * wins / played).round();
@@ -46,6 +53,7 @@ class GameStats {
     Map<String, int>? counters,
     Set<int>? archiveSolved,
     Set<String>? unlocked,
+    Map<int, int>? levelStars,
   }) =>
       GameStats(
         played: played,
@@ -56,6 +64,24 @@ class GameStats {
         counters: counters ?? this.counters,
         archiveSolved: archiveSolved ?? this.archiveSolved,
         unlocked: unlocked ?? this.unlocked,
+        levelStars: levelStars ?? this.levelStars,
+      );
+
+  /// Total campaign stars earned (max 3 × level count).
+  int get campaignStars =>
+      levelStars.values.fold(0, (sum, s) => sum + s);
+
+  /// Number of campaign levels cleared.
+  int get campaignCleared => levelStars.length;
+
+  /// Linear unlock gate: level 1 is always open; level [n] opens once [n]-1 is
+  /// cleared.
+  bool levelUnlocked(int n) => n <= 1 || levelStars.containsKey(n - 1);
+
+  /// Record clearing level [n] with [stars]; keeps the best (replay only
+  /// improves).
+  GameStats recordLevel(int n, int stars) => _with(
+        levelStars: {...levelStars, n: max(stars, levelStars[n] ?? 0)},
       );
 
   /// +[by] to counter [key].
@@ -115,6 +141,7 @@ class GameStats {
       counters: counters,
       archiveSolved: archiveSolved,
       unlocked: unlocked,
+      levelStars: levelStars,
     );
   }
 
@@ -127,6 +154,7 @@ class GameStats {
         'counters': counters,
         'archiveSolved': archiveSolved.toList(),
         'unlocked': unlocked.toList(),
+        'levelStars': levelStars.map((k, v) => MapEntry(k.toString(), v)),
       };
 
   factory GameStats.fromJson(Map<String, dynamic> j) => GameStats(
@@ -147,5 +175,9 @@ class GameStats {
             .toSet(),
         unlocked:
             ((j['unlocked'] as List?) ?? []).map((e) => e as String).toSet(),
+        levelStars: (j['levelStars'] as Map?)?.map(
+              (k, v) => MapEntry(int.parse(k as String), (v as num).toInt()),
+            ) ??
+            const {},
       );
 }

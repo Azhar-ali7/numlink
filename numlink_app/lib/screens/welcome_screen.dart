@@ -104,6 +104,13 @@ class WelcomeScreen extends StatelessWidget {
                   height: 1)),
         ),
         const SizedBox(height: 12),
+        _LevelsEntry(
+          cleared: g.stats.campaignCleared,
+          total: g.campaignCount,
+          stars: g.stats.campaignStars,
+          onTap: () => g.open(SheetOverlay.roadmap),
+        ),
+        const SizedBox(height: 12),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -336,6 +343,67 @@ class _ModeTile extends StatelessWidget {
                       height: 1)),
               Text(blurb,
                   style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-width campaign entry: the headline "more modes" row, showing progress
+/// through the curated roadmap. Taps open the roadmap sheet.
+class _LevelsEntry extends StatelessWidget {
+  const _LevelsEntry({
+    required this.cleared,
+    required this.total,
+    required this.stars,
+    required this.onTap,
+  });
+
+  final int cleared;
+  final int total;
+  final int stars;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: tint(t.success, 0.10),
+            border: Border.all(color: t.success, width: 2),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LEVELS',
+                        style: Fonts.ui(
+                            size: 15,
+                            color: t.success,
+                            weight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            height: 1)),
+                    const SizedBox(height: 5),
+                    Text('Climb the curated roadmap · $cleared/$total cleared',
+                        style: Fonts.ui(size: 12, color: t.muted, height: 1.2)),
+                  ],
+                ),
+              ),
+              Icon(Icons.star_rounded, size: 18, color: t.progress),
+              const SizedBox(width: 4),
+              Text('$stars',
+                  style: Fonts.mono(
+                      size: 18, color: t.text, weight: FontWeight.w700)),
             ],
           ),
         ),

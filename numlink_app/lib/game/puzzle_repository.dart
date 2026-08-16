@@ -1,4 +1,5 @@
 import '../models/puzzle.dart';
+import 'campaign.dart';
 import 'game_mode.dart';
 import 'generator.dart';
 
@@ -23,6 +24,12 @@ abstract class PuzzleRepository {
   /// An escalating sequence of [count] puzzles for the timed ladder,
   /// deterministic in [runSeed].
   List<Puzzle> ladder(int count, {required int runSeed});
+
+  /// The curated campaign level [levelNo] (1-based), deterministic for everyone.
+  Future<Puzzle> campaign(int levelNo);
+
+  /// Number of levels in the campaign.
+  int get campaignCount;
 }
 
 /// On-device puzzles via [PuzzleGenerator]. Daily/archive are seeded by date/
@@ -88,6 +95,15 @@ class LocalPuzzleRepository implements PuzzleRepository {
   List<int> archiveNumbers() {
     final todayNo = _numberFor(DateTime.now());
     return [for (var n = todayNo - 1; n >= _epochNo; n--) n];
+  }
+
+  @override
+  int get campaignCount => kCampaign.length;
+
+  @override
+  Future<Puzzle> campaign(int levelNo) async {
+    final def = kCampaign[levelNo - 1];
+    return _gen.generate(def.tier, no: def.no, seed: def.seed);
   }
 
   @override

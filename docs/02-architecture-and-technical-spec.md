@@ -57,7 +57,7 @@ Dependency direction is one-way: `screens`/`sheets`/`widgets` depend on
 3. `GameToast` (only when a transient message is set).
 4. `WelcomeScreen` (when `!g.started` — the home/menu).
 5. The active bottom sheet, chosen by `g.overlay` (`SheetOverlay` enum:
-   `win / stats / how / settings / archive / solution`).
+   `win / stats / how / settings / archive / solution / roadmap`).
 6. `IntroCarousel` (when `settings.tutorialOpen` — topmost, first-run tutorial).
 
 This is a single-route app; navigation is layer visibility, not `Navigator`
@@ -168,7 +168,7 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
 
 ### Modes & difficulty (`game/game_mode.dart`)
 
-- `enum GameMode { daily, practice, zen, timed, archive }`.
+- `enum GameMode { daily, practice, zen, timed, archive, campaign }`.
 - `enum Difficulty { easy, medium, hard }`.
 - `DifficultySpec { minPar, maxPar, maxTarget, startMax, allowDivide,
   extraTokens, hints, revealAfter }`:
@@ -188,7 +188,8 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
 ### Daily determinism (`game/puzzle_repository.dart`)
 
 `abstract PuzzleRepository` exposes `today`, `daily(date)`, `generate(d,seed)`,
-`archive(no)`, `archiveNumbers`, `ladder(count, runSeed)`.
+`archive(no)`, `archiveNumbers`, `ladder(count, runSeed)`, `campaign(levelNo)`,
+`campaignCount`.
 
 `LocalPuzzleRepository`:
 
@@ -198,6 +199,12 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
   device generates the identical board for a given date.
 - Date label format: `"MON D YYYY"`.
 - Timed `ladder` ramps difficulty `[easy, easy, medium, medium, hard]`, cycling.
+- **Campaign** — `kCampaign` (`game/campaign.dart`) is a `const List<LevelDef>`
+  of `(no, tier, seed, unlocks?)`; `campaign(n)` generates level `n` with
+  `no: n, seed: def.seed` so every player gets the identical, replayable level.
+  Tiers ramp easy(1–6) → medium(7–14) → hard(15–24); `unlocks` labels the
+  tier-boundary levels for the "new operator" hint. `starsFor(moves, par)` maps
+  golf score to 1–3 stars (`≤par → 3`, `+1 → 2`, else `1`).
 
 ## Data & persistence
 
@@ -205,9 +212,13 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
   under key `numlink_stats`. First run / parse failure returns `GameStats.seed`
   (a pre-populated demo profile) rather than empty.
 - `GameStats { played, wins, streak, maxStreak, dist, counters, archiveSolved,
-  unlocked }`; bucket keys `['par','+1','+2','+3+']`; derived `winRate`,
-  `totalSolves`; mutators `recordWin`, `bumpCounter`, `setCounterMax`,
-  `markArchive`, `withUnlocked`; `toJson`/`fromJson`.
+  unlocked, levelStars }`; bucket keys `['par','+1','+2','+3+']`; derived
+  `winRate`, `totalSolves`, `campaignStars`, `campaignCleared`,
+  `levelUnlocked(n)` (linear gate: `n == 1 || levelStars` has `n-1`); mutators
+  `recordWin`, `bumpCounter`, `setCounterMax`, `markArchive`, `withUnlocked`,
+  `recordLevel(n, stars)` (keeps the max); `toJson`/`fromJson`. `levelStars` is
+  a `Map<int,int>` (level → best stars; JSON keys stringified like
+  `archiveSolved`).
 - **Settings** — `SettingsController` persists `theme`, `highContrast`,
   `orangeSuccess`, `sound`, `haptics`, and `tutorialSeen`. `tutorialOpen` is a
   transient flag initialized to `!tutorialSeen` on load (drives the first-run

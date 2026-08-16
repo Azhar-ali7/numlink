@@ -122,6 +122,19 @@ affect streak.
 
 **Archive** — replay any past **daily** puzzle by its number.
 
+**Campaign** — a curated **roadmap** of fixed levels (`kCampaign`), the same for
+everyone, played in order; doesn't affect streak. Each level is one deterministic
+`(tier, seed)` puzzle.
+
+**Level (`LevelDef`)** — one campaign entry: `(no, tier, seed, unlocks?)`. Tiers
+ramp easy → medium → hard across the roadmap so operators are introduced
+progressively; `unlocks` labels the "new operator" hint on tier-boundary levels.
+
+**Star rating** — a level's result as **1–3 stars** (`starsFor`: ≤par → 3, +1 →
+2, else 1). Best rating is kept (`recordLevel`), so replay only improves it.
+`GameStats.levelStars` maps level → best stars; a present key means cleared and
+gates the next level (`levelUnlocked`).
+
 ## Generation & scheduling terms
 
 **Generator** — `PuzzleGenerator`: forward-builds a solution, adds decoys,

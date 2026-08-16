@@ -44,6 +44,7 @@ arithmetic.
 | **Zen** | Pressure-free — no par, score, or clock | No |
 | **Timed** | An 8-stage escalating ladder against a clock | No (own counters) |
 | **Archive** | Replay any past daily by number | No (marks completion) |
+| **Campaign** | A curated roadmap of levels, star-rated and replayable | No (own stars) |
 
 ## Progress / status
 
@@ -63,6 +64,12 @@ arithmetic.
 - **Milestones:** puzzles can carry ordered **checkpoint values** you must
   thread in sequence before the final target; honest par is the BFS minimum
   *through* the checkpoints, and the target bar shows the active sub-goal.
+- **Levels roadmap:** a curated **campaign** of hand-seeded levels on a
+  vertical node-path — tiers ramp easy → medium → hard so operators are taught
+  progressively. Each clear earns **1–3 stars** (golf score → stars), a
+  **linear unlock gate** opens the next level, and any level is replayable to
+  chase a better star rating. Deterministic seeds mean every player gets the
+  same levels.
 - **Decluttered board:** one-line header with a single `⋯` overflow menu
   (How/Stats/Settings) and a trimmed action row, giving the chain more room.
 - All five modes: Daily, Practice, Zen, Timed ladder, Archive replay.
@@ -98,4 +105,5 @@ Repo is public.
 stats + achievements → `feat(phase5)` next-daily countdown → `feat(home)`
 Hero Daily + mode grid + first-run intro carousel → `feat(hints)` answer
 path + live hints + earned reveal + resume → `refactor(ui)` compact header →
-`feat(ops)` four new operators → `feat(milestones)` in-order checkpoints.
+`feat(ops)` four new operators → `feat(milestones)` in-order checkpoints →
+`feat(campaign)` levels roadmap with star ratings + linear unlock.

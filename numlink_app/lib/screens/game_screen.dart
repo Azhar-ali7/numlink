@@ -39,50 +39,69 @@ extension on Widget {
 class _Header extends StatelessWidget {
   const _Header();
 
+  PopupMenuItem<SheetOverlay> _item(
+          SheetOverlay v, IconData icon, String label, NumTokens t) =>
+      PopupMenuItem(
+        value: v,
+        child: Row(children: [
+          Icon(icon, size: 18, color: t.text),
+          const SizedBox(width: 12),
+          Text(label, style: Fonts.ui(size: 14, color: t.text)),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     final g = context.watch<GameController>();
     final t = NumTheme.of(context);
+    // Compact one-line header: title + inline subtitle + a single overflow menu
+    // (help/stats/settings folded in), freeing vertical space for the chain.
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 10),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: t.border, width: 2)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconSquareButton(
               icon: Icons.arrow_back,
               semanticLabel: 'Home',
               onTap: g.goHome),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(g.modeTitle,
-                    style: Fonts.display(
-                        size: 26, color: t.text, letterSpacing: -0.6, height: 1)),
-                const SizedBox(height: 5),
-                Text(g.modeSubtitle,
-                    style: Fonts.mono(size: 11, color: t.muted, letterSpacing: 0.5)),
+                Flexible(
+                  child: Text(g.modeTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Fonts.display(
+                          size: 22, color: t.text, letterSpacing: -0.5, height: 1)),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(g.modeSubtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          Fonts.mono(size: 11, color: t.muted, letterSpacing: 0.5)),
+                ),
               ],
             ),
           ),
-          IconSquareButton(
-              icon: Icons.help_outline,
-              semanticLabel: 'How to play',
-              onTap: () => g.open(SheetOverlay.how)),
-          const SizedBox(width: 8),
-          IconSquareButton(
-              icon: Icons.bar_chart,
-              semanticLabel: 'Stats',
-              onTap: () => g.open(SheetOverlay.stats)),
-          const SizedBox(width: 8),
-          IconSquareButton(
-              icon: Icons.tune,
-              semanticLabel: 'Settings',
-              onTap: () => g.open(SheetOverlay.settings)),
+          PopupMenuButton<SheetOverlay>(
+            tooltip: 'Menu',
+            icon: Icon(Icons.more_horiz, color: t.text),
+            color: t.surface,
+            onSelected: g.open,
+            itemBuilder: (_) => [
+              _item(SheetOverlay.how, Icons.help_outline, 'How to play', t),
+              _item(SheetOverlay.stats, Icons.bar_chart, 'Stats', t),
+              _item(SheetOverlay.settings, Icons.tune, 'Settings', t),
+            ],
+          ),
         ],
       ),
     );
@@ -111,7 +130,7 @@ class _TargetBar extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('GET TO',
+                    Text(_goalLabel(g),
                         style: Fonts.ui(
                             size: 11,
                             color: t.muted,
@@ -119,9 +138,14 @@ class _TargetBar extends StatelessWidget {
                             letterSpacing: 2,
                             height: 1)),
                     const SizedBox(height: 4),
-                    Text('${g.target}',
+                    Text('${g.activeTarget}',
                         style: Fonts.mono(
                             size: 52, color: t.success, weight: FontWeight.w700, height: 0.95)),
+                    if (g.milestones.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _MilestoneDots(
+                          passed: g.milestonesPassed, total: g.milestones.length),
+                    ],
                   ],
                 ),
               ),
@@ -162,6 +186,40 @@ class _TargetBar extends StatelessWidget {
         Heat.near => t.progress,
         Heat.far => t.muted,
       };
+
+  static String _goalLabel(GameController g) {
+    final total = g.milestones.length;
+    if (total == 0) return 'GET TO';
+    if (g.milestonesPassed < total) {
+      return 'CHECKPOINT ${g.milestonesPassed + 1}/$total';
+    }
+    return 'FINAL TARGET';
+  }
+}
+
+/// Compact progress row: a check per banked checkpoint, an open circle for the
+/// ones ahead, and a flag for the final target.
+class _MilestoneDots extends StatelessWidget {
+  const _MilestoneDots({required this.passed, required this.total});
+
+  final int passed;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Row(
+      children: [
+        for (var i = 0; i < total; i++) ...[
+          Icon(i < passed ? Icons.check_circle : Icons.circle_outlined,
+              size: 12, color: i < passed ? t.success : t.muted),
+          const SizedBox(width: 4),
+        ],
+        Icon(passed >= total ? Icons.flag : Icons.flag_outlined,
+            size: 12, color: passed >= total ? t.success : t.muted),
+      ],
+    );
+  }
 }
 
 class _StatCell extends StatelessWidget {
@@ -298,6 +356,7 @@ class _OperationPad extends StatelessWidget {
                 remaining: g.remaining(op),
                 disabled: g.isDisabled(op),
                 shake: g.shakeOpId == op.id,
+                highlighted: g.hintOpId == op.id,
                 onTap: () => g.apply(op),
               );
             }).toList(),
@@ -311,9 +370,18 @@ class _OperationPad extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                   child: _TextButton(
-                      label: 'STATS', onTap: () => g.open(SheetOverlay.stats))),
+                      label: 'HINT·${g.hintsLeft}', onTap: g.hint)),
             ],
           ),
+          // Reveal is earned: unlocks after enough resets / spent hints.
+          if (g.canReveal) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: _TextButton(
+                  label: 'SHOW SOLUTION', onTap: g.revealSolution),
+            ),
+          ],
         ],
       ),
     );

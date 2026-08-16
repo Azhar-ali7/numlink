@@ -8,7 +8,9 @@ import 'screens/intro_carousel.dart';
 import 'screens/welcome_screen.dart';
 import 'sheets/archive_sheet.dart';
 import 'sheets/how_to_play_sheet.dart';
+import 'sheets/roadmap_sheet.dart';
 import 'sheets/settings_sheet.dart';
+import 'sheets/solution_sheet.dart';
 import 'sheets/stats_sheet.dart';
 import 'sheets/win_sheet.dart';
 import 'theme/app_theme.dart';
@@ -51,57 +53,78 @@ class _AppShell extends StatelessWidget {
     final settings = context.watch<SettingsController>();
     final t = NumTheme.of(context);
 
-    return Scaffold(
-      backgroundColor: t.bg,
-      body: Center(
-        child: Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(maxWidth: 440),
-          decoration: BoxDecoration(
-            color: t.bg,
-            border: Border(
-              left: BorderSide(color: t.border, width: 2),
-              right: BorderSide(color: t.border, width: 2),
+    // Android back: unwind our in-app layers (sheet → intro → game board) before
+    // letting the system pop the route and exit. Only the bare Home hub pops.
+    final atHome = !g.started && g.overlay == null && !settings.tutorialOpen;
+
+    return PopScope(
+      canPop: atHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (g.overlay != null) {
+          g.close();
+        } else if (settings.tutorialOpen) {
+          settings.dismissTutorial();
+        } else if (g.started) {
+          g.goHome(); // keeps the board in memory → same mode resumes it
+        }
+      },
+      child: Scaffold(
+        backgroundColor: t.bg,
+        body: Center(
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 440),
+            decoration: BoxDecoration(
+              color: t.bg,
+              border: Border(
+                left: BorderSide(color: t.border, width: 2),
+                right: BorderSide(color: t.border, width: 2),
+              ),
             ),
-          ),
-          child: ClipRect(
-            child: SafeArea(
-              child: Stack(
-                children: [
-                  const Positioned.fill(child: GameScreen()),
+            child: ClipRect(
+              child: SafeArea(
+                child: Stack(
+                  children: [
+                    const Positioned.fill(child: GameScreen()),
 
-                  // Confetti sits above the board, below the sheets.
-                  Positioned.fill(child: ConfettiOverlay(pulse: g.winPulse)),
+                    // Confetti sits above the board, below the sheets.
+                    Positioned.fill(child: ConfettiOverlay(pulse: g.winPulse)),
 
-                  // Toast on illegal taps.
-                  if (g.message != null)
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 220,
-                      child: GameToast(message: g.message!),
-                    ),
+                    // Toast on illegal taps.
+                    if (g.message != null)
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 220,
+                        child: GameToast(message: g.message!),
+                      ),
 
-                  // Welcome overlay (z-40 equivalent).
-                  if (!g.started)
-                    const Positioned.fill(child: WelcomeScreen()),
+                    // Welcome overlay (z-40 equivalent).
+                    if (!g.started)
+                      const Positioned.fill(child: WelcomeScreen()),
 
-                  // Sheets (z-50 equivalent) render above everything.
-                  if (g.overlay == SheetOverlay.win)
-                    const Positioned.fill(child: WinSheet()),
-                  if (g.overlay == SheetOverlay.stats)
-                    const Positioned.fill(child: StatsSheet()),
-                  if (g.overlay == SheetOverlay.how)
-                    const Positioned.fill(child: HowToPlaySheet()),
-                  if (g.overlay == SheetOverlay.settings)
-                    const Positioned.fill(child: SettingsSheet()),
-                  if (g.overlay == SheetOverlay.archive)
-                    const Positioned.fill(child: ArchiveSheet()),
+                    // Sheets (z-50 equivalent) render above everything.
+                    if (g.overlay == SheetOverlay.win)
+                      const Positioned.fill(child: WinSheet()),
+                    if (g.overlay == SheetOverlay.stats)
+                      const Positioned.fill(child: StatsSheet()),
+                    if (g.overlay == SheetOverlay.how)
+                      const Positioned.fill(child: HowToPlaySheet()),
+                    if (g.overlay == SheetOverlay.settings)
+                      const Positioned.fill(child: SettingsSheet()),
+                    if (g.overlay == SheetOverlay.archive)
+                      const Positioned.fill(child: ArchiveSheet()),
+                    if (g.overlay == SheetOverlay.roadmap)
+                      const Positioned.fill(child: RoadmapSheet()),
+                    if (g.overlay == SheetOverlay.solution)
+                      const Positioned.fill(child: SolutionSheet()),
 
-                  // First-run intro carousel — above everything else.
-                  if (settings.tutorialOpen)
-                    const Positioned.fill(child: IntroCarousel()),
-                ],
+                    // First-run intro carousel — above everything else.
+                    if (settings.tutorialOpen)
+                      const Positioned.fill(child: IntroCarousel()),
+                  ],
+                ),
               ),
             ),
           ),

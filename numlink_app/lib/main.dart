@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'account/account_service.dart';
 import 'app.dart';
+import 'data/session_repository.dart';
 import 'data/settings_controller.dart';
 import 'data/stats_repository.dart';
 import 'game/game_controller.dart';
@@ -24,6 +25,10 @@ Future<void> main() async {
   final puzzle = await puzzleRepo.today();
   final stats = await statsRepo.load();
 
+  // Resume an in-progress game if the app was killed mid-board.
+  final sessionRepo = LocalSessionRepository(prefs);
+  final saved = await sessionRepo.load();
+
   runApp(
     MultiProvider(
       providers: [
@@ -35,12 +40,16 @@ Future<void> main() async {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => GameController(
-            puzzle: puzzle,
-            statsRepo: statsRepo,
-            feedback: feedback,
-            initialStats: stats,
-          ).init(),
+          create: (_) {
+            final g = GameController(
+              puzzle: puzzle,
+              statsRepo: statsRepo,
+              feedback: feedback,
+              initialStats: stats,
+              sessionRepo: sessionRepo,
+            );
+            return saved != null ? g.resumeFrom(saved) : g.init();
+          },
         ),
       ],
       child: const NumlinkApp(),

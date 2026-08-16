@@ -19,6 +19,7 @@ class OperationButton extends StatelessWidget {
     required this.disabled,
     required this.shake,
     required this.onTap,
+    this.highlighted = false,
   });
 
   final Operation op;
@@ -27,6 +28,9 @@ class OperationButton extends StatelessWidget {
   final bool disabled;
   final bool shake;
   final VoidCallback onTap;
+
+  /// A hint is pointing at this op — draw an emphasized border.
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +52,13 @@ class OperationButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: t.surface,
             border: Border.all(
-              color: hover && !disabled ? t.progress : t.border,
-              width: 2,
+              color: highlighted || (hover && !disabled) ? t.progress : t.border,
+              width: 2, // keep at 2 — a wider border re-triggers the 1.6px overflow
             ),
             borderRadius: BorderRadius.circular(14),
+            boxShadow: highlighted
+                ? [BoxShadow(color: t.progress, blurRadius: 10, spreadRadius: 1)]
+                : null,
           ),
           child: Stack(
             children: [

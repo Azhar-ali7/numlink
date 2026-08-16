@@ -5,4 +5,9 @@ class ChainNode {
 
   final int value;
   final String? opLabel;
+
+  Map<String, dynamic> toJson() => {'value': value, 'opLabel': opLabel};
+
+  factory ChainNode.fromJson(Map<String, dynamic> j) =>
+      ChainNode(j['value'] as int, j['opLabel'] as String?);
 }

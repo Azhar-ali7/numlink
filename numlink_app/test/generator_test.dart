@@ -21,6 +21,13 @@ void main() {
           expect(p.target, lessThanOrEqualTo(spec.maxTarget));
           expect(p.start, isNot(equals(p.target)));
           expect(p.ops.length, equals(6));
+          // Milestones (when present) are distinct interior checkpoints.
+          expect(p.milestones.toSet().length, p.milestones.length);
+          for (final m in p.milestones) {
+            expect(m, isNot(equals(p.start)));
+            expect(m, isNot(equals(p.target)));
+            expect(m, inInclusiveRange(1, p.cap));
+          }
         }
       });
     }

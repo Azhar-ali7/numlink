@@ -72,6 +72,7 @@ class WelcomeScreen extends StatelessWidget {
                 label: 'DAY STREAK',
                 valueColor: t.success,
                 flame: true,
+                freezes: g.stats.freezes,
               ),
             ),
             const SizedBox(width: 10),
@@ -83,6 +84,13 @@ class WelcomeScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 14),
+        _XpBar(
+          level: g.stats.playerLevel,
+          progress: g.stats.levelProgress,
+          into: g.stats.xpIntoLevel,
+          span: g.stats.xpLevelSpan,
         ),
         const SizedBox(height: 36),
         _WelcomeButton(
@@ -102,6 +110,13 @@ class WelcomeScreen extends StatelessWidget {
                   weight: FontWeight.w700,
                   letterSpacing: 1.5,
                   height: 1)),
+        ),
+        const SizedBox(height: 12),
+        _LevelsEntry(
+          cleared: g.stats.campaignCleared,
+          total: g.campaignCount,
+          stars: g.stats.campaignStars,
+          onTap: () => g.open(SheetOverlay.roadmap),
         ),
         const SizedBox(height: 12),
         GridView.count(
@@ -253,12 +268,16 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.valueColor,
     this.flame = false,
+    this.freezes = 0,
   });
 
   final String value;
   final String label;
   final Color valueColor;
   final bool flame;
+
+  /// Streak-freezes banked; shown as a small ❄ N badge when > 0.
+  final int freezes;
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +300,14 @@ class _StatCard extends StatelessWidget {
               if (flame && streak > 0) ...[
                 const SizedBox(width: 5),
                 StreakFlame(streak: streak, color: valueColor, size: 18),
+              ],
+              if (freezes > 0) ...[
+                const Spacer(),
+                Icon(Icons.ac_unit, size: 14, color: t.progress),
+                const SizedBox(width: 2),
+                Text('$freezes',
+                    style: Fonts.mono(
+                        size: 13, color: t.progress, weight: FontWeight.w700)),
               ],
             ],
           ),
@@ -336,6 +363,117 @@ class _ModeTile extends StatelessWidget {
                       height: 1)),
               Text(blurb,
                   style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Player-level XP bar: level number, a progress fill toward the next level,
+/// and the raw XP-into/span readout (the Zeigarnik "almost there" nudge).
+class _XpBar extends StatelessWidget {
+  const _XpBar({
+    required this.level,
+    required this.progress,
+    required this.into,
+    required this.span,
+  });
+
+  final int level;
+  final double progress;
+  final int into;
+  final int span;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('LEVEL $level',
+                style: Fonts.ui(
+                    size: 11,
+                    color: t.text,
+                    weight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    height: 1)),
+            Text('$into / $span XP',
+                style: Fonts.mono(size: 11, color: t.muted, height: 1)),
+          ],
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 8,
+            backgroundColor: tint(t.border, 0.5),
+            valueColor: AlwaysStoppedAnimation<Color>(t.progress),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Full-width campaign entry: the headline "more modes" row, showing progress
+/// through the curated roadmap. Taps open the roadmap sheet.
+class _LevelsEntry extends StatelessWidget {
+  const _LevelsEntry({
+    required this.cleared,
+    required this.total,
+    required this.stars,
+    required this.onTap,
+  });
+
+  final int cleared;
+  final int total;
+  final int stars;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: tint(t.success, 0.10),
+            border: Border.all(color: t.success, width: 2),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LEVELS',
+                        style: Fonts.ui(
+                            size: 15,
+                            color: t.success,
+                            weight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            height: 1)),
+                    const SizedBox(height: 5),
+                    Text('Climb the curated roadmap · $cleared/$total cleared',
+                        style: Fonts.ui(size: 12, color: t.muted, height: 1.2)),
+                  ],
+                ),
+              ),
+              Icon(Icons.star_rounded, size: 18, color: t.progress),
+              const SizedBox(width: 4),
+              Text('$stars',
+                  style: Fonts.mono(
+                      size: 18, color: t.text, weight: FontWeight.w700)),
             ],
           ),
         ),

@@ -1,8 +1,9 @@
 /// The play modes. `daily` is the shared, deterministic puzzle of the day;
 /// `practice` is unlimited generated puzzles at a chosen difficulty; `zen` is
 /// pressure-free (no par/score); `timed` is an escalating ladder against a
-/// clock; `archive` replays a past daily (no streak effect).
-enum GameMode { daily, practice, zen, timed, archive }
+/// clock; `archive` replays a past daily (no streak effect); `campaign` is a
+/// curated, star-rated level from the roadmap.
+enum GameMode { daily, practice, zen, timed, archive, campaign }
 
 /// Difficulty tiers for generated puzzles. Player-chosen in practice/zen; the
 /// timed ladder walks up these; daily uses a fixed tier ([Difficulty.daily]).
@@ -20,6 +21,8 @@ class DifficultySpec {
     required this.startMax,
     required this.allowDivide,
     required this.extraTokens,
+    required this.hints,
+    required this.revealAfter,
   });
 
   /// Inclusive par band (solution length).
@@ -40,6 +43,14 @@ class DifficultySpec {
   /// tighter = harder (hard = 0 = exactly enough).
   final int extraTokens;
 
+  /// How many "next best move" hints the player gets per puzzle.
+  final int hints;
+
+  /// Resets (or hints used) before "Show solution" unlocks. Harder tiers make
+  /// the player work longer before the answer is offered.
+  // ponytail: play-test tunables — bump per tier once we have real feel.
+  final int revealAfter;
+
   static const Map<Difficulty, DifficultySpec> table = {
     Difficulty.easy: DifficultySpec(
       minPar: 2,
@@ -48,6 +59,8 @@ class DifficultySpec {
       startMax: 9,
       allowDivide: false,
       extraTokens: 2,
+      hints: 3,
+      revealAfter: 2,
     ),
     Difficulty.medium: DifficultySpec(
       minPar: 3,
@@ -56,6 +69,8 @@ class DifficultySpec {
       startMax: 15,
       allowDivide: true,
       extraTokens: 1,
+      hints: 3,
+      revealAfter: 3,
     ),
     Difficulty.hard: DifficultySpec(
       minPar: 4,
@@ -64,6 +79,8 @@ class DifficultySpec {
       startMax: 20,
       allowDivide: true,
       extraTokens: 0,
+      hints: 3,
+      revealAfter: 4,
     ),
   };
 

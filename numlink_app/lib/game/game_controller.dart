@@ -106,6 +106,9 @@ class GameController extends ChangeNotifier {
   String? _hintOpId; // op the current hint is pointing at (highlighted)
   Timer? _hintTimer;
 
+  // Milestones: count of ordered checkpoints already passed (reset in [load]).
+  int _nextMilestone = 0;
+
   /// Bumped whenever a solve happens, so the UI can fire a confetti burst.
   int _winPulse = 0;
 
@@ -202,11 +205,28 @@ class GameController extends ChangeNotifier {
   int get par => puzzle.par;
   int get target => puzzle.target;
 
-  int get distance => (puzzle.target - current).abs();
-  int get _initialDistance =>
-      (puzzle.target - puzzle.start).abs() == 0
-          ? 1
-          : (puzzle.target - puzzle.start).abs();
+  // ---- Milestones ---------------------------------------------------------
+
+  List<int> get milestones => _puzzle.milestones;
+  int get milestonesPassed => _nextMilestone;
+
+  /// The value the player is currently aiming for: the next unmet checkpoint,
+  /// or the final target once all checkpoints are banked.
+  int get activeTarget => _nextMilestone < _puzzle.milestones.length
+      ? _puzzle.milestones[_nextMilestone]
+      : puzzle.target;
+
+  /// Where the current segment started (previous checkpoint, or start) — so the
+  /// heat bar refills at each checkpoint instead of spanning the whole puzzle.
+  int get _segmentStart => _nextMilestone == 0
+      ? puzzle.start
+      : _puzzle.milestones[_nextMilestone - 1];
+
+  int get distance => (activeTarget - current).abs();
+  int get _initialDistance {
+    final d = (activeTarget - _segmentStart).abs();
+    return d == 0 ? 1 : d;
+  }
 
   /// Heat bar fill percentage (min 6, max 100).
   double get heatPercent {
@@ -217,8 +237,10 @@ class GameController extends ChangeNotifier {
   Heat get heat =>
       distance == 0 ? Heat.onTarget : (distance <= 3 ? Heat.near : Heat.far);
 
-  String get proximityText =>
-      _solved ? 'On target' : '$distance away from target';
+  String get proximityText => _solved
+      ? 'On target'
+      : '$distance away from '
+          '${_nextMilestone < _puzzle.milestones.length ? 'checkpoint' : 'target'}';
 
   /// Tokens remaining for [o].
   int remaining(Operation o) => o.tokens - (_used[o.id] ?? 0);
@@ -264,7 +286,23 @@ class GameController extends ChangeNotifier {
     }
     _chain = [..._chain, ChainNode(r, o.label)];
     _used[o.id] = (_used[o.id] ?? 0) + 1;
-    if (r == puzzle.target) {
+
+    // Required, in-order milestones: bank a checkpoint and advance the sub-goal
+    // before the final-target check. Reuses the win pulse/haptic for feedback.
+    final ms = _puzzle.milestones;
+    if (_nextMilestone < ms.length && r == ms[_nextMilestone]) {
+      _nextMilestone++;
+      _winPulse++;
+      feedback.onSolve();
+      _flash(_nextMilestone < ms.length
+          ? 'Checkpoint! Next: ${ms[_nextMilestone]}'
+          : 'Checkpoint! Now reach ${puzzle.target}');
+      _persist();
+      notifyListeners();
+      return;
+    }
+
+    if (r == puzzle.target && _nextMilestone == ms.length) {
       if (_mode == GameMode.timed) {
         _solveTimed(); // advances the ladder or finishes the run (self-notifies)
         return;
@@ -308,6 +346,7 @@ class GameController extends ChangeNotifier {
     _used.clear();
     _solved = false;
     _recorded = false;
+    _nextMilestone = 0;
     _hintOpId = null;
     _hintTimer?.cancel();
   }
@@ -321,7 +360,8 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final ids = solvePath(_puzzle, from: current, used: _used);
+    final ids = solvePath(_puzzle,
+        from: current, used: _used, fromMilestone: _nextMilestone);
     if (ids == null || ids.isEmpty) {
       _flash('No hint available');
       notifyListeners();
@@ -511,6 +551,7 @@ class GameController extends ChangeNotifier {
       ..addAll(s.used);
     _hintsUsed = s.hintsUsed;
     _resets = s.resets;
+    _nextMilestone = s.nextMilestone;
     _solved = false;
     _started = true;
     return this;
@@ -529,6 +570,7 @@ class GameController extends ChangeNotifier {
       used: _used,
       hintsUsed: _hintsUsed,
       resets: _resets,
+      nextMilestone: _nextMilestone,
     ));
   }
 

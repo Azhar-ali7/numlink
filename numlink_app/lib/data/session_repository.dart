@@ -16,6 +16,7 @@ class GameSession {
     required this.used,
     required this.hintsUsed,
     required this.resets,
+    this.nextMilestone = 0,
   });
 
   final GameMode mode;
@@ -25,6 +26,7 @@ class GameSession {
   final Map<String, int> used;
   final int hintsUsed;
   final int resets;
+  final int nextMilestone;
 
   Map<String, dynamic> toJson() => {
         'mode': mode.name,
@@ -34,6 +36,7 @@ class GameSession {
         'used': used,
         'hintsUsed': hintsUsed,
         'resets': resets,
+        'nextMilestone': nextMilestone,
       };
 
   factory GameSession.fromJson(Map<String, dynamic> j) => GameSession(
@@ -46,6 +49,7 @@ class GameSession {
         used: (j['used'] as Map).map((k, v) => MapEntry(k as String, v as int)),
         hintsUsed: j['hintsUsed'] as int? ?? 0,
         resets: j['resets'] as int? ?? 0,
+        nextMilestone: j['nextMilestone'] as int? ?? 0,
       );
 }
 

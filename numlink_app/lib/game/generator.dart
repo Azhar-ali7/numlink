@@ -65,6 +65,7 @@ class PuzzleGenerator {
 
     // Walk forward, recording usage so token caps can be set exactly.
     var cur = start;
+    final values = <int>[start]; // forward path, for picking milestones
     final usage = <String, int>{};
     final usedOp = <String, Operation>{};
     for (var step = 0; step < targetPar; step++) {
@@ -72,6 +73,7 @@ class PuzzleGenerator {
       if (legal.isEmpty) return null;
       final op = legal[rng.nextInt(legal.length)];
       cur = op.apply(cur, cap: _cap)!; // legal by construction
+      values.add(cur);
       usage[op.id] = (usage[op.id] ?? 0) + 1;
       usedOp[op.id] = op;
     }
@@ -123,16 +125,66 @@ class PuzzleGenerator {
       if (_trivial(usage, usedOp)) return null;
     }
 
+    // Ordered checkpoints on the forward path (medium/hard, par >= 4). Since
+    // they sit on the real solution, an in-order route provably exists; the
+    // milestone-aware BFS then republishes par as the shortest such route.
+    final milestones = _pickMilestones(values, targetPar, spec);
+    var par = trueMin;
+    var solution = path;
+    if (milestones.isNotEmpty) {
+      final mProbe = Puzzle(
+        no: no,
+        dateLabel: dateLabel,
+        start: start,
+        target: target,
+        par: targetPar,
+        ops: ops,
+        cap: _cap,
+        milestones: milestones,
+      );
+      final mPath = solvePath(mProbe);
+      if (mPath == null) return null; // unreachable — forward path is in order
+      par = mPath.length;
+      solution = mPath;
+    }
+
     return Puzzle(
       no: no,
       dateLabel: dateLabel,
       start: start,
       target: target,
-      par: trueMin,
+      par: par,
       ops: ops,
       cap: _cap,
-      solution: path,
+      solution: solution,
+      milestones: milestones,
     );
+  }
+
+  /// Ordered checkpoint values from the forward path: 1 for par 4–5, 2 for
+  /// par >= 6. Gated to the division tiers (medium/hard); easy stays flat.
+  /// ponytail: counts/gates are play-test knobs — retune freely.
+  List<int> _pickMilestones(List<int> values, int targetPar, DifficultySpec spec) {
+    if (!spec.allowDivide || targetPar < 4) return const [];
+    final start = values.first, target = values.last;
+    int? at(int i) {
+      if (i < 1 || i > values.length - 2) return null;
+      final v = values[i];
+      return (v == start || v == target) ? null : v;
+    }
+
+    final picks = <int>[];
+    void add(int? v) {
+      if (v != null && !picks.contains(v)) picks.add(v);
+    }
+
+    if (targetPar >= 6) {
+      add(at(targetPar ~/ 3));
+      add(at(2 * targetPar ~/ 3));
+    } else {
+      add(at(targetPar ~/ 2));
+    }
+    return picks;
   }
 
   /// Reject boring chains: pure addition (monotonic, greedy-obvious).

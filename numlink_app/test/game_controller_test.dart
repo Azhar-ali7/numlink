@@ -81,6 +81,36 @@ const Puzzle kReferencePuzzle = Puzzle(
   ],
 );
 
+/// Reference puzzle with one required checkpoint at 13: 2 ×3→6 +7→13 ×2→26.
+const Puzzle kMilestonePuzzle = Puzzle(
+  no: 0,
+  dateLabel: '',
+  start: 2,
+  target: 26,
+  par: 3,
+  milestones: [13],
+  ops: [
+    Operation(id: 'm3', symbol: '×', n: 3, tokens: 2),
+    Operation(id: 'p7', symbol: '+', n: 7, tokens: 2),
+    Operation(id: 'm2', symbol: '×', n: 2, tokens: 3),
+  ],
+);
+
+/// A puzzle where the target value (10) is reachable straight from start via
+/// +5, skipping the required checkpoint at 7 — used to prove the win is gated.
+const Puzzle kSkipPuzzle = Puzzle(
+  no: 0,
+  dateLabel: '',
+  start: 5,
+  target: 10,
+  par: 5,
+  milestones: [7],
+  ops: [
+    Operation(id: 'p1', symbol: '+', n: 1, tokens: 6),
+    Operation(id: 'p5', symbol: '+', n: 5, tokens: 2),
+  ],
+);
+
 Future<GameController> _controller() async {
   return GameController(
     puzzle: kReferencePuzzle,
@@ -468,6 +498,79 @@ void main() {
         v = o.apply(v, cap: g.puzzle.cap)!;
       }
       expect(v, g.puzzle.target);
+    });
+  });
+
+  group('milestones', () {
+    test('checkpoints are banked in order and gate the win', () async {
+      final g = await _controller();
+      g.load(kMilestonePuzzle,
+          mode: GameMode.practice, difficulty: Difficulty.hard);
+      expect(g.milestones, [13]);
+      expect(g.activeTarget, 13, reason: 'first sub-goal is the checkpoint');
+      expect(g.milestonesPassed, 0);
+
+      g.apply(_op(g, 'm3')); // 2 -> 6
+      expect(g.milestonesPassed, 0);
+      expect(g.solved, isFalse);
+
+      g.apply(_op(g, 'p7')); // 6 -> 13 == checkpoint
+      expect(g.milestonesPassed, 1);
+      expect(g.solved, isFalse, reason: 'a checkpoint is not a win');
+      expect(g.activeTarget, 26, reason: 'sub-goal advances to final target');
+
+      g.apply(_op(g, 'm2')); // 13 -> 26 == target
+      expect(g.solved, isTrue);
+    });
+
+    test('reaching the target value before a checkpoint is not a win', () async {
+      final g = await _controller();
+      g.load(kSkipPuzzle,
+          mode: GameMode.practice, difficulty: Difficulty.hard);
+      g.apply(_op(g, 'p5')); // 5 -> 10 (target value) but checkpoint 7 unmet
+      expect(g.current, 10);
+      expect(g.solved, isFalse, reason: 'must pass the checkpoint first');
+      expect(g.milestonesPassed, 0);
+    });
+
+    test('GameSession carries nextMilestone through JSON', () {
+      final s = GameSession(
+        mode: GameMode.practice,
+        difficulty: Difficulty.hard,
+        puzzle: kMilestonePuzzle,
+        chain: const [ChainNode(2), ChainNode(6, '×3'), ChainNode(13, '+7')],
+        used: const {'m3': 1, 'p7': 1},
+        hintsUsed: 0,
+        resets: 0,
+        nextMilestone: 1,
+      );
+      final back = GameSession.fromJson(
+          jsonDecode(jsonEncode(s.toJson())) as Map<String, dynamic>);
+      expect(back.nextMilestone, 1);
+      expect(back.puzzle.milestones, [13]);
+    });
+
+    test('resumeFrom restores the checkpoint index', () async {
+      final repo = FakeSessionRepository();
+      final session = GameSession(
+        mode: GameMode.practice,
+        difficulty: Difficulty.hard,
+        puzzle: kMilestonePuzzle,
+        chain: const [ChainNode(2), ChainNode(6, '×3'), ChainNode(13, '+7')],
+        used: const {'m3': 1, 'p7': 1},
+        hintsUsed: 0,
+        resets: 0,
+        nextMilestone: 1,
+      );
+      final g = GameController(
+        puzzle: kReferencePuzzle,
+        statsRepo: FakeStatsRepository(),
+        feedback: FeedbackService(),
+        initialStats: GameStats.empty,
+        sessionRepo: repo,
+      ).resumeFrom(session);
+      expect(g.milestonesPassed, 1);
+      expect(g.activeTarget, 26, reason: 'sole checkpoint already passed');
     });
   });
 

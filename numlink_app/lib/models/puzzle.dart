@@ -13,6 +13,7 @@ class Puzzle {
     required this.ops,
     this.cap = 999,
     this.solution = const [],
+    this.milestones = const [],
   });
 
   final int no;
@@ -28,6 +29,11 @@ class Puzzle {
   /// equals [par]. Empty only for legacy/hardcoded puzzles.
   final List<String> solution;
 
+  /// Ordered checkpoint values that must be reached, in sequence, before the
+  /// final [target]. A subset of the solution-path intermediates, so a valid
+  /// in-order route always exists. Empty for puzzles without milestones.
+  final List<int> milestones;
+
   Map<String, dynamic> toJson() => {
         'no': no,
         'dateLabel': dateLabel,
@@ -37,6 +43,7 @@ class Puzzle {
         'ops': ops.map((o) => o.toJson()).toList(),
         'cap': cap,
         'solution': solution,
+        'milestones': milestones,
       };
 
   factory Puzzle.fromJson(Map<String, dynamic> j) => Puzzle(
@@ -51,6 +58,9 @@ class Puzzle {
         cap: j['cap'] as int? ?? 999,
         solution:
             (j['solution'] as List?)?.map((e) => e as String).toList() ??
+                const [],
+        milestones:
+            (j['milestones'] as List?)?.map((e) => e as int).toList() ??
                 const [],
       );
 }

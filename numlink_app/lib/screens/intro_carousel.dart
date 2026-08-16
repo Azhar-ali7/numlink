@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../game/game_controller.dart';
 import '../sheets/bottom_sheet_shell.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
@@ -37,8 +38,9 @@ class _IntroCarouselState extends State<IntroCarousel> {
     (
       icon: Icons.flag_rounded,
       title: 'Reach the target',
-      body: 'Land exactly on the target to close the chain. A fresh daily '
-          'puzzle drops every day — keep your streak alive.',
+      body: 'Land exactly on the target to close the chain. Start with '
+          'Level 1 — the roadmap eases you in and unlocks new operators as '
+          'you climb.',
     ),
   ];
 
@@ -50,9 +52,18 @@ class _IntroCarouselState extends State<IntroCarousel> {
 
   void _dismiss() => context.read<SettingsController>().dismissTutorial();
 
+  /// Finish the intro. On a genuine first launch (not a Settings replay), drop
+  /// the player straight into Level 1 — a guaranteed easy first win — instead
+  /// of the medium daily.
+  void _finish() {
+    final firstRun = !context.read<SettingsController>().tutorialSeen;
+    _dismiss();
+    if (firstRun) context.read<GameController>().startCampaign(1);
+  }
+
   void _next() {
     if (_page >= _slides.length - 1) {
-      _dismiss();
+      _finish();
       return;
     }
     final target = _page + 1;
@@ -68,6 +79,7 @@ class _IntroCarouselState extends State<IntroCarousel> {
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
     final last = _page == _slides.length - 1;
+    final firstRun = !context.read<SettingsController>().tutorialSeen;
 
     return ColoredBox(
       color: t.bg,
@@ -102,7 +114,7 @@ class _IntroCarouselState extends State<IntroCarousel> {
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
               child: PrimaryButton(
-                label: last ? 'Get started' : 'Next',
+                label: last ? (firstRun ? 'Start Level 1' : 'Get started') : 'Next',
                 center: true,
                 onTap: _next,
               ),

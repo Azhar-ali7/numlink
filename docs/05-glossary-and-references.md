@@ -216,7 +216,9 @@ that suppresses shakes and flourishes.
 (`micro, standard, celebrate, toast, shake, sheet`).
 
 **Intro carousel** — the 3-slide first-run tutorial, shown once
-(`tutorialSeen`), replayable from Settings.
+(`tutorialSeen`), replayable from Settings. On a genuine first run its final CTA
+starts **Level 1** (`startCampaign(1)`) for a guaranteed easy first win rather
+than the medium daily.
 
 ## Architecture terms
 

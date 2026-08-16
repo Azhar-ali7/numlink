@@ -67,6 +67,10 @@ class SettingsController extends ChangeNotifier {
   bool get haptics => _settings.haptics;
   bool get tutorialOpen => _tutorialOpen;
 
+  /// True once the intro has ever been dismissed. Distinguishes a genuine
+  /// first launch from a Settings "Replay" (drives the first-run Level 1 CTA).
+  bool get tutorialSeen => _tutorialSeen;
+
   void openTutorial() {
     _tutorialOpen = true;
     notifyListeners();

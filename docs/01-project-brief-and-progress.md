@@ -87,7 +87,11 @@ arithmetic.
 - Achievements (8 badges, sticky once earned).
 - Home redesign: Hero "Play today's puzzle" + next-daily countdown + 2×2 mode
   grid, difficulty chosen in a popup after tapping Practice/Zen.
-- First-run intro carousel (3 slides, shown once, replayable from Settings).
+- First-run intro carousel (3 slides, shown once, replayable from Settings); its
+  final CTA drops a **brand-new** player straight into **Level 1** (a guaranteed
+  easy first win) rather than the medium daily. The campaign roadmap is the
+  progressive teacher — operators are introduced tier-by-tier, so onboarding is
+  spread across early levels instead of front-loaded.
 - Theming: dark/light, high-contrast cues, colorblind orange-success option,
   reduced-motion support. Sound + haptics (off by default).
 
@@ -118,4 +122,5 @@ path + live hints + earned reveal + resume → `refactor(ui)` compact header →
 `feat(ops)` four new operators → `feat(milestones)` in-order checkpoints →
 `feat(campaign)` levels roadmap with star ratings + linear unlock →
 `feat(xp)` player XP + level curve with home bar →
-`feat(streak)` honest date-gap streak + streak-freeze saves.
+`feat(streak)` honest date-gap streak + streak-freeze saves →
+`refactor(onboarding)` first-run intro routes into Level 1.

@@ -68,9 +68,12 @@ checkpoints banked) opens the **win sheet**.
 
 Full-screen, opaque, topmost. A 3-slide swipeable `PageView` (glyph/mini-preview
 + heading + body), a dot indicator, a top-right **Skip**, and a bottom button
-that reads **Next** until the last slide then **Get started**. Both Skip and
-Get-started call `settings.dismissTutorial()`. Shown once on first launch
-(`tutorialSeen`), replayable from Settings.
+that reads **Next** until the last slide. On a genuine first launch that last
+button reads **Start Level 1** and, after `dismissTutorial()`, calls
+`startCampaign(1)` — dropping the new player into a guaranteed easy first win
+instead of the medium daily; on a Settings **Replay** (`tutorialSeen` already
+true) it reads **Get started** and just dismisses. **Skip** always just
+dismisses. Shown once on first launch (`tutorialSeen`), replayable from Settings.
 
 ## Bottom sheets (`sheets/`)
 

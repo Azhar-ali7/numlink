@@ -72,6 +72,7 @@ class WelcomeScreen extends StatelessWidget {
                 label: 'DAY STREAK',
                 valueColor: t.success,
                 flame: true,
+                freezes: g.stats.freezes,
               ),
             ),
             const SizedBox(width: 10),
@@ -267,12 +268,16 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.valueColor,
     this.flame = false,
+    this.freezes = 0,
   });
 
   final String value;
   final String label;
   final Color valueColor;
   final bool flame;
+
+  /// Streak-freezes banked; shown as a small ❄ N badge when > 0.
+  final int freezes;
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +300,14 @@ class _StatCard extends StatelessWidget {
               if (flame && streak > 0) ...[
                 const SizedBox(width: 5),
                 StreakFlame(streak: streak, color: valueColor, size: 18),
+              ],
+              if (freezes > 0) ...[
+                const Spacer(),
+                Icon(Icons.ac_unit, size: 14, color: t.progress),
+                const SizedBox(width: 2),
+                Text('$freezes',
+                    style: Fonts.mono(
+                        size: 13, color: t.progress, weight: FontWeight.w700)),
               ],
             ],
           ),

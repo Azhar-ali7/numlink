@@ -75,6 +75,11 @@ arithmetic.
   lifetime XP to a **player level**. Home shows an **XP bar** (level # + progress
   to next) and the win sheet shows the **+XP** earned. Cross-session progression
   the game previously lacked.
+- **Honest streak + streak-freeze:** the daily streak now breaks for real on a
+  missed day (tracked by `lastDailyDay` — same-day solves don't double-count).
+  Reaching a milestone streak (3/7/14/30) banks a **streak-freeze**, spent
+  automatically to survive one missed day instead of resetting; the home streak
+  card shows the banked count.
 - **Decluttered board:** one-line header with a single `⋯` overflow menu
   (How/Stats/Settings) and a trimmed action row, giving the chain more room.
 - All five modes: Daily, Practice, Zen, Timed ladder, Archive replay.
@@ -112,4 +117,5 @@ Hero Daily + mode grid + first-run intro carousel → `feat(hints)` answer
 path + live hints + earned reveal + resume → `refactor(ui)` compact header →
 `feat(ops)` four new operators → `feat(milestones)` in-order checkpoints →
 `feat(campaign)` levels roadmap with star ratings + linear unlock →
-`feat(xp)` player XP + level curve with home bar.
+`feat(xp)` player XP + level curve with home bar →
+`feat(streak)` honest date-gap streak + streak-freeze saves.

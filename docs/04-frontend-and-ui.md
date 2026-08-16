@@ -21,7 +21,8 @@ Top → bottom:
 
 1. **Preview chain** — a mini `_PreviewNode`/`_Connector` illustration.
 2. **Wordmark** `NUMLINK` + one-line description.
-3. **Stat cards** — streak · puzzle #/date (`_StatCard`).
+3. **Stat cards** — streak · puzzle #/date (`_StatCard`). The streak card shows a
+   `❄` freeze badge with the banked count when the player holds any streak-freezes.
    - Below them an **XP bar** (`_XpBar`): player level, a `LinearProgressIndicator`
      fill toward the next level, and the `into / span XP` readout.
 4. **Hero** — filled `_WelcomeButton("Play today's puzzle")` starting the Daily,

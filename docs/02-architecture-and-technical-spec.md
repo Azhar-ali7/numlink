@@ -211,15 +211,18 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
 - **Stats** — `abstract StatsRepository { load, save }`; `LocalStatsRepository`
   under key `numlink_stats`. First run / parse failure returns `GameStats.seed`
   (a pre-populated demo profile) rather than empty.
-- `GameStats { played, wins, streak, maxStreak, dist, counters, archiveSolved,
-  unlocked, levelStars }`; bucket keys `['par','+1','+2','+3+']`; derived
-  `winRate`, `totalSolves`, `campaignStars`, `campaignCleared`,
-  `levelUnlocked(n)` (linear gate: `n == 1 || levelStars` has `n-1`), and the
-  **XP** family — `xp` (`counters['xp']`), static `xpForLevel(L) = 25·L·(L-1)`
-  and its inverse `levelForXp(xp)`, `playerLevel`, `xpIntoLevel`, `xpLevelSpan`,
-  `levelProgress`; mutators
-  `recordWin`, `bumpCounter`, `setCounterMax`, `markArchive`, `withUnlocked`,
-  `recordLevel(n, stars)` (keeps the max); `toJson`/`fromJson`. `levelStars` is
+- `GameStats { played, wins, streak, maxStreak, lastDailyDay, dist, counters,
+  archiveSolved, unlocked, levelStars }`; bucket keys `['par','+1','+2','+3+']`;
+  derived `winRate`, `totalSolves`, `campaignStars`, `campaignCleared`,
+  `levelUnlocked(n)` (linear gate: `n == 1 || levelStars` has `n-1`), `freezes`
+  (`counters['freezes']`), and the **XP** family — `xp` (`counters['xp']`), static
+  `xpForLevel(L) = 25·L·(L-1)` and its inverse `levelForXp(xp)`, `playerLevel`,
+  `xpIntoLevel`, `xpLevelSpan`, `levelProgress`; mutators
+  `recordWin(moves, par, {today})`, `bumpCounter`, `setCounterMax`, `markArchive`,
+  `withUnlocked`, `recordLevel(n, stars)` (keeps the max); `toJson`/`fromJson`.
+  `recordWin` uses `lastDailyDay` (day-index) + the optional `today` to keep the
+  streak **honest** (same-day no-op / +1 / gap-reset) and to bank/spend
+  **streak-freezes** at `freezeMilestones = [3, 7, 14, 30]`. `levelStars` is
   a `Map<int,int>` (level → best stars; JSON keys stringified like
   `archiveSolved`).
 - **Settings** — `SettingsController` persists `theme`, `highContrast`,

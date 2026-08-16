@@ -170,15 +170,24 @@ generation fails after all attempts, so play never stalls.
 
 ## Progression terms
 
-**Streak** — consecutive days the **Daily** was solved. `maxStreak` is the best
-ever reached.
+**Streak** — consecutive days the **Daily** was solved, kept **honest** by
+`lastDailyDay`: same-day re-solves don't count, a one-day gap extends, a larger
+gap resets to 1 (unless a freeze is spent). `maxStreak` is the best ever reached.
+
+**Streak-freeze** — a banked save (`counters['freezes']`) earned at milestone
+streaks (`freezeMilestones = [3, 7, 14, 30]`) and spent automatically to survive a
+missed day, preserving the streak instead of resetting it. Shown on the home
+streak card.
+
+**lastDailyDay** — day-index (days since epoch, local) of the last recorded daily
+win; `0` = none. Lets `recordWin` tell a continued streak from a broken one.
 
 **Achievement** — a sticky badge earned by meeting a condition
 (`SolveContext {scoreOver, usedDivision}`); once earned it stays. The 8:
 `first_link, birdie, eagle, purist, streak3, streak7, ten, climber`.
 
-**GameStats** — the persisted profile: `played, wins, streak, maxStreak, dist,
-counters, archiveSolved, unlocked`.
+**GameStats** — the persisted profile: `played, wins, streak, maxStreak,
+lastDailyDay, dist, counters, archiveSolved, unlocked, levelStars`.
 
 **Counters** — per-mode solve tallies (practice/zen/etc.) kept separate from the
 Daily streak.

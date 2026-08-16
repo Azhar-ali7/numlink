@@ -619,7 +619,7 @@ class GameController extends ChangeNotifier {
       case GameMode.daily:
         if (_recorded) return;
         _recorded = true;
-        _stats = _stats.recordWin(moves, par);
+        _stats = _stats.recordWin(moves, par, today: _todayIndex());
       case GameMode.practice:
         _stats = _stats.bumpCounter('practice');
       case GameMode.zen:
@@ -634,6 +634,15 @@ class GameController extends ChangeNotifier {
     _awardXp(_xpForSolve());
     _stats = _stats.withUnlocked(earnedAchievements(_stats, ctx));
     _statsRepo.save(_stats);
+  }
+
+  /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
+  /// day *differences* matter, so a constant tz offset is harmless.
+  /// ponytail: naive local-midnight index; good enough for daily streaks.
+  int _todayIndex() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerDay;
   }
 
   /// XP for one puzzle solve. Base + a bonus for beating par; zen (no par) is

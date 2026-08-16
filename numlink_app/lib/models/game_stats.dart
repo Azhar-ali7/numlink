@@ -13,12 +13,17 @@ class GameStats {
     this.archiveSolved = const <int>{},
     this.unlocked = const <String>{},
     this.levelStars = const <int, int>{},
+    this.lastDailyDay = 0,
   });
 
   final int played;
   final int wins;
   final int streak;
   final int maxStreak;
+
+  /// Day-index (days since Unix epoch, local) of the last recorded daily win.
+  /// 0 = none yet. Lets [recordWin] tell a continued streak from a broken one.
+  final int lastDailyDay;
 
   /// Distribution over buckets: `par`, `+1`, `+2`, `+3+`.
   final Map<String, int> dist;
@@ -65,7 +70,12 @@ class GameStats {
         archiveSolved: archiveSolved ?? this.archiveSolved,
         unlocked: unlocked ?? this.unlocked,
         levelStars: levelStars ?? this.levelStars,
+        lastDailyDay: lastDailyDay,
       );
+
+  /// Streak-freezes banked (earned at streak milestones, spent to survive a
+  /// missed day).
+  int get freezes => counters['freezes'] ?? 0;
 
   /// Total campaign stars earned (max 3 × level count).
   int get campaignStars =>
@@ -157,9 +167,35 @@ class GameStats {
     return '+3+';
   }
 
-  /// Records a win of [moves] against [par] and returns the updated stats.
-  GameStats recordWin(int moves, int par) {
-    final nextStreak = streak + 1;
+  /// Streak milestones that each grant one streak-freeze.
+  static const List<int> freezeMilestones = [3, 7, 14, 30];
+
+  /// Records a daily win of [moves] against [par]. [today] is the day-index of
+  /// the solve (days since epoch); when given it makes the streak *honest*:
+  /// same day → unchanged, next day → +1, a gap → reset to 1 unless a banked
+  /// freeze is spent to preserve it. Reaching a [freezeMilestones] streak earns
+  /// a freeze. When [today] is null (or no prior daily), it just increments —
+  /// the legacy behaviour.
+  GameStats recordWin(int moves, int par, {int? today}) {
+    var freezes = this.freezes;
+    int nextStreak;
+    if (today == null || lastDailyDay == 0) {
+      nextStreak = streak + 1;
+    } else {
+      final gap = today - lastDailyDay;
+      if (gap <= 0) {
+        nextStreak = streak; // already counted today
+      } else if (gap == 1) {
+        nextStreak = streak + 1;
+      } else if (freezes > 0) {
+        freezes -= 1; // spend a freeze to survive the missed day(s)
+        nextStreak = streak + 1;
+      } else {
+        nextStreak = 1; // streak broken
+      }
+    }
+    if (freezeMilestones.contains(nextStreak)) freezes += 1;
+
     final newDist = Map<String, int>.from(dist);
     final key = bucketFor(moves, par);
     newDist[key] = (newDist[key] ?? 0) + 1;
@@ -169,10 +205,11 @@ class GameStats {
       streak: nextStreak,
       maxStreak: nextStreak > maxStreak ? nextStreak : maxStreak,
       dist: newDist,
-      counters: counters,
+      counters: {...counters, 'freezes': freezes},
       archiveSolved: archiveSolved,
       unlocked: unlocked,
       levelStars: levelStars,
+      lastDailyDay: today ?? lastDailyDay,
     );
   }
 
@@ -186,6 +223,7 @@ class GameStats {
         'archiveSolved': archiveSolved.toList(),
         'unlocked': unlocked.toList(),
         'levelStars': levelStars.map((k, v) => MapEntry(k.toString(), v)),
+        'lastDailyDay': lastDailyDay,
       };
 
   factory GameStats.fromJson(Map<String, dynamic> j) => GameStats(
@@ -210,5 +248,6 @@ class GameStats {
               (k, v) => MapEntry(int.parse(k as String), (v as num).toInt()),
             ) ??
             const {},
+        lastDailyDay: (j['lastDailyDay'] as num?)?.toInt() ?? 0,
       );
 }

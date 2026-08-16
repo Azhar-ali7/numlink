@@ -59,4 +59,58 @@ void main() {
       expect(s.levelProgress, 0.25);
     });
   });
+
+  group('honest streak + freeze', () {
+    // A day-2 win at streak 2, no freezes banked, no prior-day gap.
+    GameStats at(int streak, int lastDay, {int freezes = 0}) => GameStats(
+          played: 5,
+          wins: 5,
+          streak: streak,
+          maxStreak: streak,
+          dist: const {},
+          counters: {'freezes': freezes},
+          lastDailyDay: lastDay,
+        );
+
+    test('first-ever daily win increments (no prior day)', () {
+      final s = GameStats.empty.recordWin(3, 3, today: 100);
+      expect(s.streak, 1);
+      expect(s.lastDailyDay, 100);
+    });
+
+    test('next-day win extends the streak', () {
+      final s = at(2, 100).recordWin(3, 3, today: 101);
+      expect(s.streak, 3);
+      expect(s.lastDailyDay, 101);
+    });
+
+    test('same-day re-record does not double-count', () {
+      final s = at(2, 100).recordWin(3, 3, today: 100);
+      expect(s.streak, 2);
+    });
+
+    test('a missed day with no freeze resets to 1', () {
+      final s = at(5, 100).recordWin(3, 3, today: 103); // 3-day gap
+      expect(s.streak, 1);
+    });
+
+    test('a missed day spends a freeze and preserves the run', () {
+      final s = at(5, 100, freezes: 1).recordWin(3, 3, today: 103);
+      expect(s.streak, 6);
+      expect(s.freezes, 0); // freeze consumed
+    });
+
+    test('hitting a milestone streak earns a freeze', () {
+      final s = at(2, 100).recordWin(3, 3, today: 101); // → streak 3
+      expect(s.streak, 3);
+      expect(s.freezes, 1);
+    });
+
+    test('lastDailyDay round-trips through JSON', () {
+      final s = at(4, 200, freezes: 2);
+      final back = GameStats.fromJson(s.toJson());
+      expect(back.lastDailyDay, 200);
+      expect(back.freezes, 2);
+    });
+  });
 }

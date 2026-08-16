@@ -205,8 +205,17 @@ If 300 strict + 300 relaxed (`par ≥ 2`) attempts fail, a fixed fallback puzzle
 ## Streak rules
 
 - Advanced only by solving the **Daily**.
-- `GameStats` tracks `streak` and `maxStreak`.
-- Missing a day breaks the current streak (max is preserved).
+- `GameStats` tracks `streak`, `maxStreak`, and `lastDailyDay` (day-index of the
+  last daily win) so the streak is **honest** — `recordWin(moves, par, today:)`
+  decides continuity from the real date gap:
+  - same day → no change (re-solving today never double-counts);
+  - exactly the next day → `+1`;
+  - a gap of more than one day → **resets to 1**, unless a streak-freeze is spent.
+- **Streak-freeze** (`counters['freezes']`): earned one per milestone streak
+  (`freezeMilestones = [3, 7, 14, 30]`), spent automatically on a missed-day gap
+  to preserve the run instead of resetting. The home streak card shows the banked
+  count. `ponytail:` milestones/curve are a tuning knob.
+- `maxStreak` is preserved regardless.
 
 ## Achievements
 

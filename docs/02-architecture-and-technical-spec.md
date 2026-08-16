@@ -71,7 +71,12 @@ The core `ChangeNotifier`. Holds the live chain, remaining tokens per op,
 current mode, overlay, timer state, and a transient toast message. Ported 1:1
 from the design prototype's loop. Key methods:
 
-- **Play:** `apply(op)`, `undo()`, `reset()`, `load(puzzle)`.
+- **Play:** `apply(op)`, `undo()`, `reset()`, `load(puzzle)`. `apply` banks a
+  checkpoint (bumps `_nextMilestone`, pulses, persists) when the result equals
+  the next milestone; a win needs the final target **and** all milestones banked.
+- **Milestones:** `milestones`, `milestonesPassed`, and `activeTarget` (the next
+  unreached checkpoint, or the final target once all are banked). Heat /
+  `distance` / `proximityText` all track `activeTarget`, not the final target.
 - **Hints / reveal:** `hint()` (highlights the next best move, re-solved live via
   `solvePath(from: current, used:)`, capped by `DifficultySpec.hints`),
   `revealSolution()` (opens the solution sheet); getters `hintsLeft`,
@@ -95,11 +100,16 @@ Enums it owns: `SheetOverlay`, `ScoreLabel {eagle,birdie,par,bogey,doubleBogey,o
 
 ### Puzzle model (`models/`)
 
-- `Puzzle { no, dateLabel, start, target, par, ops, cap=999, solution }` —
-  `solution` is the op-id sequence of the stored answer path (see solver).
-- `Operation { id, symbol, n, tokens }`; `label = "$symbol$n"`;
-  `apply(cur, cap)` supports `× + − ÷`. Division must be exact (integer), and
-  results must stay in `[0, cap]` — otherwise the op is illegal.
+- `Puzzle { no, dateLabel, start, target, par, ops, cap=999, solution,
+  milestones=[] }` — `solution` is the op-id sequence of the stored answer path
+  (see solver); `milestones` is the ordered list of checkpoint values that must
+  be threaded before the target (empty for most puzzles).
+- `Operation { id, symbol, n, tokens }`; `label` is a `switch` on `symbol` —
+  `x²` for `^`, bare `√`/`Σ` for the unary ops, else `"$symbol$n"`.
+  `apply(cur, cap)` supports **eight** symbols: binary `× + − ÷ %` and unary
+  `^` (square), `√` (`sqrt().floor()`), `Σ` (`_digitSum`). A single tail guard
+  rejects any result that isn't a whole number in `[0, cap]` (`%` also guards
+  `n ≤ 0`), so `x²` self-limits at the cap and `√`/`Σ` are always legal.
 - `ChainNode(value, [opLabel])` — one row in the visible chain.
 - `Puzzle`, `Operation`, `ChainNode` all carry `toJson`/`fromJson` (needed to
   serialize a `GameSession` for resume).
@@ -120,17 +130,31 @@ Enums it owns: `SheetOverlay`, `ScoreLabel {eagle,birdie,par,bogey,doubleBogey,o
 6. Retry: 300 strict attempts, then 300 relaxed (`par >= 2`), then a fixed
    `_fallback` (start 2, target 26, par 3).
 
-Op id prefixes: `m` multiply, `p` plus, `s` subtract, `d` divide.
+Because the forward walk already records every intermediate value, milestones
+are a **subset of those values** (`_pickMilestones`): 1 checkpoint for par 4–5,
+2 for par ≥ 6, on medium/hard only. When present, the puzzle is re-solved with
+`milestones:` set and the constrained `solvePath` result becomes both `par` and
+`solution`, so honest par threads the checkpoints. The constrained par stays
+within the tier band (a required checkpoint can only forbid shortcuts the base
+walk didn't take), so no band relaxation is needed.
+
+Op id prefixes: `m` multiply, `p` plus, `s` subtract, `d` divide, `mod` modulo,
+`sq` square, `rt` root, `ds` digit-sum.
 
 ### Solver (`game/solver.dart`)
 
-`List<String>? solvePath(Puzzle p, {int? from, Map<String,int>? used})` —
-**breadth-first search** over states of `(value, per-op used-counts)`, respecting
-each op's token cap, with a depth safety bound of 20. Because BFS is level-order,
-the first state reaching the target carries a **shortest** path; it returns that
-op-id sequence, or `null` if unsolvable. `from`/`used` default to the puzzle
-start with nothing spent, but let it also solve from a **mid-game** state — this
-is what powers live hints ("next best move from here").
+`List<String>? solvePath(Puzzle p, {int? from, Map<String,int>? used, int
+fromMilestone = 0})` — **breadth-first search** over states of
+`(value, per-op used-counts, idx)`, respecting each op's token cap, with a depth
+safety bound of 20. The `idx` dimension counts how many milestones have been
+passed **in order**; a state is the goal only when `value == target && idx ==
+milestones.length`, and `idx` bumps whenever a step's result equals the next
+milestone. With no milestones this is byte-for-byte the previous behavior.
+Because BFS is level-order, the first goal state carries a **shortest** path; it
+returns that op-id sequence, or `null` if unsolvable. `from`/`used`/
+`fromMilestone` default to the puzzle start with nothing spent and no checkpoints
+banked, but let it also solve from a **mid-game** state — this powers live hints
+("next best move from here", respecting remaining checkpoints).
 
 `int? minMoves(Puzzle p) => solvePath(p)?.length;` — one BFS, no duplicated
 logic; existing callers unchanged.
@@ -190,8 +214,9 @@ what makes par *honest* and guarantees every puzzle has a definite answer.
   carousel).
 - **Session (resume)** — `abstract SessionRepository { load, save, clear }`;
   `LocalSessionRepository` under key `numlink_session`. `GameSession { mode,
-  difficulty, puzzle, chain, used, hintsUsed, resets }` → JSON (reuses the model
-  `toJson`s). Saved on every move / hint / reset / go-home, cleared on solve;
+  difficulty, puzzle, chain, used, hintsUsed, resets, nextMilestone }` → JSON
+  (reuses the model `toJson`s); `nextMilestone` resumes a mid-checkpoint game on
+  the right sub-goal. Saved on every move / hint / reset / go-home, cleared on solve;
   loaded once at startup to resume an in-progress board. A corrupt/old snapshot
   parses to `null` (start fresh), never a crash.
 
@@ -217,10 +242,12 @@ best-effort inside try/catch — a missing/blocked player never breaks play.
 
 ## Testing
 
-51 tests, green: `app_flow_test`, `game_controller_test` (includes hints, reveal,
-and session round-trip/resume), `generator_test` (honest-par invariant),
-`solver_path_test` (path exists, `== par`, replays to target, mid-game solve),
-`settings_controller_test`, `stats_repository_test`, `welcome_widget_test`.
+61 tests, green: `app_flow_test`, `game_controller_test` (includes hints, reveal,
+session round-trip/resume, and in-order milestone banking), `generator_test`
+(honest-par invariant + milestone sanity), `solver_path_test` (path exists,
+`== par`, replays to target, mid-game solve, checkpoint-threading),
+`operation_test` (the four new operators + labels), `settings_controller_test`,
+`stats_repository_test`, `welcome_widget_test`.
 
 ## Build & run notes
 

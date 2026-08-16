@@ -37,13 +37,26 @@ overflow; do not reintroduce it).
 
 ### Game board (`screens/game_screen.dart`)
 
-The live chain of `ChainNode`s rendered top-down (the current value highlighted
-in the progress/orange color), a **heat bar** showing closeness to target, the
-**6 operation buttons**, and the action row: **UNDO · RESET · HINT·N · STATS**.
-`HINT·N` shows hints remaining and, when tapped, makes the recommended op button
-**glow** (progress-colored `boxShadow`) for ~2.5s. Once the reveal is earned
-(`g.canReveal`), a full-width **SHOW SOLUTION** button appears below the row and
-opens the solution sheet. Landing on target opens the **win sheet**.
+A **compact one-line header** (`_Header`): back button · inline `mode #no`
+title+subtitle · a single **overflow `⋯` menu** (`PopupMenuButton<SheetOverlay>`,
+Flutter stdlib) folding **How to play / Stats / Settings** into one control — no
+more three stacked icon buttons, freeing vertical space for the chain.
+
+Below it the **target bar** (`_TargetBar`) shows the **active target** as the big
+number with a label that flips `GET TO` → `CHECKPOINT n/total` → `FINAL TARGET`,
+plus a small **dots row** (`_MilestoneDots`: filled check per banked checkpoint,
+outline ahead, flag for the final target) when a puzzle has milestones.
+
+Then the live chain of `ChainNode`s rendered top-down (current value highlighted
+in the progress/orange color), a **heat bar** showing closeness to the active
+target, the **6 operation buttons** (whose labels now include `%`, `x²`, `√`, `Σ`
+glyphs), and the trimmed action row: **UNDO · RESET · HINT·N** (STATS moved into
+the overflow menu). `HINT·N` shows hints remaining and, when tapped, makes the
+recommended op button **glow** (progress-colored `boxShadow`) for ~2.5s. Once the
+reveal is earned (`g.canReveal`), a full-width **SHOW SOLUTION** button appears
+below the row and opens the solution sheet. Banking a checkpoint fires a
+win-pulse and advances the active target; landing on the final target (all
+checkpoints banked) opens the **win sheet**.
 
 ### Intro carousel (`screens/intro_carousel.dart`)
 

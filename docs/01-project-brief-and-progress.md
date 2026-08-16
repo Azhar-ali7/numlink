@@ -56,7 +56,15 @@ arithmetic.
   per puzzle) and an **earned "Show solution"** that unlocks after enough
   failed attempts (resets or spent hints, scaled by difficulty).
 - **Resume:** an in-progress game survives an app kill — the board, tokens,
-  hints, and resets are saved and restored on next launch.
+  hints, resets, and current checkpoint are saved and restored on next launch.
+- **Eight operators:** the original `× + − ÷` plus **modulo `%`**, **square
+  `x²`**, **integer root `√`**, and **digit-sum `Σ`**, difficulty-gated (medium
+  adds `%`; hard adds the unary trio).
+- **Milestones:** puzzles can carry ordered **checkpoint values** you must
+  thread in sequence before the final target; honest par is the BFS minimum
+  *through* the checkpoints, and the target bar shows the active sub-goal.
+- **Decluttered board:** one-line header with a single `⋯` overflow menu
+  (How/Stats/Settings) and a trimmed action row, giving the chain more room.
 - All five modes: Daily, Practice, Zen, Timed ladder, Archive replay.
 - Stats: streak, win rate, par-distribution histogram, per-mode counters.
 - Achievements (8 badges, sticky once earned).
@@ -88,4 +96,6 @@ Repo is public.
 
 `feat(modes)` Zen + Timed ladder → `feat(phase4)` archive replay, per-mode
 stats + achievements → `feat(phase5)` next-daily countdown → `feat(home)`
-Hero Daily + mode grid + first-run intro carousel.
+Hero Daily + mode grid + first-run intro carousel → `feat(hints)` answer
+path + live hints + earned reveal + resume → `refactor(ui)` compact header →
+`feat(ops)` four new operators → `feat(milestones)` in-order checkpoints.

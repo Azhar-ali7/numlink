@@ -13,8 +13,14 @@ start ──(op)──▶ value ──(op)──▶ value ──(op)──▶ ta
 
 ## Operations
 
-- Four kinds: **× multiply**, **+ add**, **− subtract**, **÷ divide**
-  (`Operation.symbol` + `n`, e.g. `×3`, `+7`, `−4`, `÷2`).
+- Eight kinds, four **binary** (take an operand `n`) and four **unary** (ignore
+  `n`):
+  - **× multiply**, **+ add**, **− subtract**, **÷ divide** — `×3`, `+7`, `−4`,
+    `÷2`.
+  - **% modulo** (`%n`, remainder), **x² square** (`^`), **√ integer root**
+    (floored, unary), **Σ digit-sum** (sum of decimal digits, unary).
+  - `Operation.label` renders `$symbol$n` for binary ops, but drops the operand
+    for the unary/square glyphs: `%7`, `x²`, `√`, `Σ`.
 - Each puzzle offers **6 operation buttons** (the ones the optimal solution
   needs, plus decoys).
 - Every operation has a **token budget** — a small number of times it may be
@@ -26,19 +32,50 @@ start ──(op)──▶ value ──(op)──▶ value ──(op)──▶ ta
 
 1. **Division must be exact** — `÷n` is illegal unless `current` is evenly
    divisible by `n` (no fractions ever).
-2. **No negatives** — a result below 0 is illegal.
-3. **Cap** — a result above the puzzle **cap** (default **999**) is illegal.
-4. **No tokens left** — an op at 0 remaining tokens can't be used.
+2. **Modulo needs `n > 0`** — `%n` with `n ≤ 0` is illegal.
+3. **No negatives** — a result below 0 is illegal.
+4. **Cap** — a result above the puzzle **cap** (default **999**) is illegal.
+   (This is what self-limits **x²**: `40²` = 1600 > 999 is rejected.)
+5. **No tokens left** — an op at 0 remaining tokens can't be used.
+
+Every op is guarded uniformly: the result must be a whole number in `[0, cap]`,
+so **√** and **Σ** (which only ever shrink the value) are always in range.
 
 An illegal tap doesn't change the chain: it triggers a **shake** on the button
 and a toast, so the feedback is immediate but harmless. It is **not** counted as
 a failed attempt (only resets of a played board are — see below).
 
+## Milestones (checkpoints)
+
+Some puzzles carry **ordered checkpoint values** (`Puzzle.milestones`) that you
+must pass through **in sequence** before the final target — small sub-goals on
+the way down.
+
+- The target bar shows your **active target**: the next unreached checkpoint, or
+  the final target once all are banked. A `CHECKPOINT n/total` → `FINAL TARGET`
+  label and a dots row track progress.
+- Landing your chain value **exactly** on the active checkpoint **banks** it
+  (a win-pulse fires) and advances the active target to the next one. You do
+  **not** win by hitting the final target value early — every checkpoint must be
+  banked first, in order.
+- Heat / proximity guidance points at the **active target**, not the final one,
+  so the closeness cue always tracks the current sub-goal.
+- Milestones sit on the puzzle's real forward solution, so an in-order route
+  always exists, and **honest par threads them**: published par is the BFS
+  minimum *through* the checkpoints in order (see below).
+- The generator adds them only to **medium/hard** puzzles with room to (par ≥ 4
+  → 1 checkpoint, par ≥ 6 → 2, evenly spaced; start/target excluded). Easy
+  puzzles and short pars stay checkpoint-free — an empty list behaves exactly
+  as before.
+
 ## Winning & par
 
-- You **win** when the chain value equals the target exactly.
+- You **win** when the chain value equals the target exactly **and** every
+  milestone has been banked in order.
 - Every puzzle has a **par** = the *true minimum* number of operations needed,
-  found by breadth-first search over all legal chains (`minMoves`).
+  found by breadth-first search over all legal chains (`minMoves`). When a puzzle
+  has milestones, the BFS is constrained to pass them in order, so par is the
+  shortest **checkpoint-threading** route.
 - **Honest par is a hard invariant:** `minMoves(puzzle) == puzzle.par` for every
   published puzzle. Par is never estimated.
 
@@ -95,11 +132,16 @@ the optimal BFS solver — it's real, not inflated.
 `DifficultySpec` bounds the generator (see architecture doc for the table):
 
 - **easy** — par 2–3, targets ≤ 50, start ≤ 9, **no division**, +2 extra tokens.
+  Only `× + −`; no checkpoints.
 - **medium** — par 3–4, targets ≤ 200, start ≤ 15, division allowed, +1 token.
+  Adds **`÷` and `%`** to the pool; may carry 1 checkpoint.
 - **hard** — par 4–6, targets ≤ 999, start ≤ 20, division allowed, no extra
-  tokens.
+  tokens. Adds the high-target unary trio **`x²`, `√`, `Σ`** on top; may carry
+  1–2 checkpoints.
 
-The **Daily** puzzle is always **medium**.
+The new operators are **difficulty-gated** play-test knobs (`ponytail:` in
+`_candidates`): `%` unlocks once division is allowed, and `x²`/`√`/`Σ` only when
+`maxTarget ≥ 999`. The **Daily** puzzle is always **medium**.
 
 ## Generation constraints
 

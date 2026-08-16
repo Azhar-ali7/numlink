@@ -15,10 +15,23 @@ it (`ChainNode(value, [opLabel])`).
 
 **Target** — the number you must land on **exactly** to win.
 
-**Operation (op)** — one arithmetic move: `× + − ÷` with an operand `n`
-(e.g. `×3`). `Operation { id, symbol, n, tokens }`; `label = "$symbol$n"`.
+**Operation (op)** — one arithmetic move. Eight symbols: binary `× + − ÷ %`
+(with an operand `n`, e.g. `×3`, `%7`) and unary `x² √ Σ` (operand ignored).
+`Operation { id, symbol, n, tokens }`; `label` is `"$symbol$n"` for binary ops,
+but `x²` / `√` / `Σ` for the unary glyphs.
 
-**Operand (`n`)** — the number the operation applies (the `3` in `×3`).
+**Modulo (`%n`)** — remainder of `current ÷ n` (`20 %7 = 6`); illegal if `n ≤ 0`.
+
+**Square (`x²`)** — `current²`; unary. Self-limited by the cap (`40²` > 999 is
+illegal).
+
+**Integer root (`√`)** — floored square root, `sqrt(current).floor()` (`82 → 9`);
+unary.
+
+**Digit-sum (`Σ`)** — sum of the decimal digits of `current` (`256 → 13`); unary.
+
+**Operand (`n`)** — the number a binary operation applies (the `3` in `×3`);
+ignored by the unary ops.
 
 **Apply** — perform an op on the current value: `Operation.apply(current, cap)`.
 Returns the new value or rejects the move if illegal.
@@ -36,7 +49,17 @@ button and don't alter the chain.
 **Decoy op** — an operation offered in the 6-button pad that the optimal
 solution doesn't need; there to mislead.
 
-**Solve / win** — reaching the target value exactly.
+**Milestone / Checkpoint** — an ordered value (`Puzzle.milestones`) the chain
+must pass through **in sequence** before the final target. Banking one fires a
+win-pulse and advances the goal; the final target only wins once all are banked.
+
+**Active target** — the goal currently shown to the player
+(`GameController.activeTarget`): the next unreached checkpoint, or the final
+target once every milestone is banked. Heat and proximity track it, not the
+final target.
+
+**Solve / win** — reaching the target value exactly, with every milestone
+already banked in order.
 
 ## Scoring terms
 
@@ -68,7 +91,8 @@ via `solvePath(from: current)` and glows the recommended op. Capped per puzzle b
 difficulty), opening the solution sheet.
 
 **Resume / GameSession** — a snapshot of the in-progress game
-(`mode, difficulty, puzzle, chain, used, hintsUsed, resets`) persisted by
+(`mode, difficulty, puzzle, chain, used, hintsUsed, resets, nextMilestone`)
+persisted by
 `SessionRepository` (key `numlink_session`) so a killed app resumes on the same
 board. `resumeFrom` re-seeds it at startup.
 
@@ -101,7 +125,8 @@ affect streak.
 ## Generation & scheduling terms
 
 **Generator** — `PuzzleGenerator`: forward-builds a solution, adds decoys,
-BFS-verifies par, and republishes the honest par.
+picks milestones from the walked values, BFS-verifies par (threading the
+checkpoints), and republishes the honest par.
 
 **Seed** — the deterministic input to generation. For the daily, **seed = puzzle
 number**, so every device produces the same board.

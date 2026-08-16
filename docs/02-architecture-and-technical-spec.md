@@ -83,7 +83,11 @@ from the design prototype's loop. Key methods:
   `hintOpId`, `canReveal`, `answerPath`. `reset()` bumps a `_resets` failure
   counter (only when the board was played), which drives `canReveal`.
 - **Mode entry:** `startDaily()`, `startPractice(d)`, `startZen(d)`,
-  `startTimed()`, `startArchive(no)`, `goHome()`, `newPuzzle()`, `playAgain()`.
+  `startTimed()`, `startArchive(no)`, `startCampaign(n)`, `goHome()`,
+  `newPuzzle()`, `playAgain()`. All but Timed guard on `_canResume(mode, {no, d})`
+  — if the preserved in-memory board matches and is still mid-solve, they
+  `_resumeBoard()` (re-show it) instead of loading a fresh puzzle, so backing out
+  to Home and re-entering the same mode continues the game.
 - **Resume:** `resumeFrom(GameSession)` re-seeds the board at startup; a private
   `_persist()` snapshots progress to `SessionRepository` on every mutation,
   `_clearSession()` wipes it on solve.

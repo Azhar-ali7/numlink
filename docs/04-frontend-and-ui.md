@@ -13,6 +13,12 @@ a `SafeArea`, everything is a single `Stack` of layers (no route navigation):
 5. **Active bottom sheet** — win / stats / how-to / settings / archive / solution.
 6. **IntroCarousel** — first-run tutorial (topmost).
 
+Because there's no route stack, a `PopScope` on the shell maps the **Android back
+button** onto these layers: it closes an open sheet, else dismisses the intro,
+else returns a live board to Home (`goHome()`), and only lets the system pop
+(exit the app) from the bare Home hub. Returning to Home keeps the board in
+memory, so tapping the same mode again resumes it.
+
 ## Screens
 
 ### Home (`screens/welcome_screen.dart`)

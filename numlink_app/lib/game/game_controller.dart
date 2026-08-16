@@ -23,13 +23,13 @@ enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
 
 extension ScoreLabelText on ScoreLabel {
   String text(int over) => switch (this) {
-        ScoreLabel.eagle => 'Eagle',
-        ScoreLabel.birdie => 'Birdie',
-        ScoreLabel.par => 'Par',
-        ScoreLabel.bogey => 'Bogey',
-        ScoreLabel.doubleBogey => 'Double bogey',
-        ScoreLabel.over => '+$over',
-      };
+    ScoreLabel.eagle => 'Eagle',
+    ScoreLabel.birdie => 'Birdie',
+    ScoreLabel.par => 'Par',
+    ScoreLabel.bogey => 'Bogey',
+    ScoreLabel.doubleBogey => 'Double bogey',
+    ScoreLabel.over => '+$over',
+  };
 }
 
 /// Proximity heat state, mapped to a themed color by the UI.
@@ -45,10 +45,10 @@ class GameController extends ChangeNotifier {
     required GameStats initialStats,
     this.puzzleRepo = const LocalPuzzleRepository(),
     this.sessionRepo,
-  })  : _puzzle = puzzle,
-        _dailyPuzzle = puzzle,
-        _statsRepo = statsRepo,
-        _stats = initialStats;
+  }) : _puzzle = puzzle,
+       _dailyPuzzle = puzzle,
+       _statsRepo = statsRepo,
+       _stats = initialStats;
 
   Puzzle _puzzle;
 
@@ -74,22 +74,22 @@ class GameController extends ChangeNotifier {
 
   /// Header title/subtitle for the active mode.
   String get modeTitle => switch (_mode) {
-        GameMode.daily => 'NUMLINK',
-        GameMode.practice => 'Practice',
-        GameMode.zen => 'Zen',
-        GameMode.timed => 'Timed',
-        GameMode.archive => 'Archive',
-        GameMode.campaign => 'Level $levelNo',
-      };
+    GameMode.daily => 'NUMLINK',
+    GameMode.practice => 'Practice',
+    GameMode.zen => 'Zen',
+    GameMode.timed => 'Timed',
+    GameMode.archive => 'Archive',
+    GameMode.campaign => 'Level $levelNo',
+  };
 
   String get modeSubtitle => switch (_mode) {
-        GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
-        GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
-        GameMode.zen => 'Free play · ${_difficulty.label}',
-        GameMode.timed => 'Stage $stage / $stageCount',
-        GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
-        GameMode.campaign => '${_difficulty.label} · par ${_puzzle.par}',
-      };
+    GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+    GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
+    GameMode.zen => 'Free play · ${_difficulty.label}',
+    GameMode.timed => 'Stage $stage / $stageCount',
+    GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
+    GameMode.campaign => '${_difficulty.label} · par ${_puzzle.par}',
+  };
 
   List<ChainNode> _chain = [];
   final Map<String, int> _used = {};
@@ -152,10 +152,10 @@ class GameController extends ChangeNotifier {
 
   /// Mode-aware win-sheet summary — Zen drops par/score language entirely.
   String get winSummary => switch (_mode) {
-        GameMode.zen => '$moves moves',
-        GameMode.timed => '$stageCount stages · $elapsedLabel',
-        _ => '$moves moves · par $par · ${scoreLabel.text(scoreOver)}',
-      };
+    GameMode.zen => '$moves moves',
+    GameMode.timed => '$stageCount stages · $elapsedLabel',
+    _ => '$moves moves · par $par · ${scoreLabel.text(scoreOver)}',
+  };
 
   GameController init() {
     _chain = [ChainNode(puzzle.start)];
@@ -201,8 +201,10 @@ class GameController extends ChangeNotifier {
         : (solvePath(_puzzle) ?? const <String>[]);
     return [
       for (final id in ids)
-        _puzzle.ops.firstWhere((o) => o.id == id,
-            orElse: () => Operation(id: id, symbol: '?', n: 0, tokens: 0)),
+        _puzzle.ops.firstWhere(
+          (o) => o.id == id,
+          orElse: () => Operation(id: id, symbol: '?', n: 0, tokens: 0),
+        ),
     ];
   }
 
@@ -246,7 +248,7 @@ class GameController extends ChangeNotifier {
   String get proximityText => _solved
       ? 'On target'
       : '$distance away from '
-          '${_nextMilestone < _puzzle.milestones.length ? 'checkpoint' : 'target'}';
+            '${_nextMilestone < _puzzle.milestones.length ? 'checkpoint' : 'target'}';
 
   /// Tokens remaining for [o].
   int remaining(Operation o) => o.tokens - (_used[o.id] ?? 0);
@@ -283,9 +285,11 @@ class GameController extends ChangeNotifier {
     }
     final r = o.apply(current, cap: puzzle.cap);
     if (r == null) {
-      _flash(o.symbol == '÷'
-          ? "That doesn't divide evenly"
-          : 'That goes out of range');
+      _flash(
+        o.symbol == '÷'
+            ? "That doesn't divide evenly"
+            : 'That goes out of range',
+      );
       _shake(o.id);
       feedback.onIllegal();
       return;
@@ -300,9 +304,11 @@ class GameController extends ChangeNotifier {
       _nextMilestone++;
       _winPulse++;
       feedback.onSolve();
-      _flash(_nextMilestone < ms.length
-          ? 'Checkpoint! Next: ${ms[_nextMilestone]}'
-          : 'Checkpoint! Now reach ${puzzle.target}');
+      _flash(
+        _nextMilestone < ms.length
+            ? 'Checkpoint! Next: ${ms[_nextMilestone]}'
+            : 'Checkpoint! Now reach ${puzzle.target}',
+      );
       _persist();
       notifyListeners();
       return;
@@ -366,8 +372,12 @@ class GameController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final ids = solvePath(_puzzle,
-        from: current, used: _used, fromMilestone: _nextMilestone);
+    final ids = solvePath(
+      _puzzle,
+      from: current,
+      used: _used,
+      fromMilestone: _nextMilestone,
+    );
     if (ids == null || ids.isEmpty) {
       _flash('No hint available');
       notifyListeners();
@@ -396,7 +406,11 @@ class GameController extends ChangeNotifier {
   /// Swaps in a new puzzle and clears the board — the seam for Practice/Zen/
   /// Timed and Archive. [mode]/[difficulty] tag the session for stat routing
   /// and mode-aware UI.
-  void load(Puzzle p, {GameMode mode = GameMode.daily, Difficulty? difficulty}) {
+  void load(
+    Puzzle p, {
+    GameMode mode = GameMode.daily,
+    Difficulty? difficulty,
+  }) {
     _puzzle = p;
     _mode = mode;
     if (difficulty != null) _difficulty = difficulty;
@@ -435,8 +449,27 @@ class GameController extends ChangeNotifier {
     _persist(); // durability if the app is killed from the hub
   }
 
-  /// Practice: generate a fresh puzzle at tier [d] and start it.
+  /// True when the current in-memory board is mode [m] (matching [no]/[d] when
+  /// given) and still mid-solve — so re-entering that mode from the hub resumes
+  /// it instead of loading a fresh puzzle.
+  bool _canResume(GameMode m, {int? no, Difficulty? d}) =>
+      _mode == m &&
+      !_solved &&
+      moves > 0 &&
+      (no == null || _puzzle.no == no) &&
+      (d == null || _difficulty == d);
+
+  /// Re-show the preserved board without touching it.
+  void _resumeBoard() {
+    _started = true;
+    _overlay = null;
+    notifyListeners();
+  }
+
+  /// Practice: resume an in-progress board at tier [d], else generate a fresh
+  /// puzzle and start it.
   Future<void> startPractice(Difficulty d) async {
+    if (_canResume(GameMode.practice, d: d)) return _resumeBoard();
     final p = await puzzleRepo.generate(d);
     load(p, mode: GameMode.practice, difficulty: d);
   }
@@ -444,6 +477,7 @@ class GameController extends ChangeNotifier {
   /// Zen: like Practice but pressure-free — no par/score/streak (win recording
   /// is already gated to daily; the UI hides par/heat for this mode).
   Future<void> startZen(Difficulty d) async {
+    if (_canResume(GameMode.zen, d: d)) return _resumeBoard();
     final p = await puzzleRepo.generate(d);
     load(p, mode: GameMode.zen, difficulty: d);
   }
@@ -484,8 +518,12 @@ class GameController extends ChangeNotifier {
       _stats = _stats.bumpCounter('timedRuns');
       _awardXp(completed * 5); // whole-run XP: 5 per stage cleared
     }
-    _stats = _stats.withUnlocked(earnedAchievements(
-        _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
+    _stats = _stats.withUnlocked(
+      earnedAchievements(
+        _stats,
+        const SolveContext(scoreOver: 0, usedDivision: false),
+      ),
+    );
     _statsRepo.save(_stats);
     if (done) {
       notifyListeners();
@@ -498,6 +536,7 @@ class GameController extends ChangeNotifier {
   /// Archive: replay a past daily by number. Never affects the streak; a solve
   /// is banked in the archive-completion set instead.
   Future<void> startArchive(int no) async {
+    if (_canResume(GameMode.archive, no: no)) return _resumeBoard();
     load(await puzzleRepo.archive(no), mode: GameMode.archive);
   }
 
@@ -507,8 +546,12 @@ class GameController extends ChangeNotifier {
   /// Campaign: start (or replay) level [n] from the roadmap. The generated
   /// puzzle carries `no == n`, so [levelNo] recovers it (resume-safe).
   Future<void> startCampaign(int n) async {
-    load(await puzzleRepo.campaign(n),
-        mode: GameMode.campaign, difficulty: kCampaign[n - 1].tier);
+    if (_canResume(GameMode.campaign, no: n)) return _resumeBoard();
+    load(
+      await puzzleRepo.campaign(n),
+      mode: GameMode.campaign,
+      difficulty: kCampaign[n - 1].tier,
+    );
   }
 
   /// Active campaign level number (only meaningful in campaign mode).
@@ -589,16 +632,18 @@ class GameController extends ChangeNotifier {
   void _persist() {
     if (sessionRepo == null || _solved) return;
     if (moves == 0 && _hintsUsed == 0 && _resets == 0) return;
-    sessionRepo!.save(GameSession(
-      mode: _mode,
-      difficulty: _difficulty,
-      puzzle: _puzzle,
-      chain: _chain,
-      used: _used,
-      hintsUsed: _hintsUsed,
-      resets: _resets,
-      nextMilestone: _nextMilestone,
-    ));
+    sessionRepo!.save(
+      GameSession(
+        mode: _mode,
+        difficulty: _difficulty,
+        puzzle: _puzzle,
+        chain: _chain,
+        used: _used,
+        hintsUsed: _hintsUsed,
+        resets: _resets,
+        nextMilestone: _nextMilestone,
+      ),
+    );
   }
 
   void _clearSession() => sessionRepo?.clear();
@@ -613,8 +658,7 @@ class GameController extends ChangeNotifier {
   /// other modes bump their own counters or the archive-completion set. Every
   /// mode re-evaluates achievements. (Timed records per-stage in [_solveTimed].)
   void _recordSolve() {
-    final ctx =
-        SolveContext(scoreOver: scoreOver, usedDivision: _usedDivision);
+    final ctx = SolveContext(scoreOver: scoreOver, usedDivision: _usedDivision);
     switch (_mode) {
       case GameMode.daily:
         if (_recorded) return;

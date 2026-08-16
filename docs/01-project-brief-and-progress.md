@@ -58,6 +58,9 @@ arithmetic.
   failed attempts (resets or spent hints, scaled by difficulty).
 - **Resume:** an in-progress game survives an app kill — the board, tokens,
   hints, resets, and current checkpoint are saved and restored on next launch.
+  The **Android back button** returns to Home instead of exiting (unwinding
+  sheets/intro first), and re-entering the same mode **continues** the
+  in-progress board rather than starting over.
 - **Eight operators:** the original `× + − ÷` plus **modulo `%`**, **square
   `x²`**, **integer root `√`**, and **digit-sum `Σ`**, difficulty-gated (medium
   adds `%`; hard adds the unary trio).

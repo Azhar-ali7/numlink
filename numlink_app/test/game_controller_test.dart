@@ -736,4 +736,60 @@ void main() {
       expect(g.hintsLeft, 2); // hard: 3 hints, 1 used
     });
   });
+
+  group('resume on re-entry (back → same mode continues)', () {
+    Future<GameController> gen() async => GameController(
+          puzzle: kReferencePuzzle,
+          statsRepo: FakeStatsRepository(),
+          feedback: FeedbackService(),
+          initialStats: GameStats.empty,
+          puzzleRepo: _RefGenRepo(),
+        ).init();
+
+    test('same mode + difficulty resumes the in-progress board', () async {
+      final g = await gen();
+      await g.startPractice(Difficulty.medium);
+      g.apply(_op(g, 'm3')); // 2 → 6: one move, not solved
+      expect(g.moves, 1);
+
+      g.goHome();
+      expect(g.started, isFalse);
+
+      await g.startPractice(Difficulty.medium); // re-enter the same mode
+      expect(g.started, isTrue);
+      expect(g.moves, 1, reason: 'resumed the board, not reloaded');
+      expect(g.current, 6);
+    });
+
+    test('a different difficulty loads a fresh board', () async {
+      final g = await gen();
+      await g.startPractice(Difficulty.medium);
+      g.apply(_op(g, 'm3'));
+      g.goHome();
+
+      await g.startPractice(Difficulty.hard); // different tier → new puzzle
+      expect(g.moves, 0);
+      expect(g.difficulty, Difficulty.hard);
+    });
+
+    test('a solved board is not resumed', () async {
+      final g = await gen();
+      await g.startPractice(Difficulty.medium);
+      g.apply(_op(g, 'm3')); // 6
+      g.apply(_op(g, 'p7')); // 13
+      g.apply(_op(g, 'm2')); // 26 == target → solved
+      expect(g.solved, isTrue);
+      g.goHome();
+
+      await g.startPractice(Difficulty.medium);
+      expect(g.moves, 0, reason: 'solved boards start fresh');
+    });
+  });
+}
+
+/// Repo whose `generate` yields the 2-step reference puzzle, so a resume test
+/// can make a move without immediately solving (the trivial fake is par-1).
+class _RefGenRepo extends FakePuzzleRepository {
+  @override
+  Future<Puzzle> generate(Difficulty d, {int? seed}) async => kReferencePuzzle;
 }

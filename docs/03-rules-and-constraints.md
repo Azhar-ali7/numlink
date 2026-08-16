@@ -111,6 +111,15 @@ continuing exactly where they left off. Within a live session, backing out to
 the Home hub already preserves the board in memory; persistence only adds
 durability across process death.
 
+**Back button** (Android): pressing back never exits mid-flow — it unwinds the
+in-app layers in order (an open sheet → the intro carousel → the game board back
+to Home) and only pops the process from the bare Home hub. Backing out of a board
+keeps it in memory, so **re-entering that same mode continues the in-progress
+game** rather than dealing a fresh puzzle: Daily/Campaign resume the same
+`no`, Practice/Zen resume when the chosen difficulty matches; a solved or
+untouched board always starts fresh. Timed is the exception — leaving a run ends
+it (it restarts on re-entry).
+
 ## Scoring (golf)
 
 Your score is your move count relative to par:

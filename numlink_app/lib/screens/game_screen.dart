@@ -39,50 +39,69 @@ extension on Widget {
 class _Header extends StatelessWidget {
   const _Header();
 
+  PopupMenuItem<SheetOverlay> _item(
+          SheetOverlay v, IconData icon, String label, NumTokens t) =>
+      PopupMenuItem(
+        value: v,
+        child: Row(children: [
+          Icon(icon, size: 18, color: t.text),
+          const SizedBox(width: 12),
+          Text(label, style: Fonts.ui(size: 14, color: t.text)),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     final g = context.watch<GameController>();
     final t = NumTheme.of(context);
+    // Compact one-line header: title + inline subtitle + a single overflow menu
+    // (help/stats/settings folded in), freeing vertical space for the chain.
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 10),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: t.border, width: 2)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconSquareButton(
               icon: Icons.arrow_back,
               semanticLabel: 'Home',
               onTap: g.goHome),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(g.modeTitle,
-                    style: Fonts.display(
-                        size: 26, color: t.text, letterSpacing: -0.6, height: 1)),
-                const SizedBox(height: 5),
-                Text(g.modeSubtitle,
-                    style: Fonts.mono(size: 11, color: t.muted, letterSpacing: 0.5)),
+                Flexible(
+                  child: Text(g.modeTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Fonts.display(
+                          size: 22, color: t.text, letterSpacing: -0.5, height: 1)),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(g.modeSubtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          Fonts.mono(size: 11, color: t.muted, letterSpacing: 0.5)),
+                ),
               ],
             ),
           ),
-          IconSquareButton(
-              icon: Icons.help_outline,
-              semanticLabel: 'How to play',
-              onTap: () => g.open(SheetOverlay.how)),
-          const SizedBox(width: 8),
-          IconSquareButton(
-              icon: Icons.bar_chart,
-              semanticLabel: 'Stats',
-              onTap: () => g.open(SheetOverlay.stats)),
-          const SizedBox(width: 8),
-          IconSquareButton(
-              icon: Icons.tune,
-              semanticLabel: 'Settings',
-              onTap: () => g.open(SheetOverlay.settings)),
+          PopupMenuButton<SheetOverlay>(
+            tooltip: 'Menu',
+            icon: Icon(Icons.more_horiz, color: t.text),
+            color: t.surface,
+            onSelected: g.open,
+            itemBuilder: (_) => [
+              _item(SheetOverlay.how, Icons.help_outline, 'How to play', t),
+              _item(SheetOverlay.stats, Icons.bar_chart, 'Stats', t),
+              _item(SheetOverlay.settings, Icons.tune, 'Settings', t),
+            ],
+          ),
         ],
       ),
     );
@@ -313,10 +332,6 @@ class _OperationPad extends StatelessWidget {
               Expanded(
                   child: _TextButton(
                       label: 'HINT·${g.hintsLeft}', onTap: g.hint)),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: _TextButton(
-                      label: 'STATS', onTap: () => g.open(SheetOverlay.stats))),
             ],
           ),
           // Reveal is earned: unlocks after enough resets / spent hints.

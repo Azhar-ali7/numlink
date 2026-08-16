@@ -44,7 +44,7 @@ class OperationButton extends StatelessWidget {
         opacity: disabled ? 0.38 : 1,
         child: AnimatedContainer(
           duration: Motion.micro,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: t.surface,
             border: Border.all(

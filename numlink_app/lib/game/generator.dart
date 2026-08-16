@@ -24,6 +24,10 @@ class PuzzleGenerator {
     '+': 'p',
     '−': 's',
     '÷': 'd',
+    '%': 'mod',
+    '^': 'sq',
+    '√': 'rt',
+    'Σ': 'ds',
   };
 
   /// Generates a puzzle for tier [d]. Pass [seed] for deterministic output
@@ -162,6 +166,12 @@ class PuzzleGenerator {
     if (spec.maxTarget >= 300) list.add(_op('×', 4));
     if (spec.allowDivide) {
       list..add(_op('÷', 2))..add(_op('÷', 3));
+      // ponytail: modulo on medium+hard; square/root/digit-sum on hard only.
+      // Tunable knobs — retune the gates/operands after play-testing.
+      list..add(_op('%', 3))..add(_op('%', 4))..add(_op('%', 5))..add(_op('%', 7));
+    }
+    if (spec.maxTarget >= 999) {
+      list..add(_op('^', 2))..add(_op('√', 0))..add(_op('Σ', 0));
     }
     return list;
   }

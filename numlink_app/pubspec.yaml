@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.9.0 # 3.9+ required by the Dart/Flutter MCP server (flutter_driver UI loop)
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -40,6 +40,14 @@ dependencies:
   flutter_animate: ^4.5.2
   confetti: ^0.8.0
   audioplayers: ^6.6.0
+
+  # Enables the MCP/agent UI-driving loop (tap/type/scroll). The extension is
+  # gated behind ENABLE_FLUTTER_DRIVER in main.dart, so it stays inactive at
+  # runtime unless launched with --dart-define=ENABLE_FLUTTER_DRIVER=true. Lives
+  # in dependencies (not dev) because main.dart imports it: recent Flutter strips
+  # dev_dependencies from release builds, which would break the gated import.
+  flutter_driver:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

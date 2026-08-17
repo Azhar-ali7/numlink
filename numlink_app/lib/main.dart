@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_driver/driver_extension.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,11 @@ import 'game/puzzle_repository.dart';
 import 'services/feedback_service.dart';
 
 Future<void> main() async {
+  // Opt-in only (--dart-define=ENABLE_FLUTTER_DRIVER=true) so normal and release
+  // builds are untouched; lets the MCP/agent loop drive the running UI.
+  if (const bool.fromEnvironment('ENABLE_FLUTTER_DRIVER')) {
+    enableFlutterDriverExtension();
+  }
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();

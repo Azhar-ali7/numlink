@@ -8,7 +8,10 @@ plugins {
 android {
     namespace = "com.numlink.numlink_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pin to the locally-installed NDK. flutter.ndkVersion defaults to 28.2 on
+    // Flutter 3.47, which triggers a slow auto-download; 26.3 is already on disk
+    // and satisfies every native dep here. Bump if a plugin ever demands higher.
+    ndkVersion = "26.3.11579264"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

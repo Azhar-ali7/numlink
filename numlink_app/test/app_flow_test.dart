@@ -57,7 +57,9 @@ void main() {
     // Welcome overlay is visible (verifies the Positioned.fill overlay wiring).
     expect(find.text("Play today's puzzle"), findsOneWidget);
 
-    // Start the game.
+    // Start the game. The redesigned Home scrolls; the hero button can sit
+    // below the 800×600 headless window, so bring it on-screen before tapping.
+    await tester.ensureVisible(find.text("Play today's puzzle"));
     await tester.tap(find.text("Play today's puzzle"));
     await tester.pump(const Duration(milliseconds: 400));
     expect(game.started, isTrue);
@@ -118,7 +120,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(game.started, isTrue);
     expect(game.mode.name, 'practice');
-    expect(find.text('GET TO'), findsOneWidget);
+    // Board target bar rendered. Use 'MOVES' (always shown), not 'GET TO':
+    // a random practice puzzle may have checkpoints, flipping that label.
+    expect(find.text('MOVES'), findsOneWidget);
     expect(find.text('Practice'), findsOneWidget); // header title
 
     // Back to Home via the header button.

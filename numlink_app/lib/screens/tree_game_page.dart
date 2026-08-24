@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -193,6 +195,260 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Eight escalating stages for one branching timed run (sprouts → hard).
+const _timedLadder = <String>[
+  'sprouts', 'junior', 'junior', 'easy', 'easy', 'medium', 'medium', 'hard',
+];
+
+/// Timed ladder on the branching engine: a stopwatch race through
+/// [_timedLadder]. Each solve auto-advances to the next stage; clearing the
+/// last one stops the clock and shows the run summary. [onStageSolved] banks
+/// each cleared stage into the shared stats and hands back XP/level for the
+/// summary. Launched from the Timed tile via [Navigator.push].
+class TimedTreePage extends StatefulWidget {
+  const TimedTreePage({super.key, this.onStageSolved});
+
+  /// (stageCompleted 1-based, runDone) → optional WinRecord for the summary.
+  final WinRecord? Function(int stageCompleted, bool runDone)? onStageSolved;
+
+  @override
+  State<TimedTreePage> createState() => _TimedTreePageState();
+}
+
+class _TimedTreePageState extends State<TimedTreePage> {
+  int _stage = 0; // 0-based index into _timedLadder
+  int _seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+  int _elapsed = 0; // seconds
+  bool _done = false;
+  WinRecord? _win;
+  int _confetti = 0;
+  Timer? _tick;
+  late TreeController _c = _make();
+
+  TreeController _make() {
+    final c = TreeController(buildPuzzle(_timedLadder[_stage], _seed))..init();
+    c.addListener(_onChange);
+    return c;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!_done) setState(() => _elapsed++);
+    });
+  }
+
+  void _onChange() {
+    if (!_c.solved || _done) return;
+    final completed = _stage + 1;
+    final runDone = completed >= _timedLadder.length;
+    final record = widget.onStageSolved?.call(completed, runDone);
+    setState(() {
+      _confetti++;
+      if (runDone) {
+        _done = true;
+        _win = record;
+        _tick?.cancel();
+      } else {
+        _stage = completed;
+        _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
+        _c.removeListener(_onChange);
+        _c.dispose();
+        _c = _make();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _c.removeListener(_onChange);
+    _c.dispose();
+    super.dispose();
+  }
+
+  String get _clock {
+    final m = _elapsed ~/ 60, s = _elapsed % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _restart() => Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => TimedTreePage(onStageSolved: widget.onStageSolved),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return ChangeNotifierProvider<TreeController>.value(
+      value: _c,
+      child: Scaffold(
+        backgroundColor: t.bg,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _TimedHeader(
+                      stage: _stage + 1,
+                      total: _timedLadder.length,
+                      clock: _clock),
+                  const Expanded(child: TreeGameScreen()),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 172,
+                child: Consumer<TreeController>(
+                  builder: (_, c, __) => (c.message != null && !c.solved)
+                      ? Center(child: GameToast(message: c.message!))
+                      : const SizedBox.shrink(),
+                ),
+              ),
+              Positioned.fill(child: ConfettiOverlay(pulse: _confetti)),
+              if (_done)
+                _RunCompleteSheet(
+                    stages: _timedLadder.length,
+                    clock: _clock,
+                    win: _win,
+                    onPlayAgain: _restart),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimedHeader extends StatelessWidget {
+  const _TimedHeader(
+      {required this.stage, required this.total, required this.clock});
+  final int stage;
+  final int total;
+  final String clock;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 20, 6),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: t.text),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          Text('STAGE $stage/$total',
+              style: Fonts.ui(
+                  size: 14,
+                  color: t.text,
+                  weight: FontWeight.w800,
+                  letterSpacing: 2)),
+          const Spacer(),
+          Icon(Icons.bolt_rounded, size: 18, color: NumTokens.accentOrange),
+          const SizedBox(width: 4),
+          Text(clock,
+              style: Fonts.mono(
+                  size: 16, color: t.text, weight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Run summary shown when the last stage falls: total stages, elapsed clock,
+/// optional +XP pill, Play again / Home.
+class _RunCompleteSheet extends StatelessWidget {
+  const _RunCompleteSheet(
+      {required this.stages,
+      required this.clock,
+      required this.win,
+      required this.onPlayAgain});
+  final int stages;
+  final String clock;
+  final WinRecord? win;
+  final VoidCallback onPlayAgain;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Colors.black54,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
+            decoration: BoxDecoration(
+              color: t.elevated,
+              border: Border(top: BorderSide(color: t.success, width: 3)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('RUN COMPLETE',
+                    style: Fonts.ui(
+                        size: 11,
+                        color: t.success,
+                        weight: FontWeight.w700,
+                        letterSpacing: 2)),
+                const SizedBox(height: 4),
+                Text('$stages stages · $clock',
+                    style: Fonts.display(size: 34, color: t.text, height: 1)),
+                if (win != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: tint(NumTokens.hero, 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text('+${win!.xpGained} XP  ·  Level ${win!.level}',
+                        style: Fonts.ui(
+                            size: 13,
+                            color: NumTokens.hero,
+                            weight: FontWeight.w800)),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _action(
+                        label: 'Play again',
+                        bg: t.success,
+                        fg: Colors.white,
+                        onTap: onPlayAgain,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _action(
+                        label: 'Home',
+                        bg: tint(t.text, 0.06),
+                        fg: t.text,
+                        onTap: () => Navigator.of(context).maybePop(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Golf score label from moves-over-par (prototype 2016).
 ScoreLabel _labelFor(int over) => over <= -2
     ? ScoreLabel.eagle
@@ -374,24 +630,26 @@ class _WinSheet extends StatelessWidget {
         ),
       );
 
-  Widget _action({
-    required String label,
-    required Color bg,
-    required Color fg,
-    required VoidCallback onTap,
-  }) =>
-      Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            alignment: Alignment.center,
-            child: Text(label,
-                style: Fonts.ui(size: 14, color: fg, weight: FontWeight.w800)),
-          ),
-        ),
-      );
 }
+
+/// A flat rounded action button shared by the win / run-complete sheets.
+Widget _action({
+  required String label,
+  required Color bg,
+  required Color fg,
+  required VoidCallback onTap,
+}) =>
+    Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          alignment: Alignment.center,
+          child: Text(label,
+              style: Fonts.ui(size: 14, color: fg, weight: FontWeight.w800)),
+        ),
+      ),
+    );

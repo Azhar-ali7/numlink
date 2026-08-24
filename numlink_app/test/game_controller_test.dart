@@ -826,6 +826,22 @@ void main() {
       expect(g.stats.archiveSolved, contains(130));
     });
   });
+
+  group('recordTimedStage (branching timed bridge)', () {
+    test('each stage lifts best-stage; only the final run bumps runs + XP',
+        () async {
+      final g = await _controller();
+      g.recordTimedStage(1);
+      g.recordTimedStage(2);
+      expect(g.stats.counters['timedBestStage'], 2);
+      expect(g.stats.counters['timedRuns'] ?? 0, 0); // no run banked mid-ladder
+      expect(g.stats.xp, 0);
+      g.recordTimedStage(8, runDone: true);
+      expect(g.stats.counters['timedBestStage'], 8);
+      expect(g.stats.counters['timedRuns'], 1);
+      expect(g.stats.xp, 40); // 5 XP per stage cleared
+    });
+  });
 }
 
 /// Repo whose `generate` yields the 2-step reference puzzle, so a resume test

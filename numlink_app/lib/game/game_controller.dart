@@ -720,6 +720,23 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Banks one cleared stage of a branching timed run into the shared stats,
+  /// mirroring [_solveTimed]: every stage lifts the best-stage counter; the
+  /// final stage ([runDone]) also bumps the run count and awards whole-run XP
+  /// (5 per stage). ponytail: best-time stays session-only, like the linear
+  /// ladder. Bridge until GameController is retired.
+  void recordTimedStage(int stageCompleted, {bool runDone = false}) {
+    _stats = _stats.setCounterMax('timedBestStage', stageCompleted);
+    if (runDone) {
+      _stats = _stats.bumpCounter('timedRuns');
+      _awardXp(stageCompleted * 5);
+    }
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
+    _statsRepo.save(_stats);
+    notifyListeners();
+  }
+
   /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
   /// day *differences* matter, so a constant tz offset is harmless.
   /// ponytail: naive local-midnight index; good enough for daily streaks.

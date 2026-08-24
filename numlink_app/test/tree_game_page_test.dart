@@ -124,6 +124,17 @@ void main() {
     expect(gotPar, 3);
   });
 
+  testWidgets('timed page renders stage 1 of the ladder with a live board',
+      (tester) async {
+    phone(tester);
+    await tester.pumpWidget(host(const TimedTreePage()));
+    await tester.pump();
+    expect(find.textContaining('STAGE 1/8'), findsOneWidget);
+    expect(find.byType(RadialBoard), findsOneWidget);
+    // Unmount to cancel the stopwatch Timer.periodic (else teardown flags it).
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('an illegal tap surfaces the reject toast', (tester) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: rejecting())));

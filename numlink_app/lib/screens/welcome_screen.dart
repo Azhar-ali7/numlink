@@ -343,6 +343,24 @@ void _openBranchingMode(BuildContext context, GameMode mode, String tier) {
   );
 }
 
+/// Timed on the branching engine: a stopwatch race up the escalating ladder.
+void _openBranchingTimed(BuildContext context) {
+  final g = context.read<GameController>();
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TimedTreePage(
+        onStageSolved: (stage, runDone) {
+          g.recordTimedStage(stage, runDone: runDone);
+          return WinRecord(
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.stats.streak);
+        },
+      ),
+    ),
+  );
+}
+
 /// The dark navy card inside the pink band: puzzle number, title, and the
 /// primary "Play today's puzzle" CTA (the flow test taps this → startDaily).
 class _TodaysChainCard extends StatelessWidget {
@@ -1359,7 +1377,7 @@ class _ModesPage extends StatelessWidget {
                     blurb: 'Climb the escalating ladder',
                     icon: Icons.bolt_rounded,
                     color: NumTokens.accentOrange,
-                    onTap: g.startTimed,
+                    onTap: () => _openBranchingTimed(context),
                   ),
                   _ModeTile(
                     tag: 'ARCHIVE',

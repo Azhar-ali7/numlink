@@ -66,6 +66,13 @@ class TreeController extends ChangeNotifier {
   int get nextId => _nextId;
   List<Operation> get hand => puzzle.hands[handIndex % puzzle.hands.length];
 
+  /// Value of the currently selected node (what the next op builds from).
+  int get selValue => _selNode.v;
+
+  /// Targets already placed on the board.
+  int get reached =>
+      puzzle.targets.where((t) => nodes.any((n) => n.v == t)).length;
+
   /// Moves played = every node except the start.
   int get moves => nodes.length - 1;
 

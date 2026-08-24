@@ -8,7 +8,7 @@ import 'game_mode.dart';
 import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, archive, roadmap }
+enum SheetOverlay { how, stats, settings, archive, roadmap, notifications }
 
 /// Engine-agnostic stats + progression store. The branching engine
 /// (`TreeController` / `TreeGamePage` / `TimedTreePage`) plays the boards as
@@ -129,6 +129,9 @@ class GameController extends ChangeNotifier {
     _lastXpGain = amount;
     _stats = _stats.bumpCounter('xp', amount);
   }
+
+  /// Whether today's daily has already been solved (drives the home week strip).
+  bool get todaySolved => _stats.lastDailyDay == _todayIndex();
 
   /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
   /// day *differences* matter, so a constant tz offset is harmless.

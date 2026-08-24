@@ -6,6 +6,7 @@ import 'package:numlink_app/data/stats_repository.dart';
 import 'package:numlink_app/game/game_controller.dart';
 import 'package:numlink_app/game/game_mode.dart';
 import 'package:numlink_app/game/puzzle_repository.dart';
+import 'package:numlink_app/game/score.dart';
 import 'package:numlink_app/game/solver.dart';
 import 'package:numlink_app/models/chain_node.dart';
 import 'package:numlink_app/models/game_stats.dart';

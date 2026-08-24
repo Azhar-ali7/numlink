@@ -13,24 +13,11 @@ import '../services/feedback_service.dart';
 import 'campaign.dart';
 import 'game_mode.dart';
 import 'puzzle_repository.dart';
+import 'score.dart';
 import 'solver.dart';
 
 /// Which overlay sheet is showing.
 enum SheetOverlay { how, stats, settings, win, archive, solution, roadmap }
-
-/// Golf-style score verdicts.
-enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
-
-extension ScoreLabelText on ScoreLabel {
-  String text(int over) => switch (this) {
-    ScoreLabel.eagle => 'Eagle',
-    ScoreLabel.birdie => 'Birdie',
-    ScoreLabel.par => 'Par',
-    ScoreLabel.bogey => 'Bogey',
-    ScoreLabel.doubleBogey => 'Double bogey',
-    ScoreLabel.over => '+$over',
-  };
-}
 
 /// Proximity heat state, mapped to a themed color by the UI.
 enum Heat { onTarget, near, far }

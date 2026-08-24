@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../game/game_controller.dart' show ScoreLabel, ScoreLabelText;
+import '../game/score.dart';
 import '../game/tree_controller.dart';
 import '../game/tree_generator.dart';
-import '../screens/game_screen.dart' show GameToast;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/confetti_overlay.dart';
+import '../widgets/game_toast.dart';
 import 'tree_game_screen.dart';
 
 /// What a recorded win reports back, for the win sheet's XP pill.

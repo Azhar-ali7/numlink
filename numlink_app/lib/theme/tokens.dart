@@ -64,18 +64,18 @@ class NumTokens {
         progress: progress,
       );
 
-  // Neon glass (default): deep navy-black base, frosted surfaces, electric
-  // accents. Cards are semi-transparent white over `bg` with a glow shadow
-  // (applied by widgets). Neon mint is the primary action; amber drives progress.
+  // Warm plum (default dark): a cozy aubergine base, softly raised surfaces,
+  // teal as the primary "solved" action and amber for progress. Cloned from the
+  // handoff prototype's dark `:root` tokens.
   static const NumTokens dark = NumTokens(
-    bg: Color(0xFF070B18),
-    surface: Color(0xFF121A30),
-    elevated: Color(0xFF18213B),
-    text: Color(0xFFEAF1FF),
-    muted: Color(0xFF8592B5),
-    border: Color(0xFF2A3556),
-    success: Color(0xFF23E0A8), // neon mint
-    progress: Color(0xFFFFD24D), // neon amber
+    bg: Color(0xFF241F27),
+    surface: Color(0xFF2E2830),
+    elevated: Color(0xFF38313F),
+    text: Color(0xFFF1EAE1),
+    muted: Color(0xFFA99FA6),
+    border: Color(0xFF463E4B),
+    success: Color(0xFF46BBAA), // teal
+    progress: Color(0xFFF5B843), // amber
   );
 
   // Neon accents for glows/gradients (electric on the deep base).
@@ -90,9 +90,9 @@ class NumTokens {
     surface: Color(0xFFFBF6EC),
     elevated: Color(0xFFFFFFFF),
     text: Color(0xFF2B2622),
-    muted: Color(0xFF94897C),
+    muted: Color(0xFF6F6458),
     border: Color(0xFFE7DDCB),
-    success: Color(0xFF2F9184), // teal
+    success: Color(0xFF237E72), // teal
     progress: Color(0xFFEFA42F), // amber
   );
 }

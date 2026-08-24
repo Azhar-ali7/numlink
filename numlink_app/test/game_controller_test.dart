@@ -842,6 +842,18 @@ void main() {
       expect(g.stats.xp, 40); // 5 XP per stage cleared
     });
   });
+
+  group('recordCampaignWin (branching campaign bridge)', () {
+    test('records stars (keeps the max) and unlocks the next level', () async {
+      final g = await _controller();
+      g.recordCampaignWin(1, 5, 3); // 2 over par → 1 star
+      expect(g.stats.levelStars[1], 1);
+      expect(g.stats.levelUnlocked(2), isTrue);
+      expect(g.stats.xp, greaterThan(0));
+      g.recordCampaignWin(1, 3, 3); // par → 3 stars, replaces the lower score
+      expect(g.stats.levelStars[1], 3);
+    });
+  });
 }
 
 /// Repo whose `generate` yields the 2-step reference puzzle, so a resume test

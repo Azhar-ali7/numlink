@@ -720,6 +720,21 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Folds a branching campaign-level win into the shared stats: stars from
+  /// moves-vs-par (kept as a per-level max), plus XP with the per-star bonus,
+  /// mirroring [_recordSolve]'s campaign branch + [_xpForSolve]. ponytail:
+  /// bridge until GameController is retired.
+  void recordCampaignWin(int no, int moves, int par) {
+    final stars = starsFor(moves, par);
+    _stats = _stats.recordLevel(no, stars);
+    final under = par - moves;
+    _awardXp(10 + (under > 0 ? under * 5 : 0) + (stars - 1) * 5);
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, SolveContext(scoreOver: moves - par, usedDivision: false)));
+    _statsRepo.save(_stats);
+    notifyListeners();
+  }
+
   /// Banks one cleared stage of a branching timed run into the shared stats,
   /// mirroring [_solveTimed]: every stage lifts the best-stage counter; the
   /// final stage ([runDone]) also bumps the run count and awards whole-run XP

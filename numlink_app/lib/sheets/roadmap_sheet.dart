@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../game/campaign.dart';
 import '../game/game_controller.dart';
 import '../game/game_mode.dart';
+import '../game/tree_generator.dart';
+import '../screens/tree_game_page.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'bottom_sheet_shell.dart';
@@ -45,12 +47,35 @@ class RoadmapSheet extends StatelessWidget {
             def: kCampaign[i],
             stars: stats.levelStars[i + 1],
             unlocked: stats.levelUnlocked(i + 1),
-            onTap: () => g.startCampaign(i + 1),
+            onTap: () => _openBranchingLevel(context, g, kCampaign[i]),
           ),
         ],
       ],
     );
   }
+}
+
+/// A campaign level on the branching engine: its fixed (tier, seed) board.
+/// "Play again" retries the same level; the win records stars, which unlocks
+/// the next node on the roadmap. ponytail: no in-sheet "Next level" yet — the
+/// player returns here and the next node is unlocked.
+void _openBranchingLevel(BuildContext context, GameController g, LevelDef def) {
+  g.close(); // dismiss the roadmap under the pushed board
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TreeGamePage(
+        tier: def.tier.name,
+        puzzle: buildPuzzle(def.tier.name, def.seed),
+        onWin: (m, p) {
+          g.recordCampaignWin(def.no, m, p);
+          return WinRecord(
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.stats.streak);
+        },
+      ),
+    ),
+  );
 }
 
 /// One level in the roadmap path: numbered badge, tier label (+ new-op hint),

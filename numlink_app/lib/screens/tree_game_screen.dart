@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/settings_controller.dart';
+import '../game/steiner.dart' show compute;
 import '../game/tree_controller.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
@@ -98,6 +100,14 @@ class _OpPad extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = context.watch<TreeController>();
     final t = NumTheme.of(context);
+    // Settings may be absent in isolated widget tests; default previews off.
+    bool showPreviews = false;
+    try {
+      showPreviews = context.select<SettingsController, bool>(
+          (s) => s.showResultPreviews);
+    } on ProviderNotFoundException {
+      showPreviews = false;
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       decoration: BoxDecoration(
@@ -110,15 +120,20 @@ class _OpPad extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 2.1,
+        // Shorter tiles (taller cells) when the preview line is showing.
+        childAspectRatio: showPreviews ? 1.8 : 2.1,
         children: g.hand.map((op) {
           final rem = g.remaining(op);
-          // Result previews are off by default (handoff): shuffle/hint live in
-          // the header now. ponytail: preview wiring returns with Phase D's
-          // "Show result previews" setting.
+          // Result previews are gated behind the "Show result previews" setting
+          // (off by default per the handoff); shuffle/hint live in the header.
+          String preview = '';
+          if (showPreviews) {
+            final r = compute(g.selValue, op);
+            preview = r == null ? '—' : '→ $r';
+          }
           return OperationButton(
             op: op,
-            previewText: '',
+            previewText: preview,
             remaining: rem,
             disabled: rem <= 0 || g.solved,
             shake: g.shakeOp == op.id,

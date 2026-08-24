@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../data/settings_controller.dart';
 import '../game/score.dart';
 import '../game/tree_controller.dart';
 import '../game/tree_generator.dart';
@@ -94,6 +95,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
     _swap(_make());
   }
 
+  void _restart() {
+    _swap(TreeController(_c.puzzle)..init()..addListener(_onChange));
+  }
+
   void _setTier(String tier) {
     if (tier == _tier && widget.puzzle == null) return;
     _tier = tier;
@@ -120,7 +125,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
             children: [
               Column(
                 children: [
-                  _Header(tier: _tier, onNew: _newBoard, onTier: _setTier),
+                  _Header(
+                      tier: _tier,
+                      onNew: _newBoard,
+                      onTier: _setTier,
+                      onRestart: _restart),
                   const Expanded(child: TreeGameScreen()),
                 ],
               ),
@@ -151,10 +160,16 @@ class _TreeGamePageState extends State<TreeGamePage> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.tier, required this.onNew, required this.onTier});
+  const _Header({
+    required this.tier,
+    required this.onNew,
+    required this.onTier,
+    required this.onRestart,
+  });
   final String tier;
   final VoidCallback onNew;
   final ValueChanged<String> onTier;
+  final VoidCallback onRestart;
 
   @override
   Widget build(BuildContext context) {
@@ -199,23 +214,128 @@ class _Header extends StatelessWidget {
 
   void _showOverflow(BuildContext context) {
     final t = NumTheme.of(context);
-    showMenu<String>(
+    showModalBottomSheet<void>(
       context: context,
-      position: const RelativeRect.fromLTRB(1000, 56, 8, 0),
-      color: t.elevated,
-      items: [
-        const PopupMenuItem(value: '__new', child: Text('New board')),
-        for (final k in kTiers.keys)
-          PopupMenuItem(value: k, child: Text(k)),
-      ],
-    ).then((v) {
-      if (v == null) return;
-      if (v == '__new') {
-        onNew();
-      } else {
-        onTier(v);
-      }
-    });
+      backgroundColor: t.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _OverflowMenu(
+        tier: tier,
+        onNew: onNew,
+        onTier: onTier,
+        onRestart: onRestart,
+      ),
+    );
+  }
+}
+
+/// Board overflow (⋯) menu — ports the handoff's board menu: THIS PUZZLE
+/// (Restart / How to play), DIFFICULTY (tier picker), QUICK SETTINGS (Sound /
+/// Haptics). Each action pops the sheet first.
+class _OverflowMenu extends StatelessWidget {
+  const _OverflowMenu({
+    required this.tier,
+    required this.onNew,
+    required this.onTier,
+    required this.onRestart,
+  });
+
+  final String tier;
+  final VoidCallback onNew;
+  final ValueChanged<String> onTier;
+  final VoidCallback onRestart;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    // Settings is always present in-app; absent in isolated widget tests.
+    SettingsController? s;
+    try {
+      s = context.watch<SettingsController>();
+    } on ProviderNotFoundException {
+      s = null;
+    }
+    Widget label(String text) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+          child: Text(text.toUpperCase(),
+              style: Fonts.ui(
+                  size: 11,
+                  color: t.muted,
+                  weight: FontWeight.w800,
+                  letterSpacing: 1.5)),
+        );
+    Widget action(IconData icon, String text, VoidCallback onTap, {Key? key}) =>
+        InkWell(
+          key: key,
+          onTap: () {
+            Navigator.of(context).pop();
+            onTap();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            child: Row(children: [
+              Icon(icon, size: 20, color: t.text),
+              const SizedBox(width: 14),
+              Text(text,
+                  style: Fonts.ui(
+                      size: 15, color: t.text, weight: FontWeight.w700)),
+            ]),
+          ),
+        );
+    Widget toggle(String text, bool value, VoidCallback onTap) => InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+            child: Row(children: [
+              Expanded(
+                child: Text(text,
+                    style: Fonts.ui(
+                        size: 15, color: t.text, weight: FontWeight.w700)),
+              ),
+              Icon(value ? Icons.toggle_on : Icons.toggle_off,
+                  size: 34, color: value ? t.success : t.border),
+            ]),
+          ),
+        );
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: t.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          label('This puzzle'),
+          action(Icons.refresh_rounded, 'Restart', onRestart),
+          action(Icons.add_circle_outline, 'New board', onNew),
+          if (s != null)
+            action(Icons.school_outlined, 'How to play', s.openTutorial),
+          label('Difficulty'),
+          for (final k in kTiers.keys)
+            action(
+              k == tier ? Icons.radio_button_checked : Icons.radio_button_off,
+              k,
+              () => onTier(k),
+              key: ValueKey('tier_$k'),
+            ),
+          if (s case final st?) ...[
+            label('Quick settings'),
+            toggle('Sound', st.sound, () => st.setSound(!st.sound)),
+            toggle('Haptics', st.haptics, () => st.setHaptics(!st.haptics)),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 }
 

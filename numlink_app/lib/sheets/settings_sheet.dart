@@ -18,12 +18,14 @@ class SettingsSheet extends StatelessWidget {
     final t = NumTheme.of(context);
 
     return BottomSheetShell(
-      title: 'Settings',
+      title: 'Profile',
       onClose: g.close,
       children: [
+        _ProfileHeader(level: g.playerLevel),
+        const SizedBox(height: 8),
         _Row(
           title: 'Appearance',
-          subtitle: 'Near-black dark base, no pure black',
+          subtitle: 'Warm cream light base, cozy plum dark base',
           trailing: _Segmented(
             leftLabel: 'Dark',
             rightLabel: 'Light',
@@ -39,6 +41,13 @@ class SettingsSheet extends StatelessWidget {
           trailing: _Pill(value: s.highContrast, onTap: () => s.setHighContrast(!s.highContrast)),
         ),
         _Row(
+          title: 'Show result previews',
+          subtitle: 'Preview each operator\'s result under its tile',
+          trailing: _Pill(
+              value: s.showResultPreviews,
+              onTap: () => s.setShowResultPreviews(!s.showResultPreviews)),
+        ),
+        _Row(
           title: 'Sound effects',
           subtitle: 'Taps, solve chime, and error tones',
           trailing: _Pill(value: s.sound, onTap: () => s.setSound(!s.sound)),
@@ -47,6 +56,18 @@ class SettingsSheet extends StatelessWidget {
           title: 'Haptics',
           subtitle: 'Vibration feedback on supported devices',
           trailing: _Pill(value: s.haptics, onTap: () => s.setHaptics(!s.haptics)),
+        ),
+        _Row(
+          title: 'Reduce motion',
+          subtitle: 'Disable pop-ins, pulses, and the shake; states still cue',
+          trailing:
+              _Pill(value: s.reduceMotion, onTap: () => s.setReduceMotion(!s.reduceMotion)),
+        ),
+        _Row(
+          title: 'Social nudges',
+          subtitle: 'Occasional "a friend passed you" notifications',
+          trailing:
+              _Pill(value: s.socialNudges, onTap: () => s.setSocialNudges(!s.socialNudges)),
         ),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -65,6 +86,56 @@ class SettingsSheet extends StatelessWidget {
           'NUMLINK #${g.dailyPuzzle.no} · State colors follow the Okabe–Ito palette '
           'and every state carries a shape or label, not color alone.',
           style: Fonts.ui(size: 12, color: t.muted, height: 1.5),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.level});
+
+  final int level;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [NumTokens.heroTwo, NumTokens.hero],
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text('P',
+              style: Fonts.display(size: 24, color: Colors.white, weight: 800)),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('Player',
+                      style: Fonts.display(
+                          size: 20, color: t.text, weight: 700)),
+                  const SizedBox(width: 8),
+                  Icon(Icons.edit_outlined, size: 16, color: t.muted),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text('Level $level · Earn XP to level up',
+                  style: Fonts.ui(size: 12, color: t.muted, weight: FontWeight.w700)),
+            ],
+          ),
         ),
       ],
     );

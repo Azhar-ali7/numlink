@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../game/game_controller.dart' show ScoreLabel, ScoreLabelText;
 import '../game/tree_controller.dart';
 import '../game/tree_generator.dart';
 import '../screens/game_screen.dart' show GameToast;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/confetti_overlay.dart';
 import 'tree_game_screen.dart';
+
+/// What a recorded win reports back, for the win sheet's XP pill.
+class WinRecord {
+  const WinRecord(
+      {required this.xpGained, required this.level, required this.streak});
+  final int xpGained;
+  final int level;
+  final int streak;
+}
 
 /// Today's deterministic daily branching board (medium tier, date-seeded so
 /// everyone gets the same puzzle on a given day).
@@ -27,8 +39,9 @@ class TreeGamePage extends StatefulWidget {
   final TreePuzzle? puzzle;
 
   /// Fired once per board when solved, with (moves, par) — lets the daily entry
-  /// record the win into the shared stats. Null for standalone/free play.
-  final void Function(int moves, int par)? onWin;
+  /// record the win into the shared stats and hand back XP/level/streak for the
+  /// win sheet. Null (or a null return) for standalone/free play: no XP pill.
+  final WinRecord? Function(int moves, int par)? onWin;
 
   @override
   State<TreeGamePage> createState() => _TreeGamePageState();
@@ -38,6 +51,8 @@ class _TreeGamePageState extends State<TreeGamePage> {
   late String _tier = widget.tier;
   int _seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
   bool _winReported = false;
+  WinRecord? _win;
+  int _confetti = 0;
   late TreeController _c = _make();
 
   TreeController _make() {
@@ -49,7 +64,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
   void _onChange() {
     if (_c.solved && !_winReported) {
       _winReported = true;
-      widget.onWin?.call(_c.moves, _c.puzzle.par);
+      setState(() {
+        _win = widget.onWin?.call(_c.moves, _c.puzzle.par);
+        _confetti++;
+      });
     }
   }
 
@@ -58,6 +76,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
       _c.removeListener(_onChange);
       _c.dispose();
       _winReported = false;
+      _win = null;
       _c = next;
     });
   }
@@ -108,9 +127,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
                       : const SizedBox.shrink(),
                 ),
               ),
+              // confetti sits above the board, below the sheet
+              Positioned.fill(child: ConfettiOverlay(pulse: _confetti)),
               Consumer<TreeController>(
                 builder: (_, c, __) => c.solved
-                    ? _WinOverlay(controller: c, onNew: _newBoard)
+                    ? _WinSheet(controller: c, win: _win, onPlayAgain: _newBoard)
                     : const SizedBox.shrink(),
               ),
             ],
@@ -166,55 +187,147 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _WinOverlay extends StatelessWidget {
-  const _WinOverlay({required this.controller, required this.onNew});
+/// Golf score label from moves-over-par (prototype 2016).
+ScoreLabel _labelFor(int over) => over <= -2
+    ? ScoreLabel.eagle
+    : over == -1
+        ? ScoreLabel.birdie
+        : over == 0
+            ? ScoreLabel.par
+            : over == 1
+                ? ScoreLabel.bogey
+                : over == 2
+                    ? ScoreLabel.doubleBogey
+                    : ScoreLabel.over;
+
+/// A light read on how this solve was built (prototype 2018–2024).
+String _boardCharacter(TreeController c) {
+  final sigma = c.nodes.where((n) => n.opLabel == 'Σ').length;
+  final rootBranches = c.nodes.where((n) => n.parent == 0).length;
+  final moves = c.moves, par = c.puzzle.par;
+  if (sigma >= 2) return 'Alchemist';
+  if (moves <= par && rootBranches <= 1) return 'Minimalist';
+  if (rootBranches >= 3 || moves >= par + 2) return 'Sprawl';
+  return 'Balanced';
+}
+
+/// Spoiler-free share preview: a blue-per-move / orange-per-over-par grid.
+String _shareText(TreeController c) {
+  final moves = c.moves, par = c.puzzle.par;
+  final within = moves < par ? moves : par;
+  final over = moves - par > 0 ? moves - par : 0;
+  final grid = '🟦' * within + '🟧' * over;
+  return 'NUMLINK — ${c.puzzle.targets.length} targets in $moves (par $par)\n$grid';
+}
+
+/// Win sheet (handoff Screen 3): CHAIN COMPLETE kicker, golf score label,
+/// board-character read, moves-vs-par, an XP·Level pill when a win was
+/// recorded, a spoiler-free share preview, and Play-again / Home actions.
+class _WinSheet extends StatelessWidget {
+  const _WinSheet(
+      {required this.controller, required this.win, required this.onPlayAgain});
   final TreeController controller;
-  final VoidCallback onNew;
+  final WinRecord? win;
+  final VoidCallback onPlayAgain;
 
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    final par = controller.puzzle.par;
-    final over = controller.moves > par;
+    final c = controller;
+    final over = c.moves - c.puzzle.par;
+    final label = _labelFor(over).text(over);
     return Positioned.fill(
       child: ColoredBox(
         color: Colors.black54,
-        child: Center(
+        child: Align(
+          alignment: Alignment.bottomCenter,
           child: Container(
-            margin: const EdgeInsets.all(32),
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
             decoration: BoxDecoration(
               color: t.elevated,
-              border: Border.all(color: t.success, width: 2.4),
-              borderRadius: BorderRadius.circular(20),
+              border: Border(top: BorderSide(color: t.success, width: 3)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('SOLVED',
+                Text('CHAIN COMPLETE',
                     style: Fonts.ui(
-                        size: 20,
+                        size: 11,
                         color: t.success,
-                        weight: FontWeight.w800,
-                        letterSpacing: 4)),
-                const SizedBox(height: 12),
-                Text('${controller.moves} moves · par $par',
+                        weight: FontWeight.w700,
+                        letterSpacing: 2)),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('$label!',
+                        style: Fonts.display(
+                            size: 38, color: t.text, height: 1)),
+                    const SizedBox(width: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: _pill(_boardCharacter(c), NumTokens.hero),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('${c.moves} moves · par ${c.puzzle.par}',
                     style: Fonts.mono(
-                        size: 16,
-                        color: over ? t.progress : t.text,
+                        size: 15,
+                        color: over > 0 ? t.progress : t.text,
                         weight: FontWeight.w700)),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: onNew,
-                  style: FilledButton.styleFrom(backgroundColor: t.success),
-                  child: const Text('New board'),
+                if (win != null) ...[
+                  const SizedBox(height: 14),
+                  _xpPill(t, win!),
+                ],
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: tint(t.text, 0.04),
+                    border: Border.all(color: t.border, width: 1.4),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(_shareText(c),
+                      style: Fonts.mono(
+                          size: 14, color: t.text, height: 1.5)),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _action(
+                        label: 'Play again',
+                        bg: t.success,
+                        fg: Colors.white,
+                        onTap: onPlayAgain,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _action(
+                        label: 'Copy',
+                        bg: tint(t.text, 0.06),
+                        fg: t.text,
+                        onTap: () => Clipboard.setData(
+                            ClipboardData(text: _shareText(c))),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: Text('Home',
-                      style: Fonts.ui(
-                          size: 13, color: t.muted, weight: FontWeight.w600)),
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    child: Text('Home',
+                        style: Fonts.ui(
+                            size: 13, color: t.muted, weight: FontWeight.w600)),
+                  ),
                 ),
               ],
             ),
@@ -223,4 +336,56 @@ class _WinOverlay extends StatelessWidget {
       ),
     );
   }
+
+  Widget _pill(String text, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          border: Border.all(color: color, width: 2),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(text,
+            style: Fonts.ui(
+                size: 11, color: color, weight: FontWeight.w800)),
+      );
+
+  Widget _xpPill(NumTokens t, WinRecord w) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: tint(NumTokens.hero, 0.14),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('+${w.xpGained} XP',
+                style: Fonts.ui(
+                    size: 13, color: NumTokens.hero, weight: FontWeight.w800)),
+            const SizedBox(width: 8),
+            Text('· Level ${w.level}  ·  🔥 ${w.streak}',
+                style: Fonts.ui(
+                    size: 13, color: t.muted, weight: FontWeight.w700)),
+          ],
+        ),
+      );
+
+  Widget _action({
+    required String label,
+    required Color bg,
+    required Color fg,
+    required VoidCallback onTap,
+  }) =>
+      Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            alignment: Alignment.center,
+            child: Text(label,
+                style: Fonts.ui(size: 14, color: fg, weight: FontWeight.w800)),
+          ),
+        ),
+      );
 }

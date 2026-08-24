@@ -311,7 +311,13 @@ void _openDailyBranching(BuildContext context) {
       builder: (_) => TreeGamePage(
         tier: 'medium',
         puzzle: dailyBranchingPuzzle(),
-        onWin: g.recordDailyWin,
+        onWin: (m, p) {
+          g.recordDailyWin(m, p);
+          return WinRecord(
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.stats.streak);
+        },
       ),
     ),
   );

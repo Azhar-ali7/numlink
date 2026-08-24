@@ -71,7 +71,7 @@ void main() {
     expect(find.byType(OperationButton), findsWidgets);
   });
 
-  testWidgets('solving the board shows the win overlay with New board',
+  testWidgets('solving the board shows the win sheet with Play again',
       (tester) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
@@ -80,11 +80,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OperationButton, '+1'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('SOLVED'), findsOneWidget);
-    expect(find.text('New board'), findsOneWidget);
+    expect(find.textContaining('CHAIN COMPLETE'), findsOneWidget);
+    expect(find.text('Play again'), findsOneWidget);
   });
 
-  testWidgets('New board dismisses the win overlay and deals a fresh board',
+  testWidgets('Play again dismisses the win sheet and deals a fresh board',
       (tester) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
@@ -93,10 +93,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OperationButton, '+1'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('SOLVED'), findsOneWidget);
-    await tester.tap(find.text('New board'));
+    expect(find.textContaining('CHAIN COMPLETE'), findsOneWidget);
+    await tester.tap(find.text('Play again'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('SOLVED'), findsNothing); // overlay gone
+    expect(find.textContaining('CHAIN COMPLETE'), findsNothing); // sheet gone
     expect(find.text('0/2'), findsOneWidget); // fresh: nothing reached
   });
 
@@ -111,6 +111,7 @@ void main() {
         calls++;
         gotMoves = m;
         gotPar = p;
+        return null;
       },
     )));
     await tester.pumpAndSettle();

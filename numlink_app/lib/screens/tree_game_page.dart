@@ -19,12 +19,16 @@ TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
 /// boards, switches difficulty, and shows a win overlay. Launched from home via
 /// [Navigator.push]; the linear engine stays untouched around it.
 class TreeGamePage extends StatefulWidget {
-  const TreeGamePage({super.key, this.tier = 'easy', this.puzzle});
+  const TreeGamePage({super.key, this.tier = 'easy', this.puzzle, this.onWin});
 
   final String tier;
 
   /// Injected board (daily/tests); when set, "New board" re-deals it.
   final TreePuzzle? puzzle;
+
+  /// Fired once per board when solved, with (moves, par) — lets the daily entry
+  /// record the win into the shared stats. Null for standalone/free play.
+  final void Function(int moves, int par)? onWin;
 
   @override
   State<TreeGamePage> createState() => _TreeGamePageState();
@@ -33,31 +37,46 @@ class TreeGamePage extends StatefulWidget {
 class _TreeGamePageState extends State<TreeGamePage> {
   late String _tier = widget.tier;
   int _seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+  bool _winReported = false;
   late TreeController _c = _make();
 
-  TreeController _make() =>
-      TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))..init();
+  TreeController _make() {
+    final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))..init();
+    c.addListener(_onChange);
+    return c;
+  }
+
+  void _onChange() {
+    if (_c.solved && !_winReported) {
+      _winReported = true;
+      widget.onWin?.call(_c.moves, _c.puzzle.par);
+    }
+  }
+
+  void _swap(TreeController next) {
+    setState(() {
+      _c.removeListener(_onChange);
+      _c.dispose();
+      _winReported = false;
+      _c = next;
+    });
+  }
 
   void _newBoard() {
-    setState(() {
-      _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
-      _c.dispose();
-      _c = _make();
-    });
+    _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
+    _swap(_make());
   }
 
   void _setTier(String tier) {
     if (tier == _tier && widget.puzzle == null) return;
-    setState(() {
-      _tier = tier;
-      _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
-      _c.dispose();
-      _c = TreeController(buildPuzzle(_tier, _seed))..init();
-    });
+    _tier = tier;
+    _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
+    _swap(TreeController(buildPuzzle(_tier, _seed))..init()..addListener(_onChange));
   }
 
   @override
   void dispose() {
+    _c.removeListener(_onChange);
     _c.dispose();
     super.dispose();
   }

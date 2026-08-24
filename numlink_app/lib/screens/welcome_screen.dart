@@ -305,9 +305,14 @@ class _PinkHeaderBand extends StatelessWidget {
 
 /// The daily CTA now opens today's board on the branching engine.
 void _openDailyBranching(BuildContext context) {
+  final g = context.read<GameController>();
   Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) => TreeGamePage(tier: 'medium', puzzle: dailyBranchingPuzzle()),
+      builder: (_) => TreeGamePage(
+        tier: 'medium',
+        puzzle: dailyBranchingPuzzle(),
+        onWin: g.recordDailyWin,
+      ),
     ),
   );
 }

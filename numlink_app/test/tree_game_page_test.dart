@@ -100,6 +100,29 @@ void main() {
     expect(find.text('0/2'), findsOneWidget); // fresh: nothing reached
   });
 
+  testWidgets('onWin fires once with (moves, par) on solve', (tester) async {
+    phone(tester);
+    var calls = 0;
+    int? gotMoves;
+    int? gotPar;
+    await tester.pumpWidget(host(TreeGamePage(
+      puzzle: winnable(),
+      onWin: (m, p) {
+        calls++;
+        gotMoves = m;
+        gotPar = p;
+      },
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '×3'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '+1'));
+    await tester.pumpAndSettle();
+    expect(calls, 1);
+    expect(gotMoves, 2);
+    expect(gotPar, 3);
+  });
+
   testWidgets('an illegal tap surfaces the reject toast', (tester) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: rejecting())));

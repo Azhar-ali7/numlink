@@ -680,6 +680,22 @@ class GameController extends ChangeNotifier {
     _statsRepo.save(_stats);
   }
 
+  /// Records a daily win produced by the branching engine into the shared
+  /// stats (streak + distribution + XP + achievements). Idempotent per day.
+  /// ponytail: bridge while the branching engine owns no stats of its own;
+  /// repoint (or delete) when GameController is retired.
+  void recordDailyWin(int moves, int par) {
+    final today = _todayIndex();
+    if (_stats.lastDailyDay == today) return; // already logged today
+    _stats = _stats.recordWin(moves, par, today: today);
+    final under = par - moves;
+    _awardXp(10 + (under > 0 ? under * 5 : 0));
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, SolveContext(scoreOver: moves - par, usedDivision: false)));
+    _statsRepo.save(_stats);
+    notifyListeners();
+  }
+
   /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
   /// day *differences* matter, so a constant tz offset is harmless.
   /// ponytail: naive local-midnight index; good enough for daily streaks.

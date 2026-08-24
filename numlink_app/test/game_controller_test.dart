@@ -785,6 +785,22 @@ void main() {
       expect(g.moves, 0, reason: 'solved boards start fresh');
     });
   });
+
+  group('recordDailyWin (branching-engine bridge)', () {
+    test('records streak/wins/xp and is idempotent for the day', () async {
+      final g = await _controller();
+      expect(g.stats.wins, 0);
+      g.recordDailyWin(3, 5); // 2 under par
+      expect(g.stats.wins, 1);
+      expect(g.stats.streak, 1);
+      expect(g.stats.xp, greaterThan(0));
+      final winsAfter = g.stats.wins;
+      final xpAfter = g.stats.xp;
+      g.recordDailyWin(4, 5); // same day → no double count
+      expect(g.stats.wins, winsAfter);
+      expect(g.stats.xp, xpAfter);
+    });
+  });
 }
 
 /// Repo whose `generate` yields the 2-step reference puzzle, so a resume test

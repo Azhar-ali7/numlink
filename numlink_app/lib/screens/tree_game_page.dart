@@ -8,6 +8,13 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'tree_game_screen.dart';
 
+/// Today's deterministic daily branching board (medium tier, date-seeded so
+/// everyone gets the same puzzle on a given day).
+TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
+  final d = day ?? DateTime.now();
+  return buildPuzzle('medium', d.year * 10000 + d.month * 100 + d.day);
+}
+
 /// Self-contained branching-tree game: owns its [TreeController], deals fresh
 /// boards, switches difficulty, and shows a win overlay. Launched from home via
 /// [Navigator.push]; the linear engine stays untouched around it.

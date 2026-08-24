@@ -297,61 +297,19 @@ class _PinkHeaderBand extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _TodaysChainCard(g: g),
-          const SizedBox(height: 12),
-          const _BranchingModeButton(),
         ],
       ),
     );
   }
 }
 
-/// Entry into the new branching-tree engine (parallel to the linear daily).
-class _BranchingModeButton extends StatelessWidget {
-  const _BranchingModeButton();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = NumTheme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TreeGamePage()),
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: t.surface,
-            border: Border.all(color: t.border, width: 1.6),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: [
-              const Text('🌿', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Branching mode',
-                        style: Fonts.ui(
-                            size: 14,
-                            color: t.text,
-                            weight: FontWeight.w800,
-                            letterSpacing: 0.5)),
-                    Text('Reach every target · new engine',
-                        style: Fonts.ui(size: 11, color: t.muted, height: 1.3)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: t.muted, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+/// The daily CTA now opens today's board on the branching engine.
+void _openDailyBranching(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TreeGamePage(tier: 'medium', puzzle: dailyBranchingPuzzle()),
+    ),
+  );
 }
 
 /// The dark navy card inside the pink band: puzzle number, title, and the
@@ -411,7 +369,7 @@ class _TodaysChainCard extends StatelessWidget {
                       button: true,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: g.startDaily,
+                        onTap: () => _openDailyBranching(context),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 18,
@@ -794,7 +752,7 @@ class _TealGaugeBand extends StatelessWidget {
                 label: "Play today's puzzle",
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: g.startDaily,
+                  onTap: () => _openDailyBranching(context),
                   child: Container(
                     width: 76,
                     height: 76,

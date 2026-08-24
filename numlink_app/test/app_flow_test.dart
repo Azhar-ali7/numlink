@@ -6,6 +6,8 @@ import 'package:numlink_app/game/game_controller.dart';
 import 'package:numlink_app/game/game_mode.dart';
 import 'package:numlink_app/models/game_stats.dart';
 import 'package:numlink_app/services/feedback_service.dart';
+import 'package:numlink_app/widgets/operation_button.dart';
+import 'package:numlink_app/widgets/radial_board.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,29 +52,31 @@ Future<void> _drain(WidgetTester tester) =>
     tester.pump(const Duration(seconds: 2));
 
 void main() {
-  testWidgets('welcome → play → a sheet renders, no exceptions',
+  testWidgets('daily CTA opens the branching board, no exceptions',
       (tester) async {
-    final game = await _pumpApp(tester);
+    // The branching pad wants phone width (the shell's 440 cap doesn't apply to
+    // this pushed route); the board also breathes (a repeat animation), so
+    // disable animations to keep timers from pending at teardown.
+    tester.view.physicalSize = const Size(440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+
+    await _pumpApp(tester);
 
     // Welcome overlay is visible (verifies the Positioned.fill overlay wiring).
     expect(find.text("Play today's puzzle"), findsOneWidget);
 
-    // Start the game. The redesigned Home scrolls; the hero button can sit
-    // below the 800×600 headless window, so bring it on-screen before tapping.
+    // Tap the daily CTA → it now pushes today's board on the branching engine.
     await tester.ensureVisible(find.text("Play today's puzzle"));
     await tester.tap(find.text("Play today's puzzle"));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(game.started, isTrue);
-    expect(find.text('GET TO'), findsOneWidget);
-    expect(find.text("Play today's puzzle"), findsNothing);
-    expect(find.text('×3'), findsWidgets);
-    expect(find.text('÷2'), findsWidgets);
-
-    // A bottom sheet renders over the board (verifies sheet overlay wiring).
-    game.open(SheetOverlay.how);
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('How to play'), findsOneWidget);
-    expect(find.text('Got it'), findsOneWidget);
+    await tester.pumpAndSettle(); // route push + board build (anims disabled)
+    expect(find.byType(RadialBoard), findsOneWidget);
+    expect(find.byType(OperationButton), findsWidgets);
 
     await _drain(tester);
     expect(tester.takeException(), isNull);
@@ -103,7 +107,9 @@ void main() {
   testWidgets('hub → practice → back to home', (tester) async {
     final game = await _pumpApp(tester);
 
-    // Hub shows the practice tile; tapping it opens the difficulty popup.
+    // Hub opens on the Play tab; switch to the Modes tab to reach the tiles.
+    await tester.tap(find.text('Modes'));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('PRACTICE'), findsOneWidget);
     await tester.ensureVisible(find.text('PRACTICE'));
     await tester.pump();

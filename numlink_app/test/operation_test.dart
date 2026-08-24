@@ -39,4 +39,46 @@ void main() {
       expect(op('×', 3).label, '×3'); // unchanged
     });
   });
+
+  // Phase 1 of the branching-tree migration: the prototype's alchemy operators
+  // and the operator-signature identity used for token accounting.
+  group('branching-tree operators', () {
+    test('digit-reverse (↺)', () {
+      expect(op('↺', 0).apply(250), 52); // "250" → "052" → 52
+      expect(op('↺', 0).apply(19), 91);
+      expect(op('↺', 0).apply(100), 1); // "100" → "001" → 1
+      expect(op('↺', 0).apply(9), 9);
+    });
+
+    test('concat-digit (⧺) = cur*10 + n', () {
+      expect(op('⧺', 3).apply(5), 53);
+      expect(op('⧺', 0).apply(12), 120);
+      expect(op('⧺', 9).apply(99), 999); // == cap, legal
+      expect(op('⧺', 1).apply(100), isNull); // 1001 > 999 cap
+    });
+
+    test('isUnary: alchemy unaries drop their operand, others keep it', () {
+      for (final s in ['√', 'Σ', '^', '↺']) {
+        expect(op(s, 0).isUnary, isTrue, reason: '$s should be unary');
+      }
+      for (final s in ['×', '+', '−', '÷', '%', '⧺']) {
+        expect(op(s, 3).isUnary, isFalse, reason: '$s should be binary');
+      }
+    });
+
+    test('opSig: unary keys by kind (u-prefixed), binary by kind+operand', () {
+      expect(op('×', 3).opSig, '×3');
+      expect(op('÷', 2).opSig, '÷2');
+      expect(op('⧺', 3).opSig, '⧺3'); // binary — operand kept
+      expect(op('√', 0).opSig, 'u√');
+      expect(op('Σ', 0).opSig, 'uΣ');
+      expect(op('^', 2).opSig, 'u^');
+      expect(op('↺', 0).opSig, 'u↺');
+    });
+
+    test('⧺ label keeps its operand', () {
+      expect(op('⧺', 3).label, '⧺3');
+      expect(op('↺', 0).label, '↺');
+    });
+  });
 }

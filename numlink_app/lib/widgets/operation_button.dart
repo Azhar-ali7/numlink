@@ -50,14 +50,22 @@ class OperationButton extends StatelessWidget {
           duration: Motion.micro,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: t.surface,
+            // Subtle raised panel: faint fill + hairline border (theme-adaptive).
+            color: tint(t.text, 0.05),
             border: Border.all(
-              color: highlighted || (hover && !disabled) ? t.progress : t.border,
-              width: 2, // keep at 2 — a wider border re-triggers the 1.6px overflow
+              color: highlighted || (hover && !disabled)
+                  ? t.progress
+                  : t.border,
+              width: 1.4, // <2 keeps clear of the old 1.6px overflow ceiling
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: highlighted
-                ? [BoxShadow(color: t.progress, blurRadius: 10, spreadRadius: 1)]
+                ? [
+                    BoxShadow(
+                        color: t.progress.withValues(alpha: 0.5),
+                        blurRadius: 16,
+                        spreadRadius: 0)
+                  ]
                 : null,
           ),
           child: Stack(

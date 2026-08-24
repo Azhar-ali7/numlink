@@ -33,6 +33,26 @@ class NumTokens {
   /// Alternate colorblind success hue (orange).
   static const Color altSuccessOrange = Color(0xFFF5793A);
 
+  // Playful category accents (Duolingo-ish) for the mode grid / tiles. Static —
+  // same in light & dark so tiles keep a consistent identity; always paired with
+  // a label or icon, never color-alone.
+  static const Color accentBlue = Color(0xFF1CB0F6); // macaw
+  static const Color accentPurple = Color(0xFFCE82FF); // beetle
+  static const Color accentOrange = Color(0xFFFF9600); // fox
+  static const Color accentPink = Color(0xFFFF4B8B); // flamingo
+  static const Color danger = Color(0xFFFF4B4B); // cardinal (illegal/toast)
+
+  // Banded "learning-app" home palette (cloned verbatim from the handoff
+  // prototype `design-handoff-current/NUMLINK.dc.html`). Home-only; each is
+  // always paired with a label or icon. White text sits on the pink/teal bands
+  // (bold, AA-large). The orange orbit band and the amber gauge fill reuse the
+  // themed `progress` token; the teal gauge band reuses `success`.
+  static const Color accent = Color(0xFFEC6A8D); // pink header band + primary CTA
+  static const Color hero = Color(0xFF6B61E6); // avatar / leaderboard disc
+  static const Color heroTwo = Color(0xFFA99FF5); // avatar gradient top stop
+  static const Color nav = Color(0xFF211F38); // dark "today's chain" card
+  static const Color star = Color(0xFFF5C748); // award star / notification dot
+
   NumTokens copyWith({Color? success}) => NumTokens(
         bg: bg,
         surface: surface,
@@ -44,26 +64,36 @@ class NumTokens {
         progress: progress,
       );
 
+  // Neon glass (default): deep navy-black base, frosted surfaces, electric
+  // accents. Cards are semi-transparent white over `bg` with a glow shadow
+  // (applied by widgets). Neon mint is the primary action; amber drives progress.
   static const NumTokens dark = NumTokens(
-    bg: Color(0xFF121213),
-    surface: Color(0xFF1E1E1E),
-    elevated: Color(0xFF272727),
-    text: Color(0xFFD7DADC),
-    muted: Color(0xFF818488),
-    border: Color(0xFF3A3A3C),
-    success: Color(0xFF4C9FD6),
-    progress: Color(0xFFE0A83A),
+    bg: Color(0xFF070B18),
+    surface: Color(0xFF121A30),
+    elevated: Color(0xFF18213B),
+    text: Color(0xFFEAF1FF),
+    muted: Color(0xFF8592B5),
+    border: Color(0xFF2A3556),
+    success: Color(0xFF23E0A8), // neon mint
+    progress: Color(0xFFFFD24D), // neon amber
   );
 
+  // Neon accents for glows/gradients (electric on the deep base).
+  static const Color neonBlue = Color(0xFF37C3FF);
+  static const Color neonPurple = Color(0xFFB47CFF);
+
+  // Learning-app cream (default): warm paper base, near-white cards, a rounded
+  // playful palette. Teal is the primary "solved" action; amber drives
+  // progress/near. Cloned from the handoff prototype's light `:root` tokens.
   static const NumTokens light = NumTokens(
-    bg: Color(0xFFFFFFFF),
-    surface: Color(0xFFF6F7F8),
-    elevated: Color(0xFFEEF0F2),
-    text: Color(0xFF1A1A1B),
-    muted: Color(0xFF787C7E),
-    border: Color(0xFFD3D6DA),
-    success: Color(0xFF0072B2),
-    progress: Color(0xFFC77F00),
+    bg: Color(0xFFF4ECDF), // cream paper
+    surface: Color(0xFFFBF6EC),
+    elevated: Color(0xFFFFFFFF),
+    text: Color(0xFF2B2622),
+    muted: Color(0xFF94897C),
+    border: Color(0xFFE7DDCB),
+    success: Color(0xFF2F9184), // teal
+    progress: Color(0xFFEFA42F), // amber
   );
 }
 

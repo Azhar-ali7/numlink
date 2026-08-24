@@ -3,11 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/feedback_service.dart';
 
-/// User settings. Defaults match the prototype: dark theme, high-contrast cues
-/// ON, sound + haptics OFF.
+/// User settings. Defaults to the bright Duo-playful light theme, high-contrast
+/// cues ON, sound + haptics OFF. (Dark stays available via the Settings toggle.)
 class AppSettings {
   const AppSettings({
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.highContrast = true,
     this.orangeSuccess = false,
     this.sound = false,
@@ -86,9 +86,9 @@ class SettingsController extends ChangeNotifier {
   }
 
   AppSettings _load() => AppSettings(
-        themeMode: (_prefs.getString('theme') ?? 'dark') == 'light'
-            ? ThemeMode.light
-            : ThemeMode.dark,
+        themeMode: (_prefs.getString('theme') ?? 'light') == 'dark'
+            ? ThemeMode.dark
+            : ThemeMode.light,
         highContrast: _prefs.getBool('highContrast') ?? true,
         orangeSuccess: _prefs.getBool('orangeSuccess') ?? false,
         sound: _prefs.getBool('sound') ?? false,

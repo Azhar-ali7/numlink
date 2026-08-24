@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../game/campaign.dart';
 import '../game/game_controller.dart';
+import '../game/tree_generator.dart';
 import '../sheets/bottom_sheet_shell.dart';
+import 'tree_game_page.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -53,12 +56,29 @@ class _IntroCarouselState extends State<IntroCarousel> {
   void _dismiss() => context.read<SettingsController>().dismissTutorial();
 
   /// Finish the intro. On a genuine first launch (not a Settings replay), drop
-  /// the player straight into Level 1 — a guaranteed easy first win — instead
-  /// of the medium daily.
+  /// the player straight into (branching) Level 1 — a guaranteed easy first win
+  /// — instead of the medium daily.
   void _finish() {
     final firstRun = !context.read<SettingsController>().tutorialSeen;
+    final g = context.read<GameController>();
     _dismiss();
-    if (firstRun) context.read<GameController>().startCampaign(1);
+    if (!firstRun) return;
+    final def = kCampaign[0];
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TreeGamePage(
+          tier: def.tier.name,
+          puzzle: buildPuzzle(def.tier.name, def.seed),
+          onWin: (m, p) {
+            g.recordCampaignWin(def.no, m, p);
+            return WinRecord(
+                xpGained: g.lastXpGain,
+                level: g.playerLevel,
+                streak: g.stats.streak);
+          },
+        ),
+      ),
+    );
   }
 
   void _next() {

@@ -76,6 +76,10 @@ class TreeController extends ChangeNotifier {
   /// Moves played = every node except the start.
   int get moves => nodes.length - 1;
 
+  /// Moves still allowed on the selected arm before it hits [branchMax].
+  int get armLeft =>
+      (puzzle.branchMax - depthOf(_selNode)).clamp(0, puzzle.branchMax);
+
   TreeNode get _selNode => nodes.firstWhere((n) => n.id == sel);
 
   /// Tokens consumed per op signature across the whole tree.

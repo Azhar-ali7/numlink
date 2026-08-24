@@ -123,6 +123,7 @@ class _RadialBoardState extends State<RadialBoard> {
           painter: _EdgePainter(
             nodes: g.nodes,
             pos: pos,
+            ghostPos: ghostPos,
             shift: shift,
             hueOf: hueOf,
             border: t.border,
@@ -174,6 +175,7 @@ class _EdgePainter extends CustomPainter {
   _EdgePainter({
     required this.nodes,
     required this.pos,
+    required this.ghostPos,
     required this.shift,
     required this.hueOf,
     required this.border,
@@ -182,12 +184,47 @@ class _EdgePainter extends CustomPainter {
 
   final List<TreeNode> nodes;
   final Map<int, Offset> pos;
+  final Map<int, Offset> ghostPos;
   final Offset shift;
   final Color? Function(int) hueOf;
   final Color border, muted;
 
+  /// Draws a dashed segment from a→b (already shifted into canvas space).
+  void _dashed(Canvas canvas, Offset a, Offset b, Paint paint,
+      {double dash = 7, double gap = 6}) {
+    final dir = b - a;
+    final len = dir.distance;
+    if (len == 0) return;
+    final u = dir / len;
+    var d = 0.0;
+    while (d < len) {
+      final s = a + u * d;
+      final e = a + u * min(d + dash, len);
+      canvas.drawLine(s, e, paint);
+      d += dash + gap;
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
+    // dashed ghost connectors: start (node 0) → each outstanding target
+    final origin = (pos[0] ?? Offset.zero) + shift;
+    ghostPos.forEach((v, p) {
+      final b = p + shift;
+      final dir = b - origin;
+      final len = dir.distance;
+      if (len == 0) return;
+      final u = dir / len;
+      _dashed(
+        canvas,
+        origin + u * 34,
+        b - u * 34,
+        Paint()
+          ..color = (hueOf(v) ?? border).withValues(alpha: 0.6)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
+      );
+    });
     for (final n in nodes) {
       if (n.parent == null) continue;
       final a = pos[n.parent!]! + shift;
@@ -224,7 +261,10 @@ class _EdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _EdgePainter old) =>
-      old.nodes != nodes || old.pos != pos || old.shift != shift;
+      old.nodes != nodes ||
+      old.pos != pos ||
+      old.ghostPos != ghostPos ||
+      old.shift != shift;
 }
 
 class _NodeChip extends StatelessWidget {
@@ -260,9 +300,9 @@ class _NodeChip extends StatelessWidget {
     final chip = GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: BoxConstraints(minWidth: isStart ? 60 : 56),
-        width: isStart ? 60 : null,
-        height: isStart ? 60 : null,
+        constraints: BoxConstraints(minWidth: isStart ? 64 : 56),
+        width: isStart ? 64 : null,
+        height: isStart ? 64 : null,
         padding: isStart
             ? EdgeInsets.zero
             : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -271,24 +311,31 @@ class _NodeChip extends StatelessWidget {
           color: fill,
           border: Border.all(color: ring, width: isSelected ? 2.6 : 2),
           borderRadius: BorderRadius.circular(isStart ? 999 : 18),
-          boxShadow: isSelected
-              ? [BoxShadow(color: tint(t.progress, 0.30), blurRadius: 12)]
-              : null,
+          boxShadow: isStart
+              ? [
+                  BoxShadow(
+                      color: tint(NumTokens.hero, 0.28),
+                      blurRadius: 0,
+                      spreadRadius: 4),
+                ]
+              : isSelected
+                  ? [BoxShadow(color: tint(t.progress, 0.30), blurRadius: 12)]
+                  : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('${node.v}',
                 style: Fonts.mono(
-                    size: isTarget ? 24 : (isStart ? 22 : 20),
+                    size: isTarget ? 24 : (isStart ? 21 : 20),
                     color: numColor,
                     weight: FontWeight.w700,
                     height: 1)),
-            if (badge.isNotEmpty && !isStart)
+            if (badge.isNotEmpty)
               Text(badge,
                   style: Fonts.ui(
                       size: 8,
-                      color: isTarget ? Colors.white : ring,
+                      color: (isTarget || isStart) ? Colors.white : ring,
                       weight: FontWeight.w800,
                       letterSpacing: 1,
                       height: 1.4)),
@@ -319,28 +366,29 @@ class _GhostPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = NumTheme.of(context);
-    Widget pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border.all(color: hue, width: 2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$value',
-              style: Fonts.mono(
-                  size: 20, color: hue, weight: FontWeight.w700, height: 1)),
-          Text('TARGET',
-              style: Fonts.ui(
-                  size: 8,
-                  color: hue,
-                  weight: FontWeight.w800,
-                  letterSpacing: 1,
-                  height: 1.5)),
-        ],
+    Widget pill = CustomPaint(
+      painter: _DashedRRectPainter(color: hue),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: tint(hue, 0.08),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$value',
+                style: Fonts.mono(
+                    size: 20, color: hue, weight: FontWeight.w700, height: 1)),
+            Text('TARGET',
+                style: Fonts.ui(
+                    size: 8,
+                    color: hue,
+                    weight: FontWeight.w800,
+                    letterSpacing: 1,
+                    height: 1.5)),
+          ],
+        ),
       ),
     );
     if (!reducedMotion(context)) {
@@ -354,4 +402,35 @@ class _GhostPill extends StatelessWidget {
     }
     return pill;
   }
+}
+
+/// Dashed rounded-rectangle border drawn around the painter's child bounds.
+class _DashedRRectPainter extends CustomPainter {
+  _DashedRRectPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(16),
+    );
+    final path = Path()..addRRect(rrect);
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    const dash = 6.0, gap = 5.0;
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        canvas.drawPath(
+            metric.extractPath(d, min(d + dash, metric.length)), paint);
+        d += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter old) => old.color != color;
 }

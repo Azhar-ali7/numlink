@@ -159,37 +159,143 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
+    final c = context.watch<TreeController>();
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+      padding: const EdgeInsets.fromLTRB(6, 6, 10, 6),
       child: Row(
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back, color: t.text),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          Text(tier.toUpperCase(),
-              style: Fonts.ui(
-                  size: 14,
-                  color: t.text,
-                  weight: FontWeight.w800,
-                  letterSpacing: 2)),
-          const Spacer(),
-          PopupMenuButton<String>(
-            key: const Key('difficulty'),
-            icon: Icon(Icons.tune, color: t.muted),
-            onSelected: onTier,
-            itemBuilder: (_) => [
-              for (final k in kTiers.keys)
-                PopupMenuItem(value: k, child: Text(k)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(tier.toUpperCase(),
+                  style: Fonts.ui(
+                      size: 14,
+                      color: t.text,
+                      weight: FontWeight.w800,
+                      letterSpacing: 2,
+                      height: 1)),
+              const SizedBox(height: 2),
+              Text('${c.puzzle.targets.length} targets · par ${c.puzzle.par}',
+                  style: Fonts.ui(
+                      size: 11, color: t.muted, weight: FontWeight.w700)),
             ],
           ),
-          TextButton(
-            onPressed: onNew,
-            child: Text('New',
-                style: Fonts.ui(
-                    size: 13, color: t.progress, weight: FontWeight.w700)),
+          const Spacer(),
+          const _BoardActions(),
+          _RoundIconBtn(
+            key: const Key('difficulty'),
+            icon: Icons.more_horiz_rounded,
+            onTap: () => _showOverflow(context),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showOverflow(BuildContext context) {
+    final t = NumTheme.of(context);
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(1000, 56, 8, 0),
+      color: t.elevated,
+      items: [
+        const PopupMenuItem(value: '__new', child: Text('New board')),
+        for (final k in kTiers.keys)
+          PopupMenuItem(value: k, child: Text(k)),
+      ],
+    ).then((v) {
+      if (v == null) return;
+      if (v == '__new') {
+        onNew();
+      } else {
+        onTier(v);
+      }
+    });
+  }
+}
+
+/// Shuffle + hint round icon buttons with remaining-count badges. Reads the
+/// board [TreeController], so it drops into either game header.
+class _BoardActions extends StatelessWidget {
+  const _BoardActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<TreeController>();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RoundIconBtn(
+          icon: Icons.shuffle_rounded,
+          badge: c.shufflesLeft,
+          onTap: c.shuffleHand,
+        ),
+        _RoundIconBtn(
+          icon: Icons.lightbulb_outline_rounded,
+          badge: c.hintUsed ? 0 : 1,
+          onTap: c.hint,
+        ),
+      ],
+    );
+  }
+}
+
+/// A round tappable icon tile with an optional count badge (top-right).
+class _RoundIconBtn extends StatelessWidget {
+  const _RoundIconBtn(
+      {super.key, required this.icon, required this.onTap, this.badge});
+  final IconData icon;
+  final VoidCallback onTap;
+  final int? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: tint(t.text, 0.05),
+                border: Border.all(color: t.border, width: 1.4),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 19, color: t.text),
+            ),
+            if (badge != null)
+              Positioned(
+                top: -3,
+                right: -3,
+                child: Container(
+                  width: 17,
+                  height: 17,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: badge! > 0 ? t.progress : t.muted,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: t.bg, width: 1.5),
+                  ),
+                  child: Text('$badge',
+                      style: Fonts.mono(
+                          size: 9,
+                          color: Colors.white,
+                          weight: FontWeight.w800,
+                          height: 1)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -348,6 +454,8 @@ class _TimedHeader extends StatelessWidget {
                   weight: FontWeight.w800,
                   letterSpacing: 2)),
           const Spacer(),
+          const _BoardActions(),
+          const SizedBox(width: 8),
           Icon(Icons.bolt_rounded, size: 18, color: NumTokens.accentOrange),
           const SizedBox(width: 4),
           Text(clock,

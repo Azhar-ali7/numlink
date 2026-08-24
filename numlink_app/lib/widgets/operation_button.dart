@@ -7,9 +7,21 @@ import '../theme/motion.dart';
 import '../theme/tokens.dart';
 import 'ui.dart';
 
-/// One operation button in the pad: big op label, result preview line, and a
-/// token-count pill top-right. Disabled (0.38 opacity) when solved, illegal,
-/// or out of tokens. Shakes on an illegal tap.
+/// Per-operator brand hue (prototype `hueMap`): multiplicative indigo, additive
+/// teal, subtract orange, divide pink, modulo amber, Σ gold, rest muted.
+Color opHue(Operation op, NumTokens t) => switch (op.symbol) {
+      '×' => NumTokens.hero,
+      '÷' => NumTokens.accent,
+      '+' => t.success,
+      '−' => NumTokens.accentOrange,
+      '%' => t.progress,
+      'Σ' => NumTokens.star,
+      _ => t.muted,
+    };
+
+/// One operation button in the pad: big colored op glyph, an optional result
+/// preview line, and a token-count pill top-right. Disabled (0.38 opacity) when
+/// solved, illegal, or out of tokens. Shakes on an illegal tap.
 class OperationButton extends StatelessWidget {
   const OperationButton({
     super.key,
@@ -38,6 +50,10 @@ class OperationButton extends StatelessWidget {
     final tokenColor = remaining <= 0
         ? t.muted
         : (remaining == 1 ? t.progress : t.text);
+    final hue = disabled ? t.muted : opHue(op, t);
+    final borderColor = highlighted || (shake)
+        ? t.progress
+        : Color.lerp(t.border, hue, 0.5)!;
 
     // Always delegate to the controller's apply(): an illegal/out-of-tokens
     // tap must still produce the shake + toast feedback (the button only looks
@@ -50,12 +66,10 @@ class OperationButton extends StatelessWidget {
           duration: Motion.micro,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            // Subtle raised panel: faint fill + hairline border (theme-adaptive).
-            color: tint(t.text, 0.05),
+            // Colored per-operator panel: faint hue fill + soft hued border.
+            color: disabled ? tint(t.text, 0.04) : tint(hue, 0.09),
             border: Border.all(
-              color: highlighted || (hover && !disabled)
-                  ? t.progress
-                  : t.border,
+              color: (hover && !disabled) ? hue : borderColor,
               width: 1.4, // <2 keeps clear of the old 1.6px overflow ceiling
             ),
             borderRadius: BorderRadius.circular(16),
@@ -76,9 +90,10 @@ class OperationButton extends StatelessWidget {
                 children: [
                   Text(op.label,
                       style: Fonts.mono(
-                          size: 23, color: t.text, weight: FontWeight.w700)),
-                  Text(previewText,
-                      style: Fonts.mono(size: 12, color: t.muted)),
+                          size: 26, color: hue, weight: FontWeight.w800)),
+                  if (previewText.isNotEmpty)
+                    Text(previewText,
+                        style: Fonts.mono(size: 12, color: t.muted)),
                 ],
               ),
               Positioned(

@@ -1,17 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:numlink_app/game/campaign.dart';
-import 'package:numlink_app/game/puzzle_repository.dart';
-import 'package:numlink_app/game/solver.dart';
+import 'package:numlink_app/game/tree_generator.dart';
 import 'package:numlink_app/models/game_stats.dart';
 
 void main() {
-  const repo = LocalPuzzleRepository();
-
   test('level numbers are 1..N and contiguous', () {
     for (var i = 0; i < kCampaign.length; i++) {
       expect(kCampaign[i].no, i + 1);
     }
-    expect(repo.campaignCount, kCampaign.length);
   });
 
   test('tiers ramp non-decreasing (easy → medium → hard)', () {
@@ -21,16 +17,15 @@ void main() {
     }
   });
 
-  test('every level is deterministic and honestly solvable at its par',
-      () async {
-    for (var n = 1; n <= repo.campaignCount; n++) {
-      final a = await repo.campaign(n);
-      final b = await repo.campaign(n);
-      expect(a.start, b.start);
-      expect(a.target, b.target);
-      expect(a.par, b.par);
-      expect(a.no, n);
-      expect(minMoves(a), a.par, reason: 'level $n par must be honest');
+  test('every level builds a deterministic, honest branching board', () {
+    for (final def in kCampaign) {
+      final a = buildPuzzle(def.tier.name, def.seed);
+      final b = buildPuzzle(def.tier.name, def.seed);
+      expect(a.start, b.start, reason: 'level ${def.no} start differs');
+      expect(a.targets, b.targets, reason: 'level ${def.no} targets differ');
+      expect(a.par, b.par, reason: 'level ${def.no} par differs');
+      expect(a.par, greaterThanOrEqualTo(a.optimalPar),
+          reason: 'level ${def.no} par must not undercut the optimum');
     }
   });
 

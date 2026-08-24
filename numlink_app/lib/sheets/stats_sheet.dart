@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
@@ -53,7 +52,6 @@ class StatsSheet extends StatelessWidget {
         ...GameStats.bucketKeys.map((k) {
           final count = s.dist[k] ?? 0;
           final pct = (100 * count / maxCount).round();
-          final isCurrent = g.solved && k == g.currentBucket;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
@@ -79,7 +77,7 @@ class StatsSheet extends StatelessWidget {
                         widthFactor: (pct / 100).clamp(0.0, 1.0),
                         child: Container(
                           constraints: const BoxConstraints(minWidth: 26),
-                          color: isCurrent ? t.success : t.muted,
+                          color: t.muted,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 8),
                           child: Text('$count',
@@ -119,14 +117,6 @@ class StatsSheet extends StatelessWidget {
               achievement: a,
               unlocked: s.unlocked.contains(a.id),
             )),
-        const SizedBox(height: 14),
-        PrimaryButton(
-          label: g.copied ? 'Copied to clipboard' : 'Share result',
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: g.shareText()));
-            g.markCopied();
-          },
-        ),
       ],
     );
   }

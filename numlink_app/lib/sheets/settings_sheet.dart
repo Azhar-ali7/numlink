@@ -62,7 +62,7 @@ class SettingsSheet extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'NUMLINK #${g.puzzle.no} · State colors follow the Okabe–Ito palette '
+          'NUMLINK #${g.dailyPuzzle.no} · State colors follow the Okabe–Ito palette '
           'and every state carries a shape or label, not color alone.',
           style: Fonts.ui(size: 12, color: t.muted, height: 1.5),
         ),

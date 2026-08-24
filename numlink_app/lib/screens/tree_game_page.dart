@@ -27,6 +27,12 @@ TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
   return buildPuzzle('medium', d.year * 10000 + d.month * 100 + d.day);
 }
 
+/// The board a given past daily served, for Archive replay. ponytail: mirrors
+/// PuzzleRepository's epoch (#128 → 2026-08-08); keep the two in sync, or fold
+/// into one source when GameController is retired.
+TreePuzzle archiveBranchingPuzzle(int no) =>
+    dailyBranchingPuzzle(DateTime.utc(2026, 8, 8).add(Duration(days: no - 128)));
+
 /// Self-contained branching-tree game: owns its [TreeController], deals fresh
 /// boards, switches difficulty, and shows a win overlay. Launched from home via
 /// [Navigator.push]; the linear engine stays untouched around it.

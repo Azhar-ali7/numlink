@@ -323,6 +323,26 @@ void _openDailyBranching(BuildContext context) {
   );
 }
 
+/// Practice/Zen now run on the branching engine too: a chosen-tier board with
+/// New-board + difficulty controls. [mode] decides how the win is recorded.
+void _openBranchingMode(BuildContext context, GameMode mode, String tier) {
+  final g = context.read<GameController>();
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TreeGamePage(
+        tier: tier,
+        onWin: (m, p) {
+          g.recordBranchingWin(mode, m, p);
+          return WinRecord(
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.stats.streak);
+        },
+      ),
+    ),
+  );
+}
+
 /// The dark navy card inside the pink band: puzzle number, title, and the
 /// primary "Play today's puzzle" CTA (the flow test taps this → startDaily).
 class _TodaysChainCard extends StatelessWidget {
@@ -1323,14 +1343,16 @@ class _ModesPage extends StatelessWidget {
                     blurb: 'Unlimited puzzles at your pace',
                     icon: Icons.all_inclusive_rounded,
                     color: NumTokens.accentBlue,
-                    onTap: () => _showDifficultySheet(context, g.startPractice),
+                    onTap: () => _showDifficultySheet(context,
+                        (d) => _openBranchingMode(context, GameMode.practice, d.name)),
                   ),
                   _ModeTile(
                     tag: 'ZEN',
                     blurb: 'No clock, no par, no streak',
                     icon: Icons.spa_rounded,
                     color: NumTokens.accentPurple,
-                    onTap: () => _showDifficultySheet(context, g.startZen),
+                    onTap: () => _showDifficultySheet(context,
+                        (d) => _openBranchingMode(context, GameMode.zen, d.name)),
                   ),
                   _ModeTile(
                     tag: 'TIMED',

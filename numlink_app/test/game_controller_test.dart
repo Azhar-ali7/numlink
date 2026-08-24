@@ -801,6 +801,31 @@ void main() {
       expect(g.stats.xp, xpAfter);
     });
   });
+
+  group('recordBranchingWin (practice/zen/archive bridge)', () {
+    test('practice bumps the practice counter + XP, leaves streak alone',
+        () async {
+      final g = await _controller();
+      g.recordBranchingWin(GameMode.practice, 3, 5);
+      expect(g.stats.counters['practice'], 1);
+      expect(g.stats.xp, greaterThan(0));
+      expect(g.stats.streak, 0); // non-daily never touches the streak
+      expect(g.stats.wins, 0);
+    });
+
+    test('zen bumps the zen counter with flat XP', () async {
+      final g = await _controller();
+      g.recordBranchingWin(GameMode.zen, 9, 5); // over par: still flat 10
+      expect(g.stats.counters['zen'], 1);
+      expect(g.stats.xp, 10);
+    });
+
+    test('archive marks the puzzle number solved', () async {
+      final g = await _controller();
+      g.recordBranchingWin(GameMode.archive, 3, 5, archiveNo: 130);
+      expect(g.stats.archiveSolved, contains(130));
+    });
+  });
 }
 
 /// Repo whose `generate` yields the 2-step reference puzzle, so a resume test

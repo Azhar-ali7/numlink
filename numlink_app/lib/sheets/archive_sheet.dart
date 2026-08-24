@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
+import '../game/game_mode.dart';
+import '../screens/tree_game_page.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import 'bottom_sheet_shell.dart';
@@ -36,7 +38,25 @@ class ArchiveSheet extends StatelessWidget {
                 _ArchiveTile(
                   no: no,
                   solved: g.stats.archiveSolved.contains(no),
-                  onTap: () => g.startArchive(no),
+                  onTap: () {
+                    g.close(); // dismiss the sheet under the pushed board
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => TreeGamePage(
+                          tier: 'medium',
+                          puzzle: archiveBranchingPuzzle(no),
+                          onWin: (m, p) {
+                            g.recordBranchingWin(GameMode.archive, m, p,
+                                archiveNo: no);
+                            return WinRecord(
+                                xpGained: g.lastXpGain,
+                                level: g.playerLevel,
+                                streak: g.stats.streak);
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),

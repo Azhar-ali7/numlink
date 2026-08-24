@@ -696,6 +696,30 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Folds a branching-engine win for a non-daily mode into the shared stats,
+  /// mirroring [_recordSolve]'s per-mode branch but taking moves/par from the
+  /// branching board. ponytail: bridge while the branching engine owns no stats
+  /// of its own; repoint (or delete) when GameController is retired.
+  void recordBranchingWin(GameMode mode, int moves, int par,
+      {int archiveNo = 0}) {
+    switch (mode) {
+      case GameMode.practice:
+        _stats = _stats.bumpCounter('practice');
+      case GameMode.zen:
+        _stats = _stats.bumpCounter('zen');
+      case GameMode.archive:
+        _stats = _stats.markArchive(archiveNo);
+      default:
+        break; // daily → recordDailyWin; campaign/timed not branching yet
+    }
+    final under = par - moves;
+    _awardXp(mode == GameMode.zen ? 10 : 10 + (under > 0 ? under * 5 : 0));
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, SolveContext(scoreOver: moves - par, usedDivision: false)));
+    _statsRepo.save(_stats);
+    notifyListeners();
+  }
+
   /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
   /// day *differences* matter, so a constant tz offset is harmless.
   /// ponytail: naive local-midnight index; good enough for daily streaks.

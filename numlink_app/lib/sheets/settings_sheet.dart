@@ -81,6 +81,15 @@ class SettingsSheet extends StatelessWidget {
             trailing: Icon(Icons.chevron_right, color: t.muted),
           ),
         ),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showMoreSettings(context),
+          child: _Row(
+            title: 'More settings',
+            subtitle: 'About, help, and privacy',
+            trailing: Icon(Icons.chevron_right, color: t.muted),
+          ),
+        ),
         const SizedBox(height: 12),
         Text(
           'NUMLINK #${g.dailyPuzzle.no} · State colors follow the Okabe–Ito palette '
@@ -92,14 +101,89 @@ class SettingsSheet extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
+/// Lightweight "More settings" info sheet — About / Help / Privacy blurbs.
+/// (The handoff's Remove-Ads / Restore-Purchases rows are omitted: no IAP.)
+void _showMoreSettings(BuildContext context) {
+  final t = NumTheme.of(context);
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: t.elevated,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (_) {
+      Widget item(String title, String body) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: Fonts.ui(
+                        size: 15, color: t.text, weight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(body,
+                    style: Fonts.ui(size: 13, color: t.muted, height: 1.4)),
+              ],
+            ),
+          );
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('More settings',
+                  style: Fonts.display(size: 24, color: t.text, weight: 700)),
+              const SizedBox(height: 6),
+              item('About NUMLINK',
+                  'Chain numbers together to reach each target in as few moves as possible.'),
+              item('Help',
+                  'Tap operators to branch from any reached number. Stuck? Replay the walkthrough from How to play.'),
+              item('Privacy',
+                  'Your progress lives on this device. Nothing is shared without your say-so.'),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _ProfileHeader extends StatefulWidget {
   const _ProfileHeader({required this.level});
 
   final int level;
 
   @override
+  State<_ProfileHeader> createState() => _ProfileHeaderState();
+}
+
+class _ProfileHeaderState extends State<_ProfileHeader> {
+  bool _editing = false;
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _start(String name) {
+    _ctrl.text = name;
+    setState(() => _editing = true);
+  }
+
+  void _save() {
+    context.read<SettingsController>().setPlayerName(_ctrl.text);
+    setState(() => _editing = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
+    final name = context.watch<SettingsController>().playerName;
     return Row(
       children: [
         Container(
@@ -114,7 +198,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           alignment: Alignment.center,
-          child: Text('P',
+          child: Text(name.characters.first.toUpperCase(),
               style: Fonts.display(size: 24, color: Colors.white, weight: 800)),
         ),
         const SizedBox(width: 14),
@@ -122,17 +206,67 @@ class _ProfileHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('Player',
-                      style: Fonts.display(
-                          size: 20, color: t.text, weight: 700)),
-                  const SizedBox(width: 8),
-                  Icon(Icons.edit_outlined, size: 16, color: t.muted),
-                ],
-              ),
+              if (_editing)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _ctrl,
+                        autofocus: true,
+                        onSubmitted: (_) => _save(),
+                        style: Fonts.ui(
+                            size: 16, color: t.text, weight: FontWeight.w700),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'Your name',
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 9),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: t.border, width: 2),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: t.border, width: 2),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _save,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: t.success,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.check,
+                            size: 18, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                GestureDetector(
+                  onTap: () => _start(name),
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(name,
+                            overflow: TextOverflow.ellipsis,
+                            style: Fonts.display(
+                                size: 20, color: t.text, weight: 700)),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.edit_outlined, size: 16, color: t.muted),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 3),
-              Text('Level $level · Earn XP to level up',
+              Text('Level ${widget.level} · Earn XP to level up',
                   style: Fonts.ui(size: 12, color: t.muted, weight: FontWeight.w700)),
             ],
           ),

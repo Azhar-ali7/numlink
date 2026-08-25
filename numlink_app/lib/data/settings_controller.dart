@@ -64,6 +64,7 @@ class SettingsController extends ChangeNotifier {
   }) : _prefs = prefs {
     _settings = _load();
     _apply();
+    _playerName = _prefs.getString('playerName') ?? 'Player';
     _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
     _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
   }
@@ -77,6 +78,17 @@ class SettingsController extends ChangeNotifier {
   // Settings).
   late bool _tutorialSeen;
   bool _tutorialOpen = false;
+
+  // Display name shown on Home ("Hi {name}") and the Profile avatar initial.
+  late String _playerName;
+  String get playerName => _playerName;
+
+  /// Set the display name; blanks fall back to "Player". Persisted.
+  void setPlayerName(String v) {
+    _playerName = v.trim().isEmpty ? 'Player' : v.trim();
+    _prefs.setString('playerName', _playerName);
+    notifyListeners();
+  }
 
   AppSettings get settings => _settings;
   ThemeMode get themeMode => _settings.themeMode;

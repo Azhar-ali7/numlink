@@ -35,6 +35,7 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 3)); // clear the boot splash
 
     expect(find.text("Play today's puzzle"), findsOneWidget,
         reason: 'the Home hub must be visible on load');

@@ -39,6 +39,7 @@ Future<GameController> _pumpApp(WidgetTester tester) async {
     ),
   );
   await tester.pump(const Duration(milliseconds: 600));
+  await tester.pump(const Duration(seconds: 3)); // clear the boot splash
   return game;
 }
 
@@ -88,11 +89,18 @@ void main() {
     expect(find.text('High-contrast cues'), findsOneWidget);
     expect(find.text('Sound effects'), findsOneWidget);
     expect(find.text('Haptics'), findsOneWidget);
+    expect(find.text('Reduce motion'), findsOneWidget);
+    expect(find.text('Social nudges'), findsOneWidget);
 
     game.open(SheetOverlay.stats);
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Statistics'), findsOneWidget);
     expect(find.text('MOVES vs PAR'), findsOneWidget);
+
+    game.open(SheetOverlay.notifications);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text("Today's board is ready"), findsOneWidget);
 
     await _drain(tester);
     expect(tester.takeException(), isNull);

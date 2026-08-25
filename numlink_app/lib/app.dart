@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -47,7 +49,73 @@ class NumlinkApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const _AppShell(),
+      home: const _Boot(),
+    );
+  }
+}
+
+/// Shows the launch splash over the app shell for ~2.2s on cold start.
+class _Boot extends StatefulWidget {
+  const _Boot();
+
+  @override
+  State<_Boot> createState() => _BootState();
+}
+
+class _BootState extends State<_Boot> {
+  bool _booting = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Timer(const Duration(milliseconds: 2200),
+        () => mounted ? setState(() => _booting = false) : null);
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          const _AppShell(),
+          if (_booting) const Positioned.fill(child: _BootSplash()),
+        ],
+      );
+}
+
+/// Full-bleed launch splash: hero→accent gradient, NUMLINK wordmark, studio tag.
+class _BootSplash extends StatelessWidget {
+  const _BootSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [NumTokens.hero, NumTokens.accent],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text('NUMLINK',
+                style: Fonts.display(
+                    size: 38, color: Colors.white, weight: 800)),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 34,
+            child: Text('PARTAGEUR INTERACTIVE',
+                textAlign: TextAlign.center,
+                style: Fonts.ui(
+                    size: 11,
+                    color: const Color(0xD1FFFFFF),
+                    weight: FontWeight.w800,
+                    letterSpacing: 2)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/settings_controller.dart';
 import '../game/game_controller.dart';
 import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
@@ -93,6 +94,7 @@ class _Header extends StatelessWidget {
     ];
     final now = DateTime.now();
     final dateLabel = '${wd[(now.weekday - 1) % 7]}, ${now.day} ${mo[now.month - 1]}';
+    final name = context.watch<SettingsController>().playerName;
     return Row(
       children: [
         Expanded(
@@ -110,7 +112,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              Text('Hi Player', style: Fonts.display(size: 28, color: t.text)),
+              Text('Hi $name', style: Fonts.display(size: 28, color: t.text)),
             ],
           ),
         ),
@@ -134,7 +136,8 @@ class _Header extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: Text('P', style: Fonts.display(size: 18, color: Colors.white)),
+            child: Text(name.characters.first.toUpperCase(),
+                style: Fonts.display(size: 18, color: Colors.white)),
           ),
         ),
       ],

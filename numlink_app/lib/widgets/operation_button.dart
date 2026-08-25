@@ -96,12 +96,31 @@ class OperationButton extends StatelessWidget {
                         style: Fonts.mono(size: 12, color: t.muted)),
                 ],
               ),
+              // Token-count pill, tucked inside the top-right corner like the
+              // handoff. Kept inside the Stack's bounds (which clips) so the ×
+              // isn't chopped, and set in Nunito 800 to match the prototype.
               Positioned(
-                top: -3,
-                right: -3,
-                child: Text('$remaining×',
-                    style: Fonts.mono(
-                        size: 11, color: tokenColor, weight: FontWeight.w700)),
+                top: 2,
+                right: 2,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: remaining <= 0
+                        ? t.border
+                        : (remaining == 1
+                            ? tint(t.progress, 0.22)
+                            : tint(t.success, 0.15)),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('$remaining×',
+                      style: Fonts.ui(
+                          size: 9,
+                          color: tokenColor,
+                          weight: FontWeight.w800)),
+                ),
               ),
             ],
           ),

@@ -88,15 +88,45 @@ class _RadialBoardState extends State<RadialBoard> {
     final missing =
         targets.where((tt) => !g.nodes.any((n) => n.v == tt)).toList();
 
-    // ghost targets spread on a rim outside the farthest node
-    final maxR = g.nodes.isEmpty
-        ? 0.0
-        : g.nodes.map((n) => pos[n.id]!.distance).reduce(max);
-    final ghostR = maxR + gap + missing.length * 26;
-    final ghostPos = <int, Offset>{
-      for (var i = 0; i < missing.length; i++)
-        missing[i]: Offset(cos(i / max(1, missing.length) * pi * 2) * ghostR,
-            sin(i / max(1, missing.length) * pi * 2) * ghostR)
+    // Ghost targets anchor to the existing node nearest in value, then fan out
+    // around that node's own angle past the outer ring — so they trail the arm
+    // they'd extend rather than scattering on a full circle (prototype math).
+    final anchorOf = <int, TreeNode>{}; // target value → anchor node
+    for (final tv in missing) {
+      var best = g.nodes.first;
+      var bestD = (best.v - tv).abs();
+      for (final n in g.nodes) {
+        final d = (n.v - tv).abs();
+        if (d < bestD) {
+          bestD = d;
+          best = n;
+        }
+      }
+      anchorOf[tv] = best;
+    }
+    final groupCount = <int, int>{};
+    for (final tv in missing) {
+      groupCount[anchorOf[tv]!.id] = (groupCount[anchorOf[tv]!.id] ?? 0) + 1;
+    }
+    // Recover each node's polar angle from its placed offset; the start sits at
+    // the origin, where the prototype's layout points straight down (+y = down).
+    double angleOf(Offset p) => p == Offset.zero ? pi / 2 : atan2(p.dy, p.dx);
+    final seen = <int, int>{};
+    final ghostPos = <int, Offset>{};
+    for (final tv in missing) {
+      final aId = anchorOf[tv]!.id;
+      final ap = pos[aId]!;
+      final count = groupCount[aId]!;
+      final idx = seen[aId] ?? 0;
+      seen[aId] = idx + 1;
+      final radius = ap.distance + gap + max(0, count - 2) * 26;
+      final spacing = max(0.36, 104 / max(radius, 60));
+      final angle = angleOf(ap) + (idx - (count - 1) / 2) * spacing;
+      ghostPos[tv] = Offset(cos(angle) * radius, sin(angle) * radius);
+    }
+    // Each ghost's pending dashed link starts at its anchor node, not the root.
+    final ghostAnchor = <int, Offset>{
+      for (final tv in missing) tv: pos[anchorOf[tv]!.id]!,
     };
 
     // bounding box over every point → a canvas sized to fit with padding
@@ -124,6 +154,7 @@ class _RadialBoardState extends State<RadialBoard> {
             nodes: g.nodes,
             pos: pos,
             ghostPos: ghostPos,
+            ghostAnchor: ghostAnchor,
             shift: shift,
             hueOf: hueOf,
             border: t.border,
@@ -176,6 +207,7 @@ class _EdgePainter extends CustomPainter {
     required this.nodes,
     required this.pos,
     required this.ghostPos,
+    required this.ghostAnchor,
     required this.shift,
     required this.hueOf,
     required this.border,
@@ -185,6 +217,7 @@ class _EdgePainter extends CustomPainter {
   final List<TreeNode> nodes;
   final Map<int, Offset> pos;
   final Map<int, Offset> ghostPos;
+  final Map<int, Offset> ghostAnchor;
   final Offset shift;
   final Color? Function(int) hueOf;
   final Color border, muted;
@@ -207,9 +240,9 @@ class _EdgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // dashed ghost connectors: start (node 0) → each outstanding target
-    final origin = (pos[0] ?? Offset.zero) + shift;
+    // dashed ghost connectors: each outstanding target trails its anchor node
     ghostPos.forEach((v, p) {
+      final origin = (ghostAnchor[v] ?? pos[0] ?? Offset.zero) + shift;
       final b = p + shift;
       final dir = b - origin;
       final len = dir.distance;
@@ -264,6 +297,7 @@ class _EdgePainter extends CustomPainter {
       old.nodes != nodes ||
       old.pos != pos ||
       old.ghostPos != ghostPos ||
+      old.ghostAnchor != ghostAnchor ||
       old.shift != shift;
 }
 

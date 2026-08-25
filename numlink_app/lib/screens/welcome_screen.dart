@@ -208,7 +208,7 @@ class _DailyHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = g.stats;
     return Container(
-      padding: const EdgeInsets.all(22),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
@@ -225,7 +225,13 @@ class _DailyHeroCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: Stack(
+        children: [
+          // Drifting light blob bleeding off the top-right corner.
+          const Positioned(top: -50, right: -44, child: _Blob(size: 170)),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -254,16 +260,7 @@ class _DailyHeroCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(Icons.smart_toy_rounded,
-                    size: 32, color: NumTokens.hero),
-              ),
+              const _RobotMascot(),
             ],
           ),
           const SizedBox(height: 18),
@@ -344,9 +341,160 @@ class _DailyHeroCard extends StatelessWidget {
             ),
           ),
         ],
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// Soft radial glow bleeding off a card corner — the handoff's drifting blob.
+/// (Kept static: a corner glow barely reads as moving; the mascot carries the
+/// motion.)
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [Color(0x4DFFFFFF), Color(0x00FFFFFF)],
+              stops: [0.0, 0.7],
+            ),
+          ),
+        ),
+      );
+}
+
+/// Illustrated robot mascot for the daily hero card — a friendly bot (white
+/// body, dark screen with cyan eyes, glowing antenna, arms + feet).
+/// (Static: the handoff's gentle bob is skipped — decorative, and an infinite
+/// controller never lets widget tests settle. Add behind reduced-motion later.)
+class _RobotMascot extends StatelessWidget {
+  const _RobotMascot();
+
+  @override
+  Widget build(BuildContext context) {
+    const eye = SizedBox(
+      width: 9,
+      height: 11,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color(0xFF8BD3FF),
+          borderRadius: BorderRadius.all(Radius.circular(5)),
+        ),
+      ),
+    );
+    final bot = SizedBox(
+      width: 64,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // antenna stalk + glowing tip
+          Positioned(
+            left: 30.5,
+            top: 8,
+            child: Container(width: 3, height: 12, color: const Color(0xD9FFFFFF)),
+          ),
+          Positioned(
+            left: 27,
+            top: 0,
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFD166),
+                boxShadow: [
+                  BoxShadow(
+                      color: const Color(0xFFFFD166).withValues(alpha: 0.9),
+                      blurRadius: 8),
+                ],
+              ),
+            ),
+          ),
+          // arms
+          Positioned(
+              left: 0,
+              top: 44,
+              child: _bar(6, 14, const Color(0xFFE3E6FF))),
+          Positioned(
+              left: 58,
+              top: 44,
+              child: _bar(6, 14, const Color(0xFFE3E6FF))),
+          // feet
+          Positioned(left: 16, top: 74, child: _foot()),
+          Positioned(left: 42, top: 74, child: _foot()),
+          // body
+          Positioned(
+            left: 2,
+            top: 18,
+            child: Container(
+              width: 60,
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white, Color(0xFFEEF0FF)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8)),
+                ],
+              ),
+              child: Center(
+                child: Container(
+                  width: 42,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF2B2350), Color(0xFF3A2F66)],
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [eye, SizedBox(width: 9), eye],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return bot;
+  }
+
+  Widget _bar(double w, double h, Color c) => Container(
+        width: w,
+        height: h,
+        decoration:
+            BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
+      );
+
+  Widget _foot() => Container(
+        width: 14,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Color(0xFFD7CBFF),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
+        ),
+      );
 }
 
 // ── Streak card ──────────────────────────────────────────────────────────────

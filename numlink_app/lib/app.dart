@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import 'data/settings_controller.dart';
@@ -16,6 +17,7 @@ import 'sheets/roadmap_sheet.dart';
 import 'sheets/settings_sheet.dart';
 import 'sheets/stats_sheet.dart';
 import 'theme/app_theme.dart';
+import 'theme/motion.dart';
 import 'theme/tokens.dart';
 
 class NumlinkApp extends StatelessWidget {
@@ -87,20 +89,75 @@ class _BootSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    final on = !reducedMotion(context);
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [NumTokens.hero, NumTokens.accent],
+          colors: [t.hero, t.accent],
         ),
       ),
       child: Stack(
         children: [
           Center(
-            child: Text('NUMLINK',
-                style: Fonts.display(
-                    size: 38, color: Colors.white, weight: 800)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('NUMLINK',
+                    style: Fonts.display(
+                        size: 38, color: Colors.white, weight: 800)),
+                const SizedBox(height: 22),
+                // Sweeping loader bar (handoff `bootbar`), gated.
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: SizedBox(
+                    width: 120,
+                    height: 4,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ColoredBox(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        if (on)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            )
+                                .animate(onPlay: (c) => c.repeat())
+                                .moveX(
+                                    begin: -44,
+                                    end: 120,
+                                    duration:
+                                        const Duration(milliseconds: 1100),
+                                    curve: Curves.easeInOut),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                // Three bouncing dots (handoff `bootdot`), staggered; gated.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < 3; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      _bootDot(on, i),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
           Positioned(
             left: 0,
@@ -117,6 +174,26 @@ class _BootSplash extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _bootDot(bool on, int i) {
+    Widget dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+      ),
+    );
+    if (!on) return dot;
+    return dot
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .moveY(
+            begin: 0,
+            end: -7,
+            delay: Duration(milliseconds: i * 160),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut);
   }
 }
 
@@ -164,7 +241,13 @@ class _AppShell extends StatelessWidget {
           child: Container(
             width: double.infinity,
             constraints: const BoxConstraints(maxWidth: 440),
-            decoration: BoxDecoration(color: t.bg),
+            // Handoff: the fixed puzzle column has 2px left/right borders.
+            decoration: BoxDecoration(
+              color: t.bg,
+              border: Border.symmetric(
+                vertical: BorderSide(color: t.border, width: 2),
+              ),
+            ),
             child: ClipRect(
               child: SafeArea(
                 child: Stack(

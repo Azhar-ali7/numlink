@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
 import '../game/game_controller.dart';
 import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import '../theme/tokens.dart';
 import '../widgets/chunky_button.dart';
+import '../widgets/ui.dart';
 import 'tree_game_page.dart';
 
 /// Home hub — the design handoff's Screen 1 (`design-handoff-current`, "Hi
@@ -14,11 +17,11 @@ import 'tree_game_page.dart';
 ///   • greeting header (date · "Hi {name}", notification bell, avatar→settings)
 ///   • gradient DAILY hero card (Play today's puzzle · How to play · level/XP)
 ///   • streak card
-///   • "Game modes" card → the modes screen (Practice/Zen/Timed/Archive)
+///   • "Game modes" card → the modes screen (Daily / Archive / Weekend Co-op)
 ///   • "Campaign" card → the roadmap trail (SheetOverlay.roadmap)
 ///
-/// The daily/practice/timed launchers and the sheet overlays are unchanged —
-/// only the surrounding chrome was rebuilt to the handoff layout.
+/// The daily/co-op launchers and the sheet overlays are unchanged — only the
+/// surrounding chrome was rebuilt to the handoff layout.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -26,6 +29,7 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = context.watch<GameController>();
     final t = NumTheme.of(context);
+    final on = !reducedMotion(context);
 
     return ColoredBox(
       color: t.bg,
@@ -37,47 +41,63 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               _Header(g: g),
               const SizedBox(height: 18),
-              _DailyHeroCard(g: g),
+              entrance(_DailyHeroCard(g: g), on: on, index: 0),
               const SizedBox(height: 14),
-              _WeekStripCard(g: g),
+              entrance(_WeekStripCard(g: g), on: on, index: 1),
               const SizedBox(height: 14),
-              _NavCard(
-                eyebrow: 'EXPLORE · 4 MODES',
-                title: 'Game modes',
-                subtitle: 'Practice · Zen · Timed · Archive',
-                icon: Icons.sports_esports_rounded,
-                gradient: const [NumTokens.heroTwo, NumTokens.hero],
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const _ModesScreen()),
+              entrance(
+                _NavCard(
+                  eyebrow: 'EXPLORE · 3 MODES',
+                  title: 'Game modes',
+                  subtitle: 'Daily · Archive · Weekend Co-op',
+                  icon: Icons.sports_esports_rounded,
+                  gradient: [t.heroTwo, t.hero],
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const _ModesScreen()),
+                  ),
                 ),
+                on: on,
+                index: 2,
               ),
               const SizedBox(height: 14),
-              _NavCard(
-                eyebrow: 'STORY MODE',
-                title: 'Campaign',
-                subtitle:
-                    'Levels · ${g.stats.campaignCleared}/${g.campaignCount} cleared',
-                icon: Icons.route_rounded,
-                gradient: const [NumTokens.accentOrange, NumTokens.star],
-                onTap: () => g.open(SheetOverlay.roadmap),
+              entrance(
+                _NavCard(
+                  eyebrow: 'STORY MODE',
+                  title: 'Campaign',
+                  subtitle:
+                      'Levels · ${g.stats.campaignCleared}/${g.campaignCount} cleared',
+                  icon: Icons.route_rounded,
+                  gradient: [t.tileOrange, t.star],
+                  onTap: () => g.open(SheetOverlay.roadmap),
+                ),
+                on: on,
+                index: 3,
               ),
               const SizedBox(height: 14),
-              _NavCard(
-                eyebrow: 'YOUR CIRCLE',
-                title: 'Friends',
-                subtitle: 'Leaderboard · This week by XP',
-                icon: Icons.emoji_events_rounded,
-                gradient: const [NumTokens.hero, NumTokens.accent],
-                onTap: () => g.open(SheetOverlay.leaderboard),
+              entrance(
+                _NavCard(
+                  eyebrow: 'YOUR CIRCLE',
+                  title: 'Friends',
+                  subtitle: 'Leaderboard · This week by XP',
+                  icon: Icons.emoji_events_rounded,
+                  gradient: [t.hero, t.accent],
+                  onTap: () => g.open(SheetOverlay.leaderboard),
+                ),
+                on: on,
+                index: 4,
               ),
               const SizedBox(height: 14),
-              _NavCard(
-                eyebrow: 'WEEKENDS ONLY',
-                title: 'Weekend Co-op',
-                subtitle: 'Shared board · resets Monday',
-                icon: Icons.groups_rounded,
-                gradient: const [NumTokens.heroTwo, NumTokens.hero],
-                onTap: () => openCoop(context),
+              entrance(
+                _NavCard(
+                  eyebrow: 'WEEKENDS ONLY',
+                  title: 'Weekend Co-op',
+                  subtitle: 'Shared board · resets Monday',
+                  icon: Icons.groups_rounded,
+                  gradient: [t.heroTwo, t.hero],
+                  onTap: () => openCoop(context),
+                ),
+                on: on,
+                index: 5,
               ),
             ],
           ),
@@ -136,12 +156,12 @@ class _Header extends StatelessWidget {
           child: Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [NumTokens.heroTwo, NumTokens.hero],
+                colors: [t.heroTwo, t.hero],
               ),
             ),
             alignment: Alignment.center,
@@ -163,6 +183,17 @@ class _IconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
+    // The notification bell rings periodically (handoff `bellring`), gated.
+    Widget glyph = Icon(icon, size: 22, color: t.text);
+    if (badge && !reducedMotion(context)) {
+      glyph = glyph
+          .animate(onPlay: (c) => c.repeat())
+          .shake(
+              duration: const Duration(milliseconds: 700),
+              hz: 4,
+              rotation: 0.08)
+          .then(delay: const Duration(milliseconds: 2600));
+    }
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -171,12 +202,12 @@ class _IconButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: t.elevated,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: t.border, width: 1.5),
+          border: Border.all(color: t.border, width: 2),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, size: 22, color: t.text),
+            glyph,
             if (badge)
               Positioned(
                 top: 10,
@@ -185,9 +216,9 @@ class _IconButton extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: NumTokens.accent,
+                    color: t.accent,
                     shape: BoxShape.circle,
-                    border: Border.all(color: t.elevated, width: 1.5),
+                    border: Border.all(color: t.elevated, width: 2),
                   ),
                 ),
               ),
@@ -206,19 +237,20 @@ class _DailyHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
     final s = g.stats;
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [NumTokens.accent, NumTokens.hero],
+          colors: [t.accent, t.hero],
         ),
         boxShadow: [
           BoxShadow(
-            color: NumTokens.hero.withValues(alpha: 0.35),
+            color: t.hero.withValues(alpha: 0.35),
             blurRadius: 26,
             spreadRadius: -6,
             offset: const Offset(0, 12),
@@ -264,29 +296,55 @@ class _DailyHeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          ChunkyButton(
-            color: Colors.white,
-            baseColor: const Color(0xFFE7E1F6),
-            radius: 16,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            onTap: () => openDailyBranching(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.play_arrow_rounded,
-                    size: 20, color: NumTokens.hero),
-                const SizedBox(width: 6),
-                Text(
-                  "Play today's puzzle",
-                  style: Fonts.ui(
-                    size: 15,
-                    color: NumTokens.hero,
-                    weight: FontWeight.w800,
-                    height: 1,
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Expanding ring pulse behind the CTA (handoff `playpulse`), gated.
+              if (!reducedMotion(context))
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            width: 2),
+                      ),
+                    )
+                        .animate(onPlay: (c) => c.repeat())
+                        .scaleXY(
+                            begin: 1,
+                            end: 1.16,
+                            duration: const Duration(milliseconds: 2400),
+                            curve: Curves.easeOut)
+                        .fadeOut(duration: const Duration(milliseconds: 2400)),
                   ),
                 ),
-              ],
-            ),
+              ChunkyButton(
+                color: Colors.white,
+                baseColor: const Color(0xFFE7E1F6),
+                radius: 16,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                onTap: () => openDailyBranching(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, size: 20, color: t.hero),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Play today's puzzle",
+                      style: Fonts.ui(
+                        size: 15,
+                        color: t.hero,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Align(
@@ -322,7 +380,7 @@ class _DailyHeroCard extends StatelessWidget {
               ),
               Text(
                 '${s.xpIntoLevel} / ${s.xpLevelSpan} XP',
-                style: Fonts.mono(
+                style: Fonts.numeric(
                   size: 12,
                   color: Colors.white.withValues(alpha: 0.85),
                   height: 1,
@@ -350,37 +408,60 @@ class _DailyHeroCard extends StatelessWidget {
 }
 
 /// Soft radial glow bleeding off a card corner — the handoff's drifting blob.
-/// (Kept static: a corner glow barely reads as moving; the mascot carries the
-/// motion.)
+/// Behind reduced-motion it slowly drifts and breathes (the `drift` keyframe);
+/// gated so tests see a static glow.
 class _Blob extends StatelessWidget {
   const _Blob({required this.size});
   final double size;
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-        child: Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [Color(0x4DFFFFFF), Color(0x00FFFFFF)],
-              stops: [0.0, 0.7],
-            ),
+  Widget build(BuildContext context) {
+    Widget blob = IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [Color(0x4DFFFFFF), Color(0x00FFFFFF)],
+            stops: [0.0, 0.7],
           ),
         ),
-      );
+      ),
+    );
+    if (reducedMotion(context)) return blob;
+    return blob
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .moveX(
+            begin: 0,
+            end: -14,
+            duration: const Duration(milliseconds: 8000),
+            curve: Curves.easeInOut)
+        .moveY(
+            begin: 0,
+            end: 10,
+            duration: const Duration(milliseconds: 8000),
+            curve: Curves.easeInOut)
+        .scaleXY(
+            begin: 1,
+            end: 1.08,
+            duration: const Duration(milliseconds: 8000),
+            curve: Curves.easeInOut);
+  }
 }
 
 /// Illustrated robot mascot for the daily hero card — a friendly bot (white
-/// body, dark screen with cyan eyes, glowing antenna, arms + feet).
-/// (Static: the handoff's gentle bob is skipped — decorative, and an infinite
-/// controller never lets widget tests settle. Add behind reduced-motion later.)
+/// body, dark screen with cyan eyes, glowing antenna, arms + feet). Behind
+/// reduced-motion the whole bot bobs (translate + a hair of rotate), the
+/// antenna tip pulses, and the eyes blink on a slow cycle — the handoff's
+/// `bob` / `antenna` / `blink` keyframes. All loops are gated so widget tests
+/// (which force reduced motion) never see an unsettling controller.
 class _RobotMascot extends StatelessWidget {
   const _RobotMascot();
 
   @override
   Widget build(BuildContext context) {
+    final on = !reducedMotion(context);
     const eye = SizedBox(
       width: 9,
       height: 11,
@@ -391,7 +472,53 @@ class _RobotMascot extends StatelessWidget {
         ),
       ),
     );
-    final bot = SizedBox(
+    Widget eyes = const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [eye, SizedBox(width: 9), eye],
+    );
+    if (on) {
+      // Slow blink: hold ~3s, snap the eyes shut and back open.
+      eyes = eyes
+          .animate(onPlay: (c) => c.repeat())
+          .scaleY(
+              begin: 1,
+              end: 0.1,
+              duration: const Duration(milliseconds: 80),
+              delay: const Duration(milliseconds: 3000),
+              alignment: Alignment.center)
+          .then()
+          .scaleY(
+              begin: 0.1, end: 1, duration: const Duration(milliseconds: 80));
+    }
+
+    Widget tip = Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFFFD166),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFFFFD166).withValues(alpha: 0.9),
+              blurRadius: 8),
+        ],
+      ),
+    );
+    if (on) {
+      tip = tip
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(
+              begin: 1,
+              end: 1.35,
+              duration: const Duration(milliseconds: 1600),
+              curve: Curves.easeInOut)
+          .fade(
+              begin: 1,
+              end: 0.7,
+              duration: const Duration(milliseconds: 1600));
+    }
+
+    Widget bot = SizedBox(
       width: 64,
       height: 82,
       child: Stack(
@@ -403,23 +530,7 @@ class _RobotMascot extends StatelessWidget {
             top: 8,
             child: Container(width: 3, height: 12, color: const Color(0xD9FFFFFF)),
           ),
-          Positioned(
-            left: 27,
-            top: 0,
-            child: Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFFD166),
-                boxShadow: [
-                  BoxShadow(
-                      color: const Color(0xFFFFD166).withValues(alpha: 0.9),
-                      blurRadius: 8),
-                ],
-              ),
-            ),
-          ),
+          Positioned(left: 27, top: 0, child: tip),
           // arms
           Positioned(
               left: 0,
@@ -465,10 +576,7 @@ class _RobotMascot extends StatelessWidget {
                       colors: [Color(0xFF2B2350), Color(0xFF3A2F66)],
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [eye, SizedBox(width: 9), eye],
-                  ),
+                  child: eyes,
                 ),
               ),
             ),
@@ -477,6 +585,20 @@ class _RobotMascot extends StatelessWidget {
       ),
     );
 
+    if (on) {
+      bot = bot
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .moveY(
+              begin: 0,
+              end: -7,
+              duration: const Duration(milliseconds: 4500),
+              curve: Curves.easeInOut)
+          .rotate(
+              begin: -0.008,
+              end: 0.008,
+              duration: const Duration(milliseconds: 4500),
+              curve: Curves.easeInOut);
+    }
     return bot;
   }
 
@@ -519,8 +641,9 @@ class _WeekStripCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 16),
       decoration: BoxDecoration(
         color: t.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: t.border, width: 1.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: t.border, width: 2),
+        boxShadow: t.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -607,8 +730,8 @@ class _WeekStripCard extends StatelessWidget {
       bg = tint(t.success, 0.12);
       mark = '✓';
     } else if (isToday) {
-      border = markColor = dayColor = NumTokens.accent;
-      bg = tint(NumTokens.accent, 0.14);
+      border = markColor = dayColor = t.accent;
+      bg = tint(t.accent, 0.14);
       mark = '▸';
     } else {
       border = t.border;
@@ -626,7 +749,7 @@ class _WeekStripCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
           color: bg,
-          border: Border.all(color: border, width: 1.5),
+          border: Border.all(color: border, width: 2),
           borderRadius: BorderRadius.circular(13),
         ),
         child: Column(
@@ -653,6 +776,18 @@ class _WeekStripCard extends StatelessWidget {
 }
 
 // ── Nav cards (Game modes / Campaign) ────────────────────────────────────────
+
+/// Gentle "go here" horizontal nudge for a launch arrow (handoff `arrownudge`),
+/// gated behind reduced-motion.
+Widget _arrowNudge(bool on, Widget child) => on
+    ? child
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .moveX(
+            begin: 0,
+            end: 4,
+            duration: const Duration(milliseconds: 1800),
+            curve: Curves.easeInOut)
+    : child;
 
 class _NavCard extends StatelessWidget {
   const _NavCard({
@@ -682,7 +817,8 @@ class _NavCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: t.elevated,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: t.border, width: 1.5),
+          border: Border.all(color: t.border, width: 2),
+          boxShadow: t.cardShadow,
         ),
         child: Row(
           children: [
@@ -724,7 +860,8 @@ class _NavCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, size: 26, color: t.muted),
+            _arrowNudge(!reducedMotion(context),
+                Icon(Icons.chevron_right_rounded, size: 26, color: t.muted)),
           ],
         ),
       ),
@@ -739,8 +876,10 @@ class _ModesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.read<GameController>();
+    final g = context.watch<GameController>();
     final t = NumTheme.of(context);
+    final stats = g.stats;
+    final on = !reducedMotion(context);
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
@@ -755,11 +894,17 @@ class _ModesScreen extends StatelessWidget {
                     icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.of(context).pop(),
                   ),
+                  const SizedBox(width: 10),
+                  _IconButton(
+                    icon: Icons.home_rounded,
+                    onTap: () =>
+                        Navigator.of(context).popUntil((r) => r.isFirst),
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
               Text(
-                'PLAY · 4 MODES',
+                'PLAY · 3 MODES',
                 style: Fonts.ui(
                   size: 12,
                   color: t.muted,
@@ -770,48 +915,59 @@ class _ModesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text('Game modes', style: Fonts.display(size: 30, color: t.text)),
-              const SizedBox(height: 20),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 14,
-                crossAxisSpacing: 14,
-                childAspectRatio: 1.05,
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  _ModeTile(
-                    tag: 'PRACTICE',
-                    blurb: 'Unlimited puzzles at your pace',
-                    icon: Icons.all_inclusive_rounded,
-                    color: NumTokens.accentBlue,
-                    onTap: () => _showDifficultySheet(context,
-                        (d) => _openBranchingMode(context, GameMode.practice, d.name)),
-                  ),
-                  _ModeTile(
-                    tag: 'ZEN',
-                    blurb: 'No clock, no par, no streak',
-                    icon: Icons.spa_rounded,
-                    color: NumTokens.accentPurple,
-                    onTap: () => _showDifficultySheet(context,
-                        (d) => _openBranchingMode(context, GameMode.zen, d.name)),
-                  ),
-                  _ModeTile(
-                    tag: 'TIMED',
-                    blurb: 'Climb the escalating ladder',
-                    icon: Icons.bolt_rounded,
-                    color: NumTokens.accentOrange,
-                    onTap: () => _openBranchingTimed(context),
-                  ),
-                  _ModeTile(
-                    tag: 'ARCHIVE',
-                    blurb: 'Replay past daily puzzles',
-                    icon: Icons.calendar_month_rounded,
-                    color: NumTokens.accentPink,
-                    onTap: () => g.open(SheetOverlay.archive),
-                  ),
+                  _ModeChip(label: '3 Modes'),
+                  const SizedBox(width: 8),
+                  _ModeChip(label: '${g.campaignCount} Levels'),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              entrance(
+                _ModeCard(
+                  icon: Icons.today_rounded,
+                  color: t.accent,
+                  badge: 'DAILY',
+                  title: 'Daily Puzzle',
+                  subtitle: "Today's board · NUMLINK #${g.dailyPuzzle.no}",
+                  avatars: 'Everyone plays the same board',
+                  onTap: () => openDailyBranching(context),
+                ),
+                on: on,
+                index: 0,
+              ),
+              const SizedBox(height: 14),
+              entrance(
+                _ModeCard(
+                  icon: Icons.calendar_month_rounded,
+                  color: t.hero,
+                  badge: 'CHALLENGE',
+                  title: 'The Archive',
+                  subtitle: '${stats.archiveSolved.length} past dailies solved',
+                  avatars: 'Replay any board you missed',
+                  onTap: () => g.open(SheetOverlay.archive),
+                ),
+                on: on,
+                index: 1,
+              ),
+              const SizedBox(height: 14),
+              entrance(
+                _ModeCard(
+                  icon: Icons.groups_rounded,
+                  color: t.heroTwo,
+                  badge: 'WEEKEND',
+                  title: 'Weekend Co-op',
+                  subtitle: 'Shared board · resets Monday',
+                  avatars: 'Solve together with your circle',
+                  onTap: () => openCoop(context),
+                ),
+                on: on,
+                index: 2,
+              ),
+              const SizedBox(height: 20),
+              entrance(_CampaignCard(g: g), on: on, index: 3),
+              const SizedBox(height: 20),
               Center(
                 child: GestureDetector(
                   onTap: () => g.open(SheetOverlay.how),
@@ -834,19 +990,51 @@ class _ModesScreen extends StatelessWidget {
   }
 }
 
-class _ModeTile extends StatelessWidget {
-  const _ModeTile({
-    required this.tag,
-    required this.blurb,
+/// A small pill in the modes header ("3 Modes" / "N Levels").
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: t.border, width: 2),
+      ),
+      child: Text(label,
+          style: Fonts.ui(
+              size: 12,
+              color: t.text,
+              weight: FontWeight.w700,
+              letterSpacing: 0.3,
+              height: 1)),
+    );
+  }
+}
+
+/// A handoff-style mode card: colored icon tile + badge pill, title/subtitle,
+/// a descriptive footer line, and a circular arrow launch button.
+class _ModeCard extends StatelessWidget {
+  const _ModeCard({
     required this.icon,
     required this.color,
+    required this.badge,
+    required this.title,
+    required this.subtitle,
+    required this.avatars,
     required this.onTap,
   });
 
-  final String tag;
-  final String blurb;
   final IconData icon;
   final Color color;
+  final String badge;
+  final String title;
+  final String subtitle;
+  final String avatars;
   final VoidCallback onTap;
 
   @override
@@ -856,47 +1044,151 @@ class _ModeTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
         decoration: BoxDecoration(
-          color: tint(color, 0.12),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: tint(color, 0.35), width: 1.5),
+          color: t.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: t.border, width: 2),
+          boxShadow: t.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 22, color: Colors.white),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            Row(
               children: [
-                Text(
-                  tag,
-                  style: Fonts.ui(
-                    size: 14,
-                    color: t.text,
-                    weight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    height: 1.1,
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(13),
                   ),
+                  child: Icon(icon, size: 20, color: Colors.white),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  blurb,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Fonts.ui(size: 11, color: t.muted, height: 1.2),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: tint(color, 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(badge,
+                      style: Fonts.ui(
+                          size: 10,
+                          color: color,
+                          weight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          height: 1)),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: Fonts.display(size: 20, color: t.text)),
+            const SizedBox(height: 3),
+            Text(subtitle,
+                style: Fonts.ui(size: 12.5, color: t.muted, height: 1.3)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(avatars,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Fonts.ui(size: 11, color: t.muted, height: 1.2)),
+                ),
+                const SizedBox(width: 10),
+                _arrowNudge(
+                  !reducedMotion(context),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
+                    child: const Icon(Icons.arrow_forward_rounded,
+                        size: 20, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The campaign-progress card at the foot of the modes screen: cleared count,
+/// a star-progress bar, and a Continue arrow into the roadmap.
+class _CampaignCard extends StatelessWidget {
+  const _CampaignCard({required this.g});
+  final GameController g;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    final stats = g.stats;
+    final count = g.campaignCount;
+    final maxStars = count * 3;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => g.open(SheetOverlay.roadmap),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: tint(t.tileOrange, 0.12),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: tint(t.tileOrange, 0.35), width: 2),
+          boxShadow: t.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('CAMPAIGN',
+                    style: Fonts.ui(
+                        size: 11,
+                        color: t.muted,
+                        weight: FontWeight.w800,
+                        letterSpacing: 1,
+                        height: 1)),
+                const Spacer(),
+                Icon(Icons.star_rounded, size: 15, color: t.progress),
+                const SizedBox(width: 4),
+                Text('${stats.campaignStars} / $maxStars',
+                    style: Fonts.numeric(
+                        size: 13, color: t.text, weight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                      '${stats.campaignCleared} of $count levels cleared',
+                      style: Fonts.ui(
+                          size: 14, color: t.text, weight: FontWeight.w700)),
+                ),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration:
+                      BoxDecoration(color: t.tileOrange, shape: BoxShape.circle),
+                  child: const Icon(Icons.arrow_forward_rounded,
+                      size: 20, color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: maxStars == 0 ? 0 : stats.campaignStars / maxStars,
+                minHeight: 8,
+                backgroundColor: tint(t.text, 0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(t.success),
+              ),
             ),
           ],
         ),
@@ -948,154 +1240,4 @@ void openCoop(BuildContext context) {
       ),
     ),
   );
-}
-
-/// Practice/Zen run on the branching engine: a chosen-tier board. [mode] decides
-/// how the win is recorded.
-void _openBranchingMode(BuildContext context, GameMode mode, String tier) {
-  final g = context.read<GameController>();
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => TreeGamePage(
-        tier: tier,
-        onWin: (m, p) {
-          g.recordBranchingWin(mode, m, p);
-          return WinRecord(
-              xpGained: g.lastXpGain,
-              level: g.playerLevel,
-              streak: g.stats.streak);
-        },
-      ),
-    ),
-  );
-}
-
-/// Timed on the branching engine: a stopwatch race up the escalating ladder.
-void _openBranchingTimed(BuildContext context) {
-  final g = context.read<GameController>();
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => TimedTreePage(
-        onStageSolved: (stage, runDone) {
-          g.recordTimedStage(stage, runDone: runDone);
-          return WinRecord(
-              xpGained: g.lastXpGain,
-              level: g.playerLevel,
-              streak: g.stats.streak);
-        },
-      ),
-    ),
-  );
-}
-
-/// Quick difficulty chooser for Practice/Zen.
-void _showDifficultySheet(
-  BuildContext context,
-  void Function(Difficulty) onStart,
-) {
-  final t = NumTheme.of(context);
-  var selected = Difficulty.medium;
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (sheetCtx) => StatefulBuilder(
-      builder: (sheetCtx, setSheet) => Container(
-        decoration: BoxDecoration(
-          color: t.elevated,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: t.border, width: 1.4)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          24 + MediaQuery.of(sheetCtx).padding.bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Choose difficulty', style: Fonts.display(size: 24, color: t.text)),
-            const SizedBox(height: 16),
-            _DifficultyPicker(
-              selected: selected,
-              onSelect: (d) => setSheet(() => selected = d),
-            ),
-            const SizedBox(height: 18),
-            ChunkyButton(
-              color: t.success,
-              radius: 16,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                onStart(selected);
-              },
-              child: Text(
-                'Start ${selected.label}',
-                style: Fonts.ui(
-                  size: 16,
-                  color: Colors.white,
-                  weight: FontWeight.w800,
-                  height: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-/// Three-way difficulty segmented control.
-class _DifficultyPicker extends StatelessWidget {
-  const _DifficultyPicker({required this.selected, required this.onSelect});
-
-  final Difficulty selected;
-  final ValueChanged<Difficulty> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = NumTheme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: tint(t.text, 0.04),
-        border: Border.all(color: t.border, width: 1.2),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          for (final d in Difficulty.values)
-            Expanded(
-              child: GestureDetector(
-                onTap: () => onSelect(d),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: d == selected ? tint(t.success, 0.16) : null,
-                    border: d == Difficulty.hard
-                        ? null
-                        : Border(
-                            right: BorderSide(color: t.border, width: 1.2),
-                          ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    d.label,
-                    style: Fonts.ui(
-                      size: 13,
-                      color: d == selected ? t.success : t.muted,
-                      weight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }

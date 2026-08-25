@@ -5,7 +5,9 @@ import '../game/game_controller.dart';
 import '../screens/tree_game_page.dart';
 import '../screens/welcome_screen.dart' show openDailyBranching;
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import '../theme/tokens.dart';
+import '../widgets/ui.dart';
 import 'bottom_sheet_shell.dart';
 
 /// One leaderboard row: name, level, a per-tab score, and an avatar hue.
@@ -30,7 +32,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
 
   // Mock friend cohort (prototype rosters); avatar hues carried per row.
   static const _week = <_Row>[
-    (name: 'Ivo', level: 8, score: 540, color: NumTokens.accent),
+    (name: 'Ivo', level: 8, score: 540, color: Color(0xFFEC6A8D)),
     (name: 'Mara', level: 9, score: 510, color: Color(0xFF2F9184)),
     (name: 'You', level: 7, score: 470, color: Color(0xFFEFA42F)),
     (name: 'Sol', level: 6, score: 430, color: Color(0xFFE07A4F)),
@@ -39,7 +41,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
   ];
   static const _all = <_Row>[
     (name: 'Mara', level: 9, score: 2140, color: Color(0xFF2F9184)),
-    (name: 'Ivo', level: 8, score: 1880, color: NumTokens.accent),
+    (name: 'Ivo', level: 8, score: 1880, color: Color(0xFFEC6A8D)),
     (name: 'You', level: 7, score: 1520, color: Color(0xFFEFA42F)),
     (name: 'Priya', level: 6, score: 1180, color: Color(0xFF7A6CD6)),
     (name: 'Dan', level: 5, score: 920, color: Color(0xFF4C9FD6)),
@@ -54,7 +56,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
     if (_tab == 'today') {
       final par = dailyBranchingPuzzle().par;
       final rows = <_Row>[
-        (name: 'Ivo', level: 8, score: par - 1, color: NumTokens.accent),
+        (name: 'Ivo', level: 8, score: par - 1, color: Color(0xFFEC6A8D)),
         (name: 'Mara', level: 9, score: par, color: const Color(0xFF2F9184)),
         (name: 'Sol', level: 6, score: par + 1, color: const Color(0xFFE07A4F)),
         (name: 'Priya', level: 6, score: par, color: const Color(0xFF7A6CD6)),
@@ -127,7 +129,11 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
         const SizedBox(height: 18),
         // Podium (top 3).
         for (int i = 0; i < top.length; i++) ...[
-          _PodiumCard(row: top[i], rank: i + 1, score: _fmtScore(top[i].score!, par: par)),
+          entrance(
+            _PodiumCard(row: top[i], rank: i + 1, score: _fmtScore(top[i].score!, par: par)),
+            on: !reducedMotion(context),
+            index: i,
+          ),
           if (i < top.length - 1) const SizedBox(height: 12),
         ],
         if (rest.isNotEmpty) ...[
@@ -207,7 +213,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: ring ? Border.all(color: Colors.white.withValues(alpha: 0.65), width: 3) : null,
+        border: ring ? Border.all(color: Colors.white.withValues(alpha: 0.65), width: 2) : null,
       ),
       alignment: Alignment.center,
       child: Text(name[0],
@@ -227,7 +233,7 @@ class _PodiumCard extends StatelessWidget {
     final t = NumTheme.of(context);
     // Per-rank card palette (gold accent / neutral / amber), matching the proto.
     final (Color card, Color text, Color sub, Color pillBg, Color pillText) = switch (rank) {
-      1 => (NumTokens.accent, Colors.white, Colors.white.withValues(alpha: 0.82), Colors.white, NumTokens.accent),
+      1 => (t.accent, Colors.white, Colors.white.withValues(alpha: 0.82), Colors.white, t.accent),
       2 => (t.elevated, t.text, t.muted, t.bg, t.text),
       _ => (t.progress, const Color(0xFF3D2A08), const Color(0xB33D2A08), Colors.white, const Color(0xFF8A5A00)),
     };
@@ -320,12 +326,13 @@ class _PlayDailyCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         decoration: BoxDecoration(
-          color: NumTokens.accent,
+          color: t.accent,
           borderRadius: BorderRadius.circular(26),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 22, offset: const Offset(0, 10))],
         ),

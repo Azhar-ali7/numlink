@@ -15,6 +15,12 @@ class NumTokens {
     required this.border,
     required this.success,
     required this.progress,
+    required this.accent,
+    required this.hero,
+    required this.heroTwo,
+    required this.tileOrange,
+    required this.nav,
+    required this.star,
   });
 
   final Color bg;
@@ -30,28 +36,31 @@ class NumTokens {
   /// "Near / current" state color.
   final Color progress;
 
-  /// Alternate colorblind success hue (orange).
-  static const Color altSuccessOrange = Color(0xFFF5793A);
+  // Handoff accent palette (rose / indigo / amber / teal), themed so they swap
+  // to the handoff's distinct dark values. Each is always paired with a label
+  // or icon, never color-alone.
+  final Color accent; // rose — header band + primary CTA + ÷-op hue
+  final Color hero; // indigo — avatar / leaderboard disc / ×-op hue
+  final Color heroTwo; // indigo tint — avatar gradient top stop
+  final Color tileOrange; // warm orange — subtract op / warm tiles
+  final Color nav; // dark "today's chain" card
+  final Color star; // award star / notification dot / Σ hue
 
-  // Playful category accents (Duolingo-ish) for the mode grid / tiles. Static —
-  // same in light & dark so tiles keep a consistent identity; always paired with
-  // a label or icon, never color-alone.
-  static const Color accentBlue = Color(0xFF1CB0F6); // macaw
-  static const Color accentPurple = Color(0xFFCE82FF); // beetle
-  static const Color accentOrange = Color(0xFFFF9600); // fox
-  static const Color accentPink = Color(0xFFFF4B8B); // flamingo
-  static const Color danger = Color(0xFFFF4B4B); // cardinal (illegal/toast)
+  /// Alternate colorblind success hue (Coral, `data-success="orange"`).
+  static const Color altSuccessOrange = Color(0xFFEE7A4F);
 
-  // Banded "learning-app" home palette (cloned verbatim from the handoff
-  // prototype `design-handoff-current/NUMLINK.dc.html`). Home-only; each is
-  // always paired with a label or icon. White text sits on the pink/teal bands
-  // (bold, AA-large). The orange orbit band and the amber gauge fill reuse the
-  // themed `progress` token; the teal gauge band reuses `success`.
-  static const Color accent = Color(0xFFEC6A8D); // pink header band + primary CTA
-  static const Color hero = Color(0xFF6B61E6); // avatar / leaderboard disc
-  static const Color heroTwo = Color(0xFFA99FF5); // avatar gradient top stop
-  static const Color nav = Color(0xFF211F38); // dark "today's chain" card
-  static const Color star = Color(0xFFF5C748); // award star / notification dot
+  /// Soft card elevation, matching the handoff's `var(--shadow)` (warm on the
+  /// cream theme, black on plum). Light vs dark is read off the base luminance,
+  /// so it needs no separate constructor field.
+  List<BoxShadow> get cardShadow => [
+        BoxShadow(
+          color: bg.computeLuminance() < 0.3
+              ? Colors.black.withValues(alpha: 0.38)
+              : const Color(0x1F4A3620), // warm rgba(74,54,32,0.12)
+          blurRadius: 26,
+          offset: const Offset(0, 12),
+        ),
+      ];
 
   NumTokens copyWith({Color? success}) => NumTokens(
         bg: bg,
@@ -62,6 +71,12 @@ class NumTokens {
         border: border,
         success: success ?? this.success,
         progress: progress,
+        accent: accent,
+        hero: hero,
+        heroTwo: heroTwo,
+        tileOrange: tileOrange,
+        nav: nav,
+        star: star,
       );
 
   // Warm plum (default dark): a cozy aubergine base, softly raised surfaces,
@@ -76,11 +91,13 @@ class NumTokens {
     border: Color(0xFF463E4B),
     success: Color(0xFF46BBAA), // teal
     progress: Color(0xFFF5B843), // amber
+    accent: Color(0xFFF27FA1), // rose (dark)
+    hero: Color(0xFF7D74F2), // indigo (dark)
+    heroTwo: Color(0xFFB3AAF7),
+    tileOrange: Color(0xFFF0A05E),
+    nav: Color(0xFF17162A),
+    star: Color(0xFFF7CD58),
   );
-
-  // Neon accents for glows/gradients (electric on the deep base).
-  static const Color neonBlue = Color(0xFF37C3FF);
-  static const Color neonPurple = Color(0xFFB47CFF);
 
   // Learning-app cream (default): warm paper base, near-white cards, a rounded
   // playful palette. Teal is the primary "solved" action; amber drives
@@ -94,6 +111,12 @@ class NumTokens {
     border: Color(0xFFE7DDCB),
     success: Color(0xFF237E72), // teal
     progress: Color(0xFFEFA42F), // amber
+    accent: Color(0xFFEC6A8D), // rose
+    hero: Color(0xFF6B61E6), // indigo
+    heroTwo: Color(0xFFA99FF5),
+    tileOrange: Color(0xFFEF8F4C),
+    nav: Color(0xFF211F38),
+    star: Color(0xFFF5C748),
   );
 }
 
@@ -122,6 +145,12 @@ class NumTheme extends ThemeExtension<NumTheme> {
       border: Color.lerp(tokens.border, other.tokens.border, t)!,
       success: Color.lerp(tokens.success, other.tokens.success, t)!,
       progress: Color.lerp(tokens.progress, other.tokens.progress, t)!,
+      accent: Color.lerp(tokens.accent, other.tokens.accent, t)!,
+      hero: Color.lerp(tokens.hero, other.tokens.hero, t)!,
+      heroTwo: Color.lerp(tokens.heroTwo, other.tokens.heroTwo, t)!,
+      tileOrange: Color.lerp(tokens.tileOrange, other.tokens.tileOrange, t)!,
+      nav: Color.lerp(tokens.nav, other.tokens.nav, t)!,
+      star: Color.lerp(tokens.star, other.tokens.star, t)!,
     ));
   }
 }

@@ -78,7 +78,7 @@ flutter:
     # Bundled so google_fonts loads them from assets instead of fetching over
     # the network at runtime — the fetch fails offline everywhere (macOS App
     # Sandbox blocks the socket, the test device has no DNS). OFL-1.1 fonts
-    # (Space Grotesk, Space Mono, Fraunces, Baloo 2, Nunito) named exactly
+    # (Baloo 2, Nunito) named exactly
     # <Family>-<Variant> so google_fonts' asset-manifest lookup matches them.
     # Baloo 2 / Nunito are static instances of the upstream variable fonts
     # (fonttools varLib.instancer) at the weights the UI requests.

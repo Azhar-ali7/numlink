@@ -44,7 +44,38 @@ class GameStats {
 
   static const List<String> bucketKeys = ['par', '+1', '+2', '+3+'];
 
+  /// Over-par value each bucket represents (`+3+` counts as 3 — a floor).
+  static const Map<String, int> bucketOverPar = {
+    'par': 0,
+    '+1': 1,
+    '+2': 2,
+    '+3+': 3,
+  };
+
   int get winRate => played == 0 ? 0 : (100 * wins / played).round();
+
+  /// Best round ever = the lowest non-empty bucket. `'—'` when nothing solved.
+  String get courseRecord {
+    for (final k in bucketKeys) {
+      if ((dist[k] ?? 0) > 0) return k == 'par' ? 'PAR' : k;
+    }
+    return '—';
+  }
+
+  /// Golf-style handicap, approximated from the solve distribution: the
+  /// average over-par across recorded solves × 0.9. (The exact spec — best 8
+  /// of the last 20 differentials — needs a per-solve history the model does
+  /// not retain; this is a faithful stand-in from stored buckets.)
+  double get handicap {
+    var total = 0, weighted = 0;
+    for (final k in bucketKeys) {
+      final n = dist[k] ?? 0;
+      total += n;
+      weighted += n * bucketOverPar[k]!;
+    }
+    if (total == 0) return 0;
+    return 0.9 * weighted / total;
+  }
 
   /// Solves across every mode (drives cumulative achievements). Timed is a
   /// run, not a single-puzzle solve, so it's excluded here.

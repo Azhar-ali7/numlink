@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../game/campaign.dart' show starsFor;
 import '../game/score.dart';
 import '../game/steiner.dart' show compute;
 import '../game/tree_controller.dart';
@@ -208,13 +209,14 @@ class _Header extends StatelessWidget {
     final t = NumTheme.of(context);
     final c = context.watch<TreeController>();
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 6, 10, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: t.text),
-            onPressed: () => Navigator.of(context).maybePop(),
+          _RoundIconBtn(
+            icon: Icons.arrow_back,
+            onTap: () => Navigator.of(context).maybePop(),
           ),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -273,7 +275,7 @@ class _CoopBanner extends StatelessWidget {
 
   // Fixed mock cohort — matches the Friends leaderboard roster.
   static const _team = [
-    ('I', NumTokens.accent),
+    ('I', Color(0xFFEC6A8D)),
     ('M', Color(0xFF2F9184)),
     ('P', Color(0xFF7A6CD6)),
   ];
@@ -481,12 +483,11 @@ class _RoundIconBtn extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: tint(t.text, 0.05),
-                border: Border.all(color: t.border, width: 1.4),
-                shape: BoxShape.circle,
+                border: Border.all(color: t.border, width: 2),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, size: 19, color: t.text),
             ),
@@ -501,10 +502,10 @@ class _RoundIconBtn extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: badge! > 0 ? t.progress : t.muted,
                     shape: BoxShape.circle,
-                    border: Border.all(color: t.bg, width: 1.5),
+                    border: Border.all(color: t.bg, width: 2),
                   ),
                   child: Text('$badge',
-                      style: Fonts.mono(
+                      style: Fonts.numeric(
                           size: 9,
                           color: Colors.white,
                           weight: FontWeight.w800,
@@ -673,10 +674,10 @@ class _TimedHeader extends StatelessWidget {
           const Spacer(),
           const _BoardActions(),
           const SizedBox(width: 8),
-          Icon(Icons.bolt_rounded, size: 18, color: NumTokens.accentOrange),
+          Icon(Icons.bolt_rounded, size: 18, color: t.tileOrange),
           const SizedBox(width: 4),
           Text(clock,
-              style: Fonts.mono(
+              style: Fonts.numeric(
                   size: 16, color: t.text, weight: FontWeight.w700)),
         ],
       ),
@@ -710,7 +711,7 @@ class _RunCompleteSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
             decoration: BoxDecoration(
               color: t.elevated,
-              border: Border(top: BorderSide(color: t.success, width: 3)),
+              border: Border(top: BorderSide(color: t.success, width: 2)),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(28)),
             ),
@@ -733,13 +734,13 @@ class _RunCompleteSheet extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
-                      color: tint(NumTokens.hero, 0.14),
+                      color: tint(t.hero, 0.14),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text('+${win!.xpGained} XP  ·  Level ${win!.level}',
                         style: Fonts.ui(
                             size: 13,
-                            color: NumTokens.hero,
+                            color: t.hero,
                             weight: FontWeight.w800)),
                   ),
                 ],
@@ -833,7 +834,7 @@ class _WinSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
             decoration: BoxDecoration(
               color: t.elevated,
-              border: Border(top: BorderSide(color: t.success, width: 3)),
+              border: Border(top: BorderSide(color: t.success, width: 2)),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(28)),
             ),
@@ -857,16 +858,18 @@ class _WinSheet extends StatelessWidget {
                     const SizedBox(width: 12),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: _pill(_boardCharacter(c), NumTokens.hero),
+                      child: _pill(_boardCharacter(c), t.hero),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text('${c.moves} moves · par ${c.puzzle.par}',
-                    style: Fonts.mono(
+                    style: Fonts.numeric(
                         size: 15,
                         color: over > 0 ? t.progress : t.text,
                         weight: FontWeight.w700)),
+                const SizedBox(height: 14),
+                _StarRow(stars: starsFor(c.moves, c.puzzle.par)),
                 if (win != null) ...[
                   const SizedBox(height: 14),
                   _xpPill(t, win!),
@@ -877,11 +880,11 @@ class _WinSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: tint(t.text, 0.04),
-                    border: Border.all(color: t.border, width: 1.4),
+                    border: Border.all(color: t.border, width: 2),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(_shareText(c),
-                      style: Fonts.mono(
+                      style: Fonts.numeric(
                           size: 14, color: t.text, height: 1.5)),
                 ),
                 const SizedBox(height: 18),
@@ -953,7 +956,7 @@ class _WinSheet extends StatelessWidget {
   Widget _xpPill(NumTokens t, WinRecord w) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: tint(NumTokens.hero, 0.14),
+          color: tint(t.hero, 0.14),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -961,7 +964,7 @@ class _WinSheet extends StatelessWidget {
           children: [
             Text('+${w.xpGained} XP',
                 style: Fonts.ui(
-                    size: 13, color: NumTokens.hero, weight: FontWeight.w800)),
+                    size: 13, color: t.hero, weight: FontWeight.w800)),
             const SizedBox(width: 8),
             Text('· Level ${w.level}  ·  🔥 ${w.streak}',
                 style: Fonts.ui(
@@ -970,6 +973,31 @@ class _WinSheet extends StatelessWidget {
         ),
       );
 
+}
+
+/// The handoff win-sheet star rating: three big stars, [stars] of them filled
+/// (amber), the rest outlined in the border tone.
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.stars});
+  final int stars;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Row(
+      children: [
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Icon(
+              i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: 34,
+              color: i < stars ? t.star : t.border,
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 /// One optimal-line step: `from` (op) → `to`.
@@ -1059,23 +1087,23 @@ class _SolutionSheet extends StatelessWidget {
                     SizedBox(
                       width: 20,
                       child: Text('${st.n}',
-                          style: Fonts.mono(size: 12, color: t.muted)),
+                          style: Fonts.numeric(size: 12, color: t.muted)),
                     ),
                     const SizedBox(width: 8),
                     Text('${st.from}',
-                        style: Fonts.mono(
+                        style: Fonts.numeric(
                             size: 18, color: t.text, weight: FontWeight.w700)),
                     const SizedBox(width: 12),
                     Text(st.op,
-                        style: Fonts.mono(
+                        style: Fonts.numeric(
                             size: 14,
                             color: t.progress,
                             weight: FontWeight.w700)),
                     const SizedBox(width: 12),
-                    Text('→', style: Fonts.mono(size: 14, color: t.muted)),
+                    Text('→', style: Fonts.numeric(size: 14, color: t.muted)),
                     const SizedBox(width: 12),
                     Text('${st.to}',
-                        style: Fonts.mono(
+                        style: Fonts.numeric(
                             size: 18,
                             color: t.success,
                             weight: FontWeight.w700)),
@@ -1087,7 +1115,7 @@ class _SolutionSheet extends StatelessWidget {
             const SizedBox(height: 12),
             _action(
               label: 'Back to puzzle',
-              bg: NumTokens.accent,
+              bg: t.accent,
               fg: Colors.white,
               onTap: () => Navigator.of(context).pop(),
             ),

@@ -189,12 +189,12 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
         Container(
           width: 56,
           height: 56,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [NumTokens.heroTwo, NumTokens.hero],
+              colors: [t.heroTwo, t.hero],
             ),
           ),
           alignment: Alignment.center,
@@ -240,7 +240,7 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                         height: 38,
                         decoration: BoxDecoration(
                           color: t.success,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(Icons.check,
                             size: 18, color: Colors.white),

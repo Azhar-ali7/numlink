@@ -8,7 +8,7 @@ import 'game_mode.dart';
 import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, archive, roadmap, notifications }
+enum SheetOverlay { how, stats, settings, archive, notifications, leaderboard }
 
 /// Engine-agnostic stats + progression store. The branching engine
 /// (`TreeController` / `TreeGamePage` / `TimedTreePage`) plays the boards as

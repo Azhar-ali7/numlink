@@ -10,12 +10,12 @@ import 'ui.dart';
 /// Per-operator brand hue (prototype `hueMap`): multiplicative indigo, additive
 /// teal, subtract orange, divide pink, modulo amber, Σ gold, rest muted.
 Color opHue(Operation op, NumTokens t) => switch (op.symbol) {
-      '×' => NumTokens.hero,
-      '÷' => NumTokens.accent,
+      '×' => t.hero,
+      '÷' => t.accent,
       '+' => t.success,
-      '−' => NumTokens.accentOrange,
+      '−' => t.tileOrange,
       '%' => t.progress,
-      'Σ' => NumTokens.star,
+      'Σ' => t.star,
       _ => t.muted,
     };
 
@@ -61,18 +61,19 @@ class OperationButton extends StatelessWidget {
     final content = HoverBorder(
       onTap: onTap,
       builder: (context, hover) => Opacity(
-        opacity: disabled ? 0.38 : 1,
+        opacity: disabled ? 0.42 : 1,
         child: AnimatedContainer(
           duration: Motion.micro,
+          constraints: const BoxConstraints(minHeight: 50), // handoff op tile
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             // Colored per-operator panel: faint hue fill + soft hued border.
             color: disabled ? tint(t.text, 0.04) : tint(hue, 0.09),
             border: Border.all(
               color: (hover && !disabled) ? hue : borderColor,
-              width: 1.4, // <2 keeps clear of the old 1.6px overflow ceiling
+              width: 2,
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: highlighted
                 ? [
                     BoxShadow(
@@ -89,11 +90,11 @@ class OperationButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(op.label,
-                      style: Fonts.mono(
+                      style: Fonts.numeric(
                           size: 26, color: hue, weight: FontWeight.w800)),
                   if (previewText.isNotEmpty)
                     Text(previewText,
-                        style: Fonts.mono(size: 12, color: t.muted)),
+                        style: Fonts.numeric(size: 12, color: t.muted)),
                 ],
               ),
               // Token-count pill, tucked inside the top-right corner like the

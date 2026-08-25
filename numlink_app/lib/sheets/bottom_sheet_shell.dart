@@ -39,7 +39,7 @@ class BottomSheetShell extends StatelessWidget {
       decoration: BoxDecoration(
         color: t.elevated,
         borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(24)),
+            const BorderRadius.vertical(top: Radius.circular(34)),
         border: Border(top: BorderSide(color: t.border, width: 2)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),

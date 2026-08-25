@@ -64,7 +64,7 @@ class _NextDailyCountdownState extends State<NextDailyCountdown> {
                 letterSpacing: 1.5,
                 height: 1)),
         Text(_remaining,
-            style: Fonts.mono(
+            style: Fonts.numeric(
                 size: 12,
                 color: widget.color ?? t.text,
                 weight: FontWeight.w700)),

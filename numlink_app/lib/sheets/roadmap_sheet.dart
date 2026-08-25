@@ -10,15 +10,16 @@ import '../screens/tree_game_page.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import 'bottom_sheet_shell.dart';
+import '../widgets/ui.dart';
 
 /// The campaign roadmap, rebuilt to the design handoff's cartoon "board-game
-/// trail": Level 1 at the top, a chunky teal ribbon zig-zagging down through
-/// numbered nodes, a colored star row over each cleared level, chapter bands at
-/// tier boundaries, and the next playable level marked with a bouncing PLAY cue.
-/// The future trail is dotted; locked nodes are dimmed.
-class RoadmapSheet extends StatelessWidget {
-  const RoadmapSheet({super.key});
+/// trail": a full-screen page with a header (back · Campaign · current tier ·
+/// ★-total badge), then Level 1 at the top and a chunky teal ribbon zig-zagging
+/// down through numbered nodes, a colored star row over each cleared level,
+/// chapter bands at tier boundaries, and the next playable level marked with a
+/// bouncing PLAY cue. The future trail is dotted; locked nodes are dimmed.
+class CampaignPage extends StatelessWidget {
+  const CampaignPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,44 +30,110 @@ class RoadmapSheet extends StatelessWidget {
     final count = g.campaignCount;
     final maxStars = count * 3;
 
-    return BottomSheetShell(
-      title: 'Campaign',
-      onClose: g.close,
-      children: [
-        // Progress header: cleared count + star total + bar.
-        Row(
-          children: [
-            Text('${stats.campaignCleared} OF $count CLEARED',
-                style: Fonts.ui(
-                    size: 12,
-                    color: t.muted,
-                    weight: FontWeight.w800,
-                    letterSpacing: 1,
-                    height: 1)),
-            const Spacer(),
-            Icon(Icons.star_rounded, size: 16, color: t.progress),
-            const SizedBox(width: 4),
-            Text('${stats.campaignStars} / $maxStars',
-                style: Fonts.numeric(
-                    size: 13, color: t.text, weight: FontWeight.w700)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: maxStars == 0 ? 0 : stats.campaignStars / maxStars,
-            minHeight: 8,
-            backgroundColor: tint(t.text, 0.08),
-            valueColor: AlwaysStoppedAnimation<Color>(t.success),
+    // Current chapter = tier of the next playable (unlocked, uncleared) level,
+    // falling back to the last tier once everything is cleared.
+    var tier = kCampaign.first.tier;
+    for (var i = 0; i < count; i++) {
+      if (stats.levelUnlocked(i + 1) && stats.levelStars[i + 1] == null) {
+        tier = kCampaign[i].tier;
+        break;
+      }
+      tier = kCampaign[i].tier;
+    }
+
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header: back button + title/tier + ★-total badge.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  IconSquareButton(
+                    icon: Icons.arrow_back_rounded,
+                    semanticLabel: 'Back',
+                    hoverColor: t.text,
+                    onTap: () => Navigator.of(context).maybePop(),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Campaign',
+                            style: Fonts.display(size: 28, color: t.text)),
+                        const SizedBox(height: 2),
+                        Text(_Trail._chapter(tier),
+                            style: Fonts.ui(
+                                size: 11,
+                                color: t.muted,
+                                weight: FontWeight.w800,
+                                letterSpacing: 1,
+                                height: 1)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: tint(t.progress, 0.16),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: tint(t.progress, 0.4), width: 2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.star_rounded, size: 16, color: t.progress),
+                      const SizedBox(width: 4),
+                      Text('${stats.campaignStars}',
+                          style: Fonts.numeric(
+                              size: 14, color: t.text, weight: FontWeight.w700)),
+                    ]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Progress header: cleared count + star total + bar.
+              Row(
+                children: [
+                  Text('${stats.campaignCleared} OF $count CLEARED',
+                      style: Fonts.ui(
+                          size: 12,
+                          color: t.muted,
+                          weight: FontWeight.w800,
+                          letterSpacing: 1,
+                          height: 1)),
+                  const Spacer(),
+                  Icon(Icons.star_rounded, size: 16, color: t.progress),
+                  const SizedBox(width: 4),
+                  Text('${stats.campaignStars} / $maxStars',
+                      style: Fonts.numeric(
+                          size: 13, color: t.text, weight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: maxStars == 0 ? 0 : stats.campaignStars / maxStars,
+                  minHeight: 8,
+                  backgroundColor: tint(t.text, 0.08),
+                  valueColor: AlwaysStoppedAnimation<Color>(t.success),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _Trail(
+                g: g,
+                starColors: starColors,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 20),
-        _Trail(
-          g: g,
-          starColors: starColors,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -395,7 +462,6 @@ class _TrailNode extends StatelessWidget {
 /// "Play again" retries the same level; the win records stars, which unlocks
 /// the next node on the roadmap.
 void _openBranchingLevel(BuildContext context, GameController g, LevelDef def) {
-  g.close(); // dismiss the roadmap under the pushed board
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => TreeGamePage(

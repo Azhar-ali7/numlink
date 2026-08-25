@@ -8,8 +8,9 @@ import 'tokens.dart';
 /// - Display: Baloo 2 700/800 — the rounded, chunky headline face (wordmark,
 ///   band headings, big numbers). Matches the handoff prototype.
 /// - UI: Nunito 400/600/700/800 (labels, buttons, body) — rounded sans.
-/// - Numeric: Space Mono 400/700 — the game board's changing digits, always
-///   with tabular figures so they don't jitter.
+/// - Numeric: Nunito 800 with tabular figures — the handoff renders every
+///   changing number (board digits, targets, scores, counts) in Nunito, not a
+///   monospace face, so they stay on-brand and don't jitter.
 class Fonts {
   const Fonts._();
 
@@ -50,14 +51,16 @@ class Fonts {
         height: height,
       );
 
-  static TextStyle mono({
+  /// Changing numerals — Nunito with tabular figures (the handoff's number
+  /// face; no monospace anywhere).
+  static TextStyle numeric({
     required double size,
     Color? color,
-    FontWeight weight = FontWeight.w400,
+    FontWeight weight = FontWeight.w800,
     double letterSpacing = 0,
     double height = 1,
   }) =>
-      GoogleFonts.spaceMono(
+      GoogleFonts.nunito(
         fontSize: size,
         fontWeight: weight,
         color: color,

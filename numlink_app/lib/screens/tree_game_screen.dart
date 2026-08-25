@@ -43,9 +43,9 @@ class _StatusBar extends StatelessWidget {
     final armLabel = left == 0
         ? 'arm full'
         : (left == 1 ? '1 left on this arm' : '$left left on this arm');
-    final armColor = left <= 1 ? NumTokens.accent : (left <= 2 ? t.progress : t.muted);
+    final armColor = left <= 1 ? t.accent : (left <= 2 ? t.progress : t.muted);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: t.border, width: 2)),
       ),
@@ -54,7 +54,7 @@ class _StatusBar extends StatelessWidget {
         children: [
           // left: reached/total TARGETS
           Text('${g.reached}/$total',
-              style: Fonts.mono(
+              style: Fonts.numeric(
                   size: 34,
                   color: g.solved ? t.success : t.text,
                   weight: FontWeight.w800,
@@ -76,7 +76,7 @@ class _StatusBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('${g.moves}/${g.puzzle.par}',
-                  style: Fonts.mono(
+                  style: Fonts.numeric(
                       size: 22,
                       color: overPar ? t.progress : t.text,
                       weight: FontWeight.w800,
@@ -109,7 +109,7 @@ class _OpPad extends StatelessWidget {
       showPreviews = false;
     }
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
         color: t.bg,
         border: Border(top: BorderSide(color: t.border, width: 2)),

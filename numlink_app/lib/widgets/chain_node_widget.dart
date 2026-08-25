@@ -27,7 +27,7 @@ class OpEdge extends StatelessWidget {
         line,
         if (dashed)
           _DashedPill(child: Text('?',
-              style: Fonts.mono(size: 13, color: t.muted, weight: FontWeight.w700)))
+              style: Fonts.numeric(size: 13, color: t.muted, weight: FontWeight.w700)))
         else
           Container(
             decoration: BoxDecoration(
@@ -37,7 +37,7 @@ class OpEdge extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
             child: Text(label ?? '',
-                style: Fonts.mono(
+                style: Fonts.numeric(
                     size: 13, color: t.text, weight: FontWeight.w700)),
           ),
         line,
@@ -96,7 +96,7 @@ class ChainNodeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final numStyle = Fonts.mono(size: 40, color: style.numColor, weight: FontWeight.w700);
+    final numStyle = Fonts.numeric(size: 40, color: style.numColor, weight: FontWeight.w700);
 
     final inner = Column(
       mainAxisSize: MainAxisSize.min,

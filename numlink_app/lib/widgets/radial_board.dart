@@ -51,7 +51,7 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
 /// Multi-target coloring (prototype `TARGET_HUES`). Themed success/progress
 /// first, then three fixed brand accents.
 List<Color> targetHues(NumTokens t) =>
-    [t.success, t.progress, NumTokens.accent, NumTokens.hero, NumTokens.heroTwo];
+    [t.success, t.progress, t.accent, t.hero, t.heroTwo];
 
 /// The branching board: a radial tree of placed values with the outstanding
 /// targets floated as ghost pills around the rim. Auto-fits via [FittedBox],
@@ -320,10 +320,10 @@ class _NodeChip extends StatelessWidget {
     final t = NumTheme.of(context);
     final isTarget = hue != null;
     final Color ring = isStart
-        ? NumTokens.hero
+        ? t.hero
         : (isTarget ? hue! : (isSelected ? t.progress : t.border));
     final Color fill = isStart
-        ? NumTokens.hero
+        ? t.hero
         : (isTarget ? hue! : (isSelected ? tint(t.progress, 0.12) : t.elevated));
     final Color numColor =
         (isStart || isTarget) ? Colors.white : t.text;
@@ -343,12 +343,12 @@ class _NodeChip extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: fill,
-          border: Border.all(color: ring, width: isSelected ? 2.6 : 2),
+          border: Border.all(color: ring, width: 2),
           borderRadius: BorderRadius.circular(isStart ? 999 : 18),
           boxShadow: isStart
               ? [
                   BoxShadow(
-                      color: tint(NumTokens.hero, 0.28),
+                      color: tint(t.hero, 0.28),
                       blurRadius: 0,
                       spreadRadius: 4),
                 ]
@@ -360,7 +360,7 @@ class _NodeChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('${node.v}',
-                style: Fonts.mono(
+                style: Fonts.numeric(
                     size: isTarget ? 24 : (isStart ? 21 : 20),
                     color: numColor,
                     weight: FontWeight.w700,
@@ -412,7 +412,7 @@ class _GhostPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$value',
-                style: Fonts.mono(
+                style: Fonts.numeric(
                     size: 20, color: hue, weight: FontWeight.w700, height: 1)),
             Text('TARGET',
                 style: Fonts.ui(

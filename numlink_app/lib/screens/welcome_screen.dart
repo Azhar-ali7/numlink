@@ -8,6 +8,8 @@ import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
+import '../sheets/archive_sheet.dart';
+import '../sheets/roadmap_sheet.dart';
 import '../widgets/chunky_button.dart';
 import '../widgets/ui.dart';
 import 'tree_game_page.dart';
@@ -18,7 +20,7 @@ import 'tree_game_page.dart';
 ///   • gradient DAILY hero card (Play today's puzzle · How to play · level/XP)
 ///   • streak card
 ///   • "Game modes" card → the modes screen (Daily / Archive / Weekend Co-op)
-///   • "Campaign" card → the roadmap trail (SheetOverlay.roadmap)
+///   • "Campaign" card → the roadmap trail (CampaignPage, pushed full-screen)
 ///
 /// The daily/co-op launchers and the sheet overlays are unchanged — only the
 /// surrounding chrome was rebuilt to the handoff layout.
@@ -68,7 +70,10 @@ class WelcomeScreen extends StatelessWidget {
                       'Levels · ${g.stats.campaignCleared}/${g.campaignCount} cleared',
                   icon: Icons.route_rounded,
                   gradient: [t.tileOrange, t.star],
-                  onTap: () => g.open(SheetOverlay.roadmap),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => const CampaignPage()),
+                  ),
                 ),
                 on: on,
                 index: 3,
@@ -878,7 +883,6 @@ class _ModesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = context.watch<GameController>();
     final t = NumTheme.of(context);
-    final stats = g.stats;
     final on = !reducedMotion(context);
     return Scaffold(
       backgroundColor: t.bg,
@@ -918,48 +922,64 @@ class _ModesScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  _ModeChip(label: '3 Modes'),
+                  _ModeChip(emoji: '🎮', label: '3 Modes'),
                   const SizedBox(width: 8),
-                  _ModeChip(label: '${g.campaignCount} Levels'),
+                  _ModeChip(emoji: '🗺️', label: '${g.campaignCount} Levels'),
                 ],
               ),
               const SizedBox(height: 20),
-              entrance(
-                _ModeCard(
-                  icon: Icons.today_rounded,
-                  color: t.accent,
-                  badge: 'DAILY',
-                  title: 'Daily Puzzle',
-                  subtitle: "Today's board · NUMLINK #${g.dailyPuzzle.no}",
-                  avatars: 'Everyone plays the same board',
-                  onTap: () => openDailyBranching(context),
+              // Daily + Archive sit side-by-side (handoff 2-col grid); Weekend
+              // Co-op spans full width below.
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: entrance(
+                        _ModeCard(
+                          icon: Icons.today_rounded,
+                          color: t.accent,
+                          badge: 'DAILY',
+                          kicker: "TODAY'S CHAIN",
+                          title: 'Daily Puzzle',
+                          avatars: const ['K', 'F', 'C'],
+                          extra: 43,
+                          onTap: () => openDailyBranching(context),
+                        ),
+                        on: on,
+                        index: 0,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: entrance(
+                        _ModeCard(
+                          icon: Icons.calendar_month_rounded,
+                          color: t.hero,
+                          badge: 'DAILY',
+                          kicker: 'PAST PUZZLES',
+                          title: 'The Archive',
+                          avatars: const ['F', 'K', 'P'],
+                          extra: 12,
+                          onTap: () => openArchive(context),
+                        ),
+                        on: on,
+                        index: 1,
+                      ),
+                    ),
+                  ],
                 ),
-                on: on,
-                index: 0,
-              ),
-              const SizedBox(height: 14),
-              entrance(
-                _ModeCard(
-                  icon: Icons.calendar_month_rounded,
-                  color: t.hero,
-                  badge: 'CHALLENGE',
-                  title: 'The Archive',
-                  subtitle: '${stats.archiveSolved.length} past dailies solved',
-                  avatars: 'Replay any board you missed',
-                  onTap: () => g.open(SheetOverlay.archive),
-                ),
-                on: on,
-                index: 1,
               ),
               const SizedBox(height: 14),
               entrance(
                 _ModeCard(
                   icon: Icons.groups_rounded,
                   color: t.heroTwo,
-                  badge: 'WEEKEND',
+                  badge: 'CHALLENGE',
+                  kicker: 'WEEKENDS ONLY',
                   title: 'Weekend Co-op',
-                  subtitle: 'Shared board · resets Monday',
-                  avatars: 'Solve together with your circle',
+                  avatars: const ['K', 'P', 'U'],
+                  extra: 3,
                   onTap: () => openCoop(context),
                 ),
                 on: on,
@@ -990,9 +1010,10 @@ class _ModesScreen extends StatelessWidget {
   }
 }
 
-/// A small pill in the modes header ("3 Modes" / "N Levels").
+/// A small pill in the modes header ("🎮 3 Modes" / "🗺️ N Levels").
 class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.label});
+  const _ModeChip({required this.emoji, required this.label});
+  final String emoji;
   final String label;
 
   @override
@@ -1005,36 +1026,45 @@ class _ModeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: t.border, width: 2),
       ),
-      child: Text(label,
-          style: Fonts.ui(
-              size: 12,
-              color: t.text,
-              weight: FontWeight.w700,
-              letterSpacing: 0.3,
-              height: 1)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 13, height: 1)),
+          const SizedBox(width: 6),
+          Text(label,
+              style: Fonts.ui(
+                  size: 12,
+                  color: t.text,
+                  weight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                  height: 1)),
+        ],
+      ),
     );
   }
 }
 
-/// A handoff-style mode card: colored icon tile + badge pill, title/subtitle,
-/// a descriptive footer line, and a circular arrow launch button.
+/// A handoff-style mode card: colored icon tile + badge pill, a category kicker
+/// over the title, a friends avatar stack, and a circular arrow launch button.
 class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.icon,
     required this.color,
     required this.badge,
+    required this.kicker,
     required this.title,
-    required this.subtitle,
     required this.avatars,
+    required this.extra,
     required this.onTap,
   });
 
   final IconData icon;
   final Color color;
   final String badge;
+  final String kicker;
   final String title;
-  final String subtitle;
-  final String avatars;
+  final List<String> avatars;
+  final int extra;
   final VoidCallback onTap;
 
   @override
@@ -1084,29 +1114,29 @@ class _ModeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(title, style: Fonts.display(size: 20, color: t.text)),
-            const SizedBox(height: 3),
-            Text(subtitle,
-                style: Fonts.ui(size: 12.5, color: t.muted, height: 1.3)),
+            Text(kicker,
+                style: Fonts.ui(
+                    size: 10,
+                    color: t.muted,
+                    weight: FontWeight.w800,
+                    letterSpacing: 1,
+                    height: 1)),
+            const SizedBox(height: 5),
+            Text(title, style: Fonts.display(size: 19, color: t.text)),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: Text(avatars,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Fonts.ui(size: 11, color: t.muted, height: 1.2)),
-                ),
-                const SizedBox(width: 10),
+                Expanded(child: _AvatarStack(initials: avatars, extra: extra)),
+                const SizedBox(width: 8),
                 _arrowNudge(
                   !reducedMotion(context),
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 38,
+                    height: 38,
                     decoration:
                         BoxDecoration(color: color, shape: BoxShape.circle),
                     child: const Icon(Icons.arrow_forward_rounded,
-                        size: 20, color: Colors.white),
+                        size: 19, color: Colors.white),
                   ),
                 ),
               ],
@@ -1114,6 +1144,68 @@ class _ModeCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Overlapping friend-avatar discs with a "+N" tail — the handoff's social
+/// proof on the mode cards. Purely cosmetic (mock cohort).
+class _AvatarStack extends StatelessWidget {
+  const _AvatarStack({required this.initials, required this.extra});
+  final List<String> initials;
+  final int extra;
+
+  static const _hues = [
+    Color(0xFFEC6A8D),
+    Color(0xFF6B61E6),
+    Color(0xFFEFA42F),
+    Color(0xFF237E72),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    const d = 24.0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: d,
+          width: d + (initials.length - 1) * 16,
+          child: Stack(
+            children: [
+              for (var i = 0; i < initials.length; i++)
+                Positioned(
+                  left: i * 16.0,
+                  child: Container(
+                    width: d,
+                    height: d,
+                    decoration: BoxDecoration(
+                      color: _hues[i % _hues.length],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: t.surface, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(initials[i],
+                        style: Fonts.ui(
+                            size: 10,
+                            color: Colors.white,
+                            weight: FontWeight.w800,
+                            height: 1)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text('+$extra',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Fonts.ui(
+                  size: 11, color: t.muted, weight: FontWeight.w700, height: 1)),
+        ),
+      ],
     );
   }
 }
@@ -1132,7 +1224,9 @@ class _CampaignCard extends StatelessWidget {
     final maxStars = count * 3;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => g.open(SheetOverlay.roadmap),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const CampaignPage()),
+      ),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1221,6 +1315,26 @@ void openDailyBranching(BuildContext context) {
 
 /// Weekend Co-op: this week's shared board, with the teammates banner. Wins
 /// count like practice (mock social board — no dedicated mode/counter).
+/// Opens the Archive calendar as a transparent pushed route (it draws its own
+/// scrim). Used from the pushed Game-modes screen, where the app-shell overlay
+/// would render *behind* the route. Home opens it as an overlay instead.
+void openArchive(BuildContext context) {
+  final nav = Navigator.of(context);
+  // Defer to the next frame: on web the opening tap's synthesized pointer-up
+  // would otherwise bleed onto the sheet's freshly-mounted scrim and dismiss it.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    nav.push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        pageBuilder: (_, __, ___) => const ArchiveSheet(asRoute: true),
+      ),
+    );
+  });
+}
+
 void openCoop(BuildContext context) {
   final g = context.read<GameController>();
   Navigator.of(context).push(

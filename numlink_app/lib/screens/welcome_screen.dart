@@ -70,6 +70,15 @@ class WelcomeScreen extends StatelessWidget {
                 gradient: const [NumTokens.hero, NumTokens.accent],
                 onTap: () => g.open(SheetOverlay.leaderboard),
               ),
+              const SizedBox(height: 14),
+              _NavCard(
+                eyebrow: 'WEEKENDS ONLY',
+                title: 'Weekend Co-op',
+                subtitle: 'Shared board · resets Monday',
+                icon: Icons.groups_rounded,
+                gradient: const [NumTokens.heroTwo, NumTokens.hero],
+                onTap: () => openCoop(context),
+              ),
             ],
           ),
         ),
@@ -760,6 +769,29 @@ void openDailyBranching(BuildContext context) {
         puzzle: dailyBranchingPuzzle(),
         onWin: (m, p) {
           g.recordDailyWin(m, p);
+          return WinRecord(
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.stats.streak);
+        },
+      ),
+    ),
+  );
+}
+
+/// Weekend Co-op: this week's shared board, with the teammates banner. Wins
+/// count like practice (mock social board — no dedicated mode/counter).
+void openCoop(BuildContext context) {
+  final g = context.read<GameController>();
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TreeGamePage(
+        tier: 'medium',
+        title: 'WEEKEND CO-OP',
+        coop: true,
+        puzzle: weekendCoopPuzzle(),
+        onWin: (m, p) {
+          g.recordBranchingWin(GameMode.practice, m, p);
           return WinRecord(
               xpGained: g.lastXpGain,
               level: g.playerLevel,

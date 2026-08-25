@@ -31,6 +31,20 @@ TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
   return buildPuzzle('medium', d.year * 10000 + d.month * 100 + d.day);
 }
 
+/// This weekend's shared co-op board — week-seeded medium, so everyone on the
+/// same ISO week gets the same chain. (Handoff ships a hardcoded co-op puzzle,
+/// but its unary ops aren't in this engine; a week-seeded board is the same
+/// "shared board, resets Monday" experience per docs §11 mock allowance.)
+TreePuzzle weekendCoopPuzzle([DateTime? day]) {
+  final d = day ?? DateTime.now();
+  // Days since a fixed Monday epoch ÷ 7 → a stable per-week seed.
+  final week = DateTime(d.year, d.month, d.day)
+          .difference(DateTime(2026, 1, 5))
+          .inDays ~/
+      7;
+  return buildPuzzle('medium', 0x00C0FFEE ^ week);
+}
+
 /// The board a given past daily served, for Archive replay. ponytail: mirrors
 /// PuzzleRepository's epoch (#128 → 2026-08-08); keep the two in sync, or fold
 /// into one source when GameController is retired.
@@ -41,9 +55,22 @@ TreePuzzle archiveBranchingPuzzle(int no) =>
 /// boards, switches difficulty, and shows a win overlay. Launched from home via
 /// [Navigator.push]; the linear engine stays untouched around it.
 class TreeGamePage extends StatefulWidget {
-  const TreeGamePage({super.key, this.tier = 'easy', this.puzzle, this.onWin});
+  const TreeGamePage({
+    super.key,
+    this.tier = 'easy',
+    this.puzzle,
+    this.onWin,
+    this.title,
+    this.coop = false,
+  });
 
   final String tier;
+
+  /// Header label override (e.g. 'WEEKEND CO-OP'); defaults to the tier name.
+  final String? title;
+
+  /// Co-op board: shows the "teammates already started" banner.
+  final bool coop;
 
   /// Injected board (daily/tests); when set, "New board" re-deals it.
   final TreePuzzle? puzzle;
@@ -128,9 +155,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
                 children: [
                   _Header(
                       tier: _tier,
+                      title: widget.title,
                       onNew: _newBoard,
                       onTier: _setTier,
                       onRestart: _restart),
+                  if (widget.coop) const _CoopBanner(),
                   const Expanded(child: TreeGameScreen()),
                 ],
               ),
@@ -166,8 +195,10 @@ class _Header extends StatelessWidget {
     required this.onNew,
     required this.onTier,
     required this.onRestart,
+    this.title,
   });
   final String tier;
+  final String? title;
   final VoidCallback onNew;
   final ValueChanged<String> onTier;
   final VoidCallback onRestart;
@@ -188,7 +219,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(tier.toUpperCase(),
+              Text(title ?? tier.toUpperCase(),
                   style: Fonts.ui(
                       size: 14,
                       color: t.text,
@@ -231,6 +262,64 @@ class _Header extends StatelessWidget {
         // don't clobber each other.
         onSolution: () => WidgetsBinding.instance
             .addPostFrameCallback((_) => showSolutionSheet(context, puzzle)),
+      ),
+    );
+  }
+}
+
+/// Co-op board banner: overlapping teammate avatars + shared-board nudge.
+class _CoopBanner extends StatelessWidget {
+  const _CoopBanner();
+
+  // Fixed mock cohort — matches the Friends leaderboard roster.
+  static const _team = [
+    ('I', NumTokens.accent),
+    ('M', Color(0xFF2F9184)),
+    ('P', Color(0xFF7A6CD6)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 26 + (_team.length - 1) * 18,
+            height: 26,
+            child: Stack(
+              children: [
+                for (var i = 0; i < _team.length; i++)
+                  Positioned(
+                    left: i * 18,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _team[i].$2.withValues(alpha: 0.2),
+                        border: Border.all(color: t.bg, width: 2),
+                      ),
+                      child: Text(_team[i].$1,
+                          style: Fonts.ui(
+                              size: 11,
+                              color: _team[i].$2,
+                              weight: FontWeight.w800)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+                'Teammates already started this chain — finish it together',
+                style: Fonts.ui(
+                    size: 11, color: t.muted, weight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }

@@ -60,6 +60,15 @@ class WelcomeScreen extends StatelessWidget {
                 gradient: const [NumTokens.accentOrange, NumTokens.star],
                 onTap: () => g.open(SheetOverlay.roadmap),
               ),
+              const SizedBox(height: 14),
+              _NavCard(
+                eyebrow: 'YOUR CIRCLE',
+                title: 'Friends',
+                subtitle: 'Leaderboard · This week by XP',
+                icon: Icons.emoji_events_rounded,
+                gradient: const [NumTokens.hero, NumTokens.accent],
+                onTap: () => g.open(SheetOverlay.leaderboard),
+              ),
             ],
           ),
         ),
@@ -251,7 +260,7 @@ class _DailyHeroCard extends StatelessWidget {
             baseColor: const Color(0xFFE7E1F6),
             radius: 16,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            onTap: () => _openDailyBranching(context),
+            onTap: () => openDailyBranching(context),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -451,7 +460,7 @@ class _WeekStripCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => isToday
-          ? _openDailyBranching(context)
+          ? openDailyBranching(context)
           : g.open(SheetOverlay.archive),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
@@ -739,7 +748,7 @@ class _ModeTile extends StatelessWidget {
 // ── Launchers (unchanged) ────────────────────────────────────────────────────
 
 /// The daily CTA opens today's board on the branching engine.
-void _openDailyBranching(BuildContext context) {
+void openDailyBranching(BuildContext context) {
   final g = context.read<GameController>();
   Navigator.of(context).push(
     MaterialPageRoute<void>(

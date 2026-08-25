@@ -8,6 +8,8 @@ import 'screens/intro_carousel.dart';
 import 'screens/welcome_screen.dart';
 import 'sheets/archive_sheet.dart';
 import 'sheets/how_to_play_sheet.dart';
+import 'sheets/leaderboard_sheet.dart';
+import 'sheets/notifications_sheet.dart';
 import 'sheets/roadmap_sheet.dart';
 import 'sheets/settings_sheet.dart';
 import 'sheets/stats_sheet.dart';
@@ -34,6 +36,17 @@ class NumlinkApp extends StatelessWidget {
       themeMode: settings.themeMode,
       theme: buildTheme(lightTokens, Brightness.light),
       darkTheme: buildTheme(darkTokens, Brightness.dark),
+      // Cap EVERY route (home + pushed boards) to a centered phone-width frame,
+      // so the game board doesn't sprawl on desktop/macOS. Phones (<440) fill.
+      builder: (context, child) => ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: ClipRect(child: SizedBox.expand(child: child)),
+          ),
+        ),
+      ),
       home: const _AppShell(),
     );
   }
@@ -102,6 +115,10 @@ class _AppShell extends StatelessWidget {
                       const Positioned.fill(child: ArchiveSheet()),
                     if (g.overlay == SheetOverlay.roadmap)
                       const Positioned.fill(child: RoadmapSheet()),
+                    if (g.overlay == SheetOverlay.notifications)
+                      const Positioned.fill(child: NotificationsSheet()),
+                    if (g.overlay == SheetOverlay.leaderboard)
+                      const Positioned.fill(child: LeaderboardSheet()),
 
                     // First-run intro carousel — above everything else.
                     if (settings.tutorialOpen)

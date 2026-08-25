@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
 import '../game/score.dart';
+import '../game/steiner.dart' show compute;
 import '../game/tree_controller.dart';
 import '../game/tree_generator.dart';
 import '../theme/app_theme.dart';
@@ -205,14 +206,14 @@ class _Header extends StatelessWidget {
           _RoundIconBtn(
             key: const Key('difficulty'),
             icon: Icons.more_horiz_rounded,
-            onTap: () => _showOverflow(context),
+            onTap: () => _showOverflow(context, c.puzzle),
           ),
         ],
       ),
     );
   }
 
-  void _showOverflow(BuildContext context) {
+  void _showOverflow(BuildContext context, TreePuzzle puzzle) {
     final t = NumTheme.of(context);
     showModalBottomSheet<void>(
       context: context,
@@ -226,6 +227,10 @@ class _Header extends StatelessWidget {
         onNew: onNew,
         onTier: onTier,
         onRestart: onRestart,
+        // Defer past the overflow's pop frame so the two modal transitions
+        // don't clobber each other.
+        onSolution: () => WidgetsBinding.instance
+            .addPostFrameCallback((_) => showSolutionSheet(context, puzzle)),
       ),
     );
   }
@@ -240,12 +245,14 @@ class _OverflowMenu extends StatelessWidget {
     required this.onNew,
     required this.onTier,
     required this.onRestart,
+    required this.onSolution,
   });
 
   final String tier;
   final VoidCallback onNew;
   final ValueChanged<String> onTier;
   final VoidCallback onRestart;
+  final VoidCallback onSolution;
 
   @override
   Widget build(BuildContext context) {
@@ -317,6 +324,7 @@ class _OverflowMenu extends StatelessWidget {
           label('This puzzle'),
           action(Icons.refresh_rounded, 'Restart', onRestart),
           action(Icons.add_circle_outline, 'New board', onNew),
+          action(Icons.lightbulb_outline_rounded, 'Reveal solution', onSolution),
           if (s != null)
             action(Icons.school_outlined, 'How to play', s.openTutorial),
           label('Difficulty'),
@@ -811,13 +819,28 @@ class _WinSheet extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    child: Text('Home',
-                        style: Fonts.ui(
-                            size: 13, color: t.muted, weight: FontWeight.w600)),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => showSolutionSheet(context, c.puzzle),
+                      child: Text('See solution',
+                          style: Fonts.ui(
+                              size: 13,
+                              color: t.muted,
+                              weight: FontWeight.w600)),
+                    ),
+                    Text('·',
+                        style: Fonts.ui(size: 13, color: t.muted)),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      child: Text('Home',
+                          style: Fonts.ui(
+                              size: 13,
+                              color: t.muted,
+                              weight: FontWeight.w600)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -858,6 +881,132 @@ class _WinSheet extends StatelessWidget {
         ),
       );
 
+}
+
+/// One optimal-line step: `from` (op) → `to`.
+typedef SolutionStep = ({int n, int from, String op, int to});
+
+/// Orders [puzzle.optimalEdges] start-outward (each step's source is already
+/// reached) and labels each edge with the op that produces it. Used by the
+/// Solution reveal.
+List<SolutionStep> solutionSteps(TreePuzzle puzzle) {
+  final ops = [for (final hand in puzzle.hands) ...hand];
+  String labelFor(int from, int to) {
+    for (final o in ops) {
+      if (compute(from, o) == to) return o.label;
+    }
+    return '?';
+  }
+
+  final reached = <int>{puzzle.start};
+  final remaining = [...puzzle.optimalEdges];
+  final steps = <SolutionStep>[];
+  while (remaining.isNotEmpty) {
+    final i = remaining.indexWhere((e) => reached.contains(e.$1));
+    if (i < 0) break; // disconnected (shouldn't happen for a valid tree)
+    final e = remaining.removeAt(i);
+    steps.add((n: steps.length + 1, from: e.$1, op: labelFor(e.$1, e.$2), to: e.$2));
+    reached.add(e.$2);
+  }
+  return steps;
+}
+
+/// Opens the Solution reveal (handoff spoiler sheet) for [puzzle]: the optimal
+/// line as numbered `from op → to` steps. Shown from the win sheet and the board
+/// overflow menu.
+void showSolutionSheet(BuildContext context, TreePuzzle puzzle) {
+  final t = NumTheme.of(context);
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: t.elevated,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (_) => _SolutionSheet(puzzle: puzzle),
+  );
+}
+
+class _SolutionSheet extends StatelessWidget {
+  const _SolutionSheet({required this.puzzle});
+  final TreePuzzle puzzle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    final steps = solutionSteps(puzzle);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text('Solution',
+                    style: Fonts.display(size: 28, color: t.text, weight: 700)),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(Icons.close, color: t.text),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            Text('Optimal line · ${puzzle.optimalPar} moves',
+                style: Fonts.ui(
+                    size: 12, color: t.muted, weight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            for (final st in steps) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: t.border, width: 2),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      child: Text('${st.n}',
+                          style: Fonts.mono(size: 12, color: t.muted)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${st.from}',
+                        style: Fonts.mono(
+                            size: 18, color: t.text, weight: FontWeight.w700)),
+                    const SizedBox(width: 12),
+                    Text(st.op,
+                        style: Fonts.mono(
+                            size: 14,
+                            color: t.progress,
+                            weight: FontWeight.w700)),
+                    const SizedBox(width: 12),
+                    Text('→', style: Fonts.mono(size: 14, color: t.muted)),
+                    const SizedBox(width: 12),
+                    Text('${st.to}',
+                        style: Fonts.mono(
+                            size: 18,
+                            color: t.success,
+                            weight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 12),
+            _action(
+              label: 'Back to puzzle',
+              bg: NumTokens.accent,
+              fg: Colors.white,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A flat rounded action button shared by the win / run-complete sheets.

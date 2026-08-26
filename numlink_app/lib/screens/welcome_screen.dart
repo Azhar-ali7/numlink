@@ -302,7 +302,7 @@ class _DailyHeroCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const _RobotMascot(),
+              const RobotMascot(),
             ],
           ),
           const SizedBox(height: 18),
@@ -466,8 +466,8 @@ class _Blob extends StatelessWidget {
 /// antenna tip pulses, and the eyes blink on a slow cycle — the handoff's
 /// `bob` / `antenna` / `blink` keyframes. All loops are gated so widget tests
 /// (which force reduced motion) never see an unsettling controller.
-class _RobotMascot extends StatelessWidget {
-  const _RobotMascot();
+class RobotMascot extends StatelessWidget {
+  const RobotMascot({super.key});
 
   @override
   Widget build(BuildContext context) {

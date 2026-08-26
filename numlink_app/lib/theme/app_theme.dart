@@ -5,10 +5,12 @@ import 'tokens.dart';
 
 /// Typography helpers.
 ///
-/// - Display: Fraunces 400/700 (wordmark, sheet titles, "Solved!")
-/// - UI: Space Grotesk 400/500/700 (labels, buttons, body)
-/// - Numeric: Space Mono 400/700 — all changing numbers, always with
-///   tabular figures so digits don't jitter.
+/// - Display: Baloo 2 700/800 — the rounded, chunky headline face (wordmark,
+///   band headings, big numbers). Matches the handoff prototype.
+/// - UI: Nunito 400/600/700/800 (labels, buttons, body) — rounded sans.
+/// - Numeric: Nunito 800 with tabular figures — the handoff renders every
+///   changing number (board digits, targets, scores, counts) in Nunito, not a
+///   monospace face, so they stay on-brand and don't jitter.
 class Fonts {
   const Fonts._();
 
@@ -17,13 +19,18 @@ class Fonts {
   static TextStyle display({
     required double size,
     Color? color,
-    double weight = 700,
+    double weight = 800,
     double letterSpacing = 0,
     double height = 1,
   }) =>
-      GoogleFonts.fraunces(
+      GoogleFonts.baloo2(
         fontSize: size,
-        fontWeight: weight >= 700 ? FontWeight.w700 : FontWeight.w400,
+        // Baloo 2 ships 400–800; snap the requested weight to the nearest bold.
+        fontWeight: weight >= 800
+            ? FontWeight.w800
+            : weight >= 700
+                ? FontWeight.w700
+                : FontWeight.w600,
         color: color,
         letterSpacing: letterSpacing,
         height: height,
@@ -36,7 +43,7 @@ class Fonts {
     double letterSpacing = 0,
     double height = 1.4,
   }) =>
-      GoogleFonts.spaceGrotesk(
+      GoogleFonts.nunito(
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -44,14 +51,16 @@ class Fonts {
         height: height,
       );
 
-  static TextStyle mono({
+  /// Changing numerals — Nunito with tabular figures (the handoff's number
+  /// face; no monospace anywhere).
+  static TextStyle numeric({
     required double size,
     Color? color,
-    FontWeight weight = FontWeight.w400,
+    FontWeight weight = FontWeight.w800,
     double letterSpacing = 0,
     double height = 1,
   }) =>
-      GoogleFonts.spaceMono(
+      GoogleFonts.nunito(
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -77,7 +86,7 @@ ThemeData buildTheme(NumTokens tokens, Brightness brightness) {
     colorScheme: scheme,
     splashFactory: NoSplash.splashFactory,
     highlightColor: Colors.transparent,
-    textTheme: GoogleFonts.spaceGroteskTextTheme(
+    textTheme: GoogleFonts.nunitoTextTheme(
       ThemeData(brightness: brightness).textTheme,
     ).apply(bodyColor: tokens.text, displayColor: tokens.text),
     extensions: [NumTheme(tokens)],

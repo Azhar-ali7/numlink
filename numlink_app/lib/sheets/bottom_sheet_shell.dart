@@ -39,7 +39,7 @@ class BottomSheetShell extends StatelessWidget {
       decoration: BoxDecoration(
         color: t.elevated,
         borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(24)),
+            const BorderRadius.vertical(top: Radius.circular(34)),
         border: Border(top: BorderSide(color: t.border, width: 2)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
@@ -108,11 +108,18 @@ class PrimaryButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.center = false,
+    this.fill,
+    this.fg,
   });
 
   final String label;
   final VoidCallback onTap;
   final bool center;
+
+  /// Override the success fill — the intro sits on a gradient that already
+  /// contains `success`, so the default button disappears into slide 2.
+  final Color? fill;
+  final Color? fg;
 
   @override
   Widget build(BuildContext context) {
@@ -125,14 +132,14 @@ class PrimaryButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
           decoration: BoxDecoration(
-            color: t.success,
+            color: fill ?? t.success,
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: center ? Alignment.center : Alignment.centerLeft,
           child: Text(label,
               style: Fonts.ui(
                   size: 15,
-                  color: Colors.white,
+                  color: fg ?? Colors.white,
                   weight: FontWeight.w700,
                   letterSpacing: 0.5,
                   height: 1)),

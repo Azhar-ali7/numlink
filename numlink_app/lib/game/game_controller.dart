@@ -1,397 +1,55 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../data/stats_repository.dart';
 import '../models/achievement.dart';
-import '../models/chain_node.dart';
 import '../models/game_stats.dart';
-import '../models/operation.dart';
-import '../models/puzzle.dart';
-import '../services/feedback_service.dart';
+import 'campaign.dart';
 import 'game_mode.dart';
 import 'puzzle_repository.dart';
 
 /// Which overlay sheet is showing.
-enum SheetOverlay { how, stats, settings, win, archive }
+enum SheetOverlay { how, stats, settings, archive, notifications, leaderboard }
 
-/// Golf-style score verdicts.
-enum ScoreLabel { eagle, birdie, par, bogey, doubleBogey, over }
-
-extension ScoreLabelText on ScoreLabel {
-  String text(int over) => switch (this) {
-        ScoreLabel.eagle => 'Eagle',
-        ScoreLabel.birdie => 'Birdie',
-        ScoreLabel.par => 'Par',
-        ScoreLabel.bogey => 'Bogey',
-        ScoreLabel.doubleBogey => 'Double bogey',
-        ScoreLabel.over => '+$over',
-      };
-}
-
-/// Proximity heat state, mapped to a themed color by the UI.
-enum Heat { onTarget, near, far }
-
-/// The core play loop. Logic is ported 1:1 from the design prototype's
-/// `Component` class (see `NUMLINK.dc.html`).
+/// Engine-agnostic stats + progression store. The branching engine
+/// (`TreeController` / `TreeGamePage` / `TimedTreePage`) plays the boards as
+/// pushed routes; when one is won it calls a `record*Win` bridge here to fold
+/// the result into the shared [GameStats] (streak, distribution, XP, badges,
+/// campaign stars). This class holds no board state of its own.
 class GameController extends ChangeNotifier {
   GameController({
-    required Puzzle puzzle,
     required StatsRepository statsRepo,
-    required this.feedback,
     required GameStats initialStats,
-    this.puzzleRepo = const LocalPuzzleRepository(),
-  })  : _puzzle = puzzle,
-        _dailyPuzzle = puzzle,
-        _statsRepo = statsRepo,
+    this.calendar = const PuzzleCalendar(),
+  })  : _statsRepo = statsRepo,
         _stats = initialStats;
 
-  Puzzle _puzzle;
-
-  /// The daily puzzle (captured at construction), for Home-hub display even
-  /// while another mode's board is loaded.
-  final Puzzle _dailyPuzzle;
-  Puzzle get dailyPuzzle => _dailyPuzzle;
   final StatsRepository _statsRepo;
-  final FeedbackService feedback;
+  final PuzzleCalendar calendar;
 
-  /// Source for generated puzzles (Practice/Zen "new puzzle", ladder).
-  final PuzzleRepository puzzleRepo;
-
-  GameMode _mode = GameMode.daily;
-  Difficulty _difficulty = Difficulty.medium;
-
-  Puzzle get puzzle => _puzzle;
-  GameMode get mode => _mode;
-  Difficulty get difficulty => _difficulty;
-
-  /// Header title/subtitle for the active mode.
-  String get modeTitle => switch (_mode) {
-        GameMode.daily => 'NUMLINK',
-        GameMode.practice => 'Practice',
-        GameMode.zen => 'Zen',
-        GameMode.timed => 'Timed',
-        GameMode.archive => 'Archive',
-      };
-
-  String get modeSubtitle => switch (_mode) {
-        GameMode.daily => '#${_puzzle.no} · ${_puzzle.dateLabel}',
-        GameMode.practice => '${_difficulty.label} · par ${_puzzle.par}',
-        GameMode.zen => 'Free play · ${_difficulty.label}',
-        GameMode.timed => 'Stage $stage / $stageCount',
-        GameMode.archive => '#${_puzzle.no} · ${_puzzle.dateLabel}',
-      };
-
-  List<ChainNode> _chain = [];
-  final Map<String, int> _used = {};
-  bool _solved = false;
-  bool _recorded = false;
-  bool _started = false;
-  SheetOverlay? _overlay;
   GameStats _stats;
-  String? _message;
-  String? _shakeOpId;
-  bool _copied = false;
+  SheetOverlay? _overlay;
+  int _lastXpGain = 0;
 
-  /// Bumped whenever a solve happens, so the UI can fire a confetti burst.
-  int _winPulse = 0;
+  // ---- Read-only view -----------------------------------------------------
 
-  Timer? _messageTimer;
-  Timer? _shakeTimer;
-  Timer? _copyTimer;
-
-  // ---- Timed ladder state -------------------------------------------------
-
-  /// Number of stages in one timed run.
-  static const int _ladderLength = 8;
-
-  List<Puzzle> _ladder = [];
-  int _stage = 0; // 0-based index of the stage currently being played
-  int _elapsedSeconds = 0;
-  int _bestStage = 0;
-  int _bestTime = 0; // seconds of the fastest full run (0 = none yet)
-  Timer? _tickTimer;
-
-  /// 1-based current stage for display.
-  int get stage => _stage + 1;
-  int get stageCount => _ladder.length;
-  int get elapsedSeconds => _elapsedSeconds;
-  int get bestStage => _bestStage;
-  int get bestTime => _bestTime;
-  bool get isTimed => _mode == GameMode.timed;
-  bool get isZen => _mode == GameMode.zen;
-
-  /// m:ss elapsed clock for the timed bar.
-  String get elapsedLabel {
-    final m = _elapsedSeconds ~/ 60;
-    final s = _elapsedSeconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-
-  /// Mode-aware win-sheet summary — Zen drops par/score language entirely.
-  String get winSummary => switch (_mode) {
-        GameMode.zen => '$moves moves',
-        GameMode.timed => '$stageCount stages · $elapsedLabel',
-        _ => '$moves moves · par $par · ${scoreLabel.text(scoreOver)}',
-      };
-
-  GameController init() {
-    _chain = [ChainNode(puzzle.start)];
-    return this;
-  }
-
-  // ---- Read-only view of state -------------------------------------------
-
-  List<ChainNode> get chain => List.unmodifiable(_chain);
-  Map<String, int> get used => Map.unmodifiable(_used);
-  bool get solved => _solved;
-  bool get started => _started;
-  SheetOverlay? get overlay => _overlay;
   GameStats get stats => _stats;
-  String? get message => _message;
-  String? get shakeOpId => _shakeOpId;
-  bool get copied => _copied;
-  int get winPulse => _winPulse;
+  SheetOverlay? get overlay => _overlay;
 
-  int get current => _chain.last.value;
-  int get moves => _chain.length - 1;
-  int get par => puzzle.par;
-  int get target => puzzle.target;
+  /// Daily identity for the Home hub / settings credits.
+  /// Recomputed per read, not cached at construction: an app left open across
+  /// midnight must roll over to the new daily.
+  DailyInfo get dailyPuzzle => calendar.today();
 
-  int get distance => (puzzle.target - current).abs();
-  int get _initialDistance =>
-      (puzzle.target - puzzle.start).abs() == 0
-          ? 1
-          : (puzzle.target - puzzle.start).abs();
+  List<int> get archiveNumbers => calendar.archiveNumbers();
+  int get campaignCount => calendar.campaignCount;
 
-  /// Heat bar fill percentage (min 6, max 100).
-  double get heatPercent {
-    final pct = 100 * (1 - distance / _initialDistance);
-    return pct.clamp(6, 100).toDouble();
-  }
+  /// XP awarded by the most recent recorded win (shown on the win sheet).
+  int get lastXpGain => _lastXpGain;
 
-  Heat get heat =>
-      distance == 0 ? Heat.onTarget : (distance <= 3 ? Heat.near : Heat.far);
+  /// Current player level (from lifetime XP).
+  int get playerLevel => _stats.playerLevel;
 
-  String get proximityText =>
-      _solved ? 'On target' : '$distance away from target';
-
-  /// Tokens remaining for [o].
-  int remaining(Operation o) => o.tokens - (_used[o.id] ?? 0);
-
-  /// Preview result of applying [o] to the current value, or null if illegal.
-  int? preview(Operation o) => o.apply(current, cap: puzzle.cap);
-
-  bool isDisabled(Operation o) =>
-      _solved || preview(o) == null || remaining(o) <= 0;
-
-  int get scoreOver => moves - par;
-
-  ScoreLabel get scoreLabel {
-    final over = scoreOver;
-    if (over <= -2) return ScoreLabel.eagle;
-    if (over == -1) return ScoreLabel.birdie;
-    if (over == 0) return ScoreLabel.par;
-    if (over == 1) return ScoreLabel.bogey;
-    if (over == 2) return ScoreLabel.doubleBogey;
-    return ScoreLabel.over;
-  }
-
-  bool get showTargetPlaceholder => !_solved;
-
-  // ---- Actions ------------------------------------------------------------
-
-  void apply(Operation o) {
-    if (_solved) return;
-    if (remaining(o) <= 0) {
-      _flash('No ${o.label} tokens left');
-      _shake(o.id);
-      feedback.onIllegal();
-      return;
-    }
-    final r = o.apply(current, cap: puzzle.cap);
-    if (r == null) {
-      _flash(o.symbol == '÷'
-          ? "That doesn't divide evenly"
-          : 'That goes out of range');
-      _shake(o.id);
-      feedback.onIllegal();
-      return;
-    }
-    _chain = [..._chain, ChainNode(r, o.label)];
-    _used[o.id] = (_used[o.id] ?? 0) + 1;
-    if (r == puzzle.target) {
-      if (_mode == GameMode.timed) {
-        _solveTimed(); // advances the ladder or finishes the run (self-notifies)
-        return;
-      }
-      _solved = true;
-      _overlay = SheetOverlay.win;
-      _winPulse++;
-      _recordSolve();
-      feedback.onSolve();
-    } else {
-      feedback.onTap();
-    }
-    notifyListeners();
-  }
-
-  void undo() {
-    if (_solved || _chain.length <= 1) return;
-    final lastLabel = _chain.last.opLabel;
-    final hit = puzzle.ops.where((o) => o.label == lastLabel);
-    if (hit.isNotEmpty) {
-      final id = hit.first.id;
-      if ((_used[id] ?? 0) > 0) _used[id] = _used[id]! - 1;
-    }
-    _chain = _chain.sublist(0, _chain.length - 1);
-    feedback.onTap();
-    notifyListeners();
-  }
-
-  void reset() {
-    _resetBoard();
-    notifyListeners();
-  }
-
-  void _resetBoard() {
-    _chain = [ChainNode(_puzzle.start)];
-    _used.clear();
-    _solved = false;
-    _recorded = false;
-  }
-
-  /// Swaps in a new puzzle and clears the board — the seam for Practice/Zen/
-  /// Timed and Archive. [mode]/[difficulty] tag the session for stat routing
-  /// and mode-aware UI.
-  void load(Puzzle p, {GameMode mode = GameMode.daily, Difficulty? difficulty}) {
-    _puzzle = p;
-    _mode = mode;
-    if (difficulty != null) _difficulty = difficulty;
-    _resetBoard();
-    _overlay = null;
-    _copied = false;
-    _message = null;
-    _started = true;
-    notifyListeners();
-  }
-
-  /// Daily tile from the Home hub: resume in-progress daily, or (re)load it
-  /// after a detour through another mode.
-  Future<void> startDaily() async {
-    if (_mode == GameMode.daily) {
-      _started = true;
-      _overlay = null;
-      notifyListeners();
-      return;
-    }
-    load(await puzzleRepo.today(), mode: GameMode.daily);
-  }
-
-  /// Return to the Home hub without discarding the current board. Also stops
-  /// the timed clock — leaving a run ends it.
-  void goHome() {
-    _tickTimer?.cancel();
-    _started = false;
-    _overlay = null;
-    notifyListeners();
-  }
-
-  /// Practice: generate a fresh puzzle at tier [d] and start it.
-  Future<void> startPractice(Difficulty d) async {
-    final p = await puzzleRepo.generate(d);
-    load(p, mode: GameMode.practice, difficulty: d);
-  }
-
-  /// Zen: like Practice but pressure-free — no par/score/streak (win recording
-  /// is already gated to daily; the UI hides par/heat for this mode).
-  Future<void> startZen(Difficulty d) async {
-    final p = await puzzleRepo.generate(d);
-    load(p, mode: GameMode.zen, difficulty: d);
-  }
-
-  /// Timed: build a fresh escalating ladder and start the clock.
-  Future<void> startTimed() async {
-    _tickTimer?.cancel();
-    final runSeed = DateTime.now().millisecondsSinceEpoch % 100000;
-    _ladder = puzzleRepo.ladder(_ladderLength, runSeed: runSeed);
-    _stage = 0;
-    _elapsedSeconds = 0;
-    load(_ladder[0], mode: GameMode.timed);
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _elapsedSeconds++;
-      notifyListeners();
-    });
-  }
-
-  /// A timed stage was solved: bank progress, then advance or finish the run.
-  void _solveTimed() {
-    final completed = _stage + 1;
-    if (completed > _bestStage) _bestStage = completed;
-    _winPulse++; // confetti pulse between stages
-    feedback.onSolve();
-    // Persist best stage (drives the Ladder Climber badge); best time stays
-    // session-only. ponytail: best-time is a min, not a max — no min-counter
-    // helper yet; add one if it needs to survive restarts.
-    _stats = _stats.setCounterMax('timedBestStage', completed);
-    final done = completed >= _ladder.length;
-    if (done) {
-      _tickTimer?.cancel();
-      _solved = true;
-      _overlay = SheetOverlay.win;
-      if (_bestTime == 0 || _elapsedSeconds < _bestTime) {
-        _bestTime = _elapsedSeconds;
-      }
-      _stats = _stats.bumpCounter('timedRuns');
-    }
-    _stats = _stats.withUnlocked(earnedAchievements(
-        _stats, const SolveContext(scoreOver: 0, usedDivision: false)));
-    _statsRepo.save(_stats);
-    if (done) {
-      notifyListeners();
-    } else {
-      _stage = completed;
-      load(_ladder[_stage], mode: GameMode.timed); // self-notifies
-    }
-  }
-
-  /// Archive: replay a past daily by number. Never affects the streak; a solve
-  /// is banked in the archive-completion set instead.
-  Future<void> startArchive(int no) async {
-    load(await puzzleRepo.archive(no), mode: GameMode.archive);
-  }
-
-  /// Past daily numbers available to replay (newest first, excluding today).
-  List<int> get archiveNumbers => puzzleRepo.archiveNumbers();
-
-  /// Practice/Zen "New puzzle": regenerate at the current difficulty and mode.
-  Future<void> newPuzzle() async {
-    final p = await puzzleRepo.generate(_difficulty);
-    load(p, mode: _mode, difficulty: _difficulty);
-  }
-
-  void playAgain() {
-    // Timed restarts the whole run; Zen serves a fresh puzzle; others retry the
-    // same board.
-    if (_mode == GameMode.timed) {
-      startTimed();
-      return;
-    }
-    if (_mode == GameMode.zen) {
-      newPuzzle();
-      return;
-    }
-    reset();
-    _overlay = null;
-    _copied = false;
-    notifyListeners();
-  }
-
-  void startGame() {
-    _started = true;
-    _overlay = null;
-    notifyListeners();
-  }
+  // ---- Overlay routing ----------------------------------------------------
 
   void open(SheetOverlay o) {
     _overlay = o;
@@ -403,87 +61,84 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---- Stats --------------------------------------------------------------
+  // ---- Win bridges (called by the branching routes on solve) --------------
 
-  /// Whether the current chain used a `÷` op (for the Purist achievement).
-  bool get _usedDivision =>
-      puzzle.ops.any((o) => o.symbol == '÷' && (_used[o.id] ?? 0) > 0);
+  /// Records a daily win into the shared stats (streak + distribution + XP +
+  /// achievements). Idempotent per day.
+  void recordDailyWin(int moves, int par) {
+    final today = _todayIndex();
+    if (_stats.lastDailyDay == today) return; // already logged today
+    _stats = _stats.recordWin(moves, par, today: today);
+    final under = par - moves;
+    _awardXp(10 + (under > 0 ? under * 5 : 0));
+    _finishWin(moves - par);
+  }
 
-  /// Records a solve for the active mode. Only Daily touches the streak/dist;
-  /// other modes bump their own counters or the archive-completion set. Every
-  /// mode re-evaluates achievements. (Timed records per-stage in [_solveTimed].)
-  void _recordSolve() {
-    final ctx =
-        SolveContext(scoreOver: scoreOver, usedDivision: _usedDivision);
-    switch (_mode) {
-      case GameMode.daily:
-        if (_recorded) return;
-        _recorded = true;
-        _stats = _stats.recordWin(moves, par);
+  /// Folds a branching win for a non-daily mode into the shared stats
+  /// (practice/zen counters, archive-solved set). Never touches the streak.
+  void recordBranchingWin(GameMode mode, int moves, int par,
+      {int archiveNo = 0}) {
+    switch (mode) {
       case GameMode.practice:
         _stats = _stats.bumpCounter('practice');
       case GameMode.zen:
         _stats = _stats.bumpCounter('zen');
       case GameMode.archive:
-        _stats = _stats.markArchive(_puzzle.no);
-      case GameMode.timed:
-        return; // recorded per-stage in _solveTimed
+        _stats = _stats.markArchive(archiveNo);
+      default:
+        break; // daily → recordDailyWin; campaign → recordCampaignWin
     }
-    _stats = _stats.withUnlocked(earnedAchievements(_stats, ctx));
+    final under = par - moves;
+    _awardXp(mode == GameMode.zen ? 10 : 10 + (under > 0 ? under * 5 : 0));
+    _finishWin(moves - par);
+  }
+
+  /// Folds a branching campaign-level win into the shared stats: stars from
+  /// moves-vs-par (kept as a per-level max), plus XP with the per-star bonus.
+  /// Clearing a level unlocks the next.
+  void recordCampaignWin(int no, int moves, int par) {
+    final stars = starsFor(moves, par);
+    _stats = _stats.recordLevel(no, stars);
+    final under = par - moves;
+    _awardXp(10 + (under > 0 ? under * 5 : 0) + (stars - 1) * 5);
+    _finishWin(moves - par);
+  }
+
+  /// Banks one cleared stage of a branching timed run: every stage lifts the
+  /// best-stage counter; the final stage ([runDone]) bumps the run count and
+  /// awards whole-run XP (5 per stage).
+  void recordTimedStage(int stageCompleted, {bool runDone = false}) {
+    _stats = _stats.setCounterMax('timedBestStage', stageCompleted);
+    if (runDone) {
+      _stats = _stats.bumpCounter('timedRuns');
+      _awardXp(stageCompleted * 5);
+    }
+    _finishWin(0);
+  }
+
+  /// Shared tail for every bridge: re-evaluate achievements, persist, notify.
+  void _finishWin(int scoreOver) {
+    _stats = _stats.withUnlocked(earnedAchievements(
+        _stats, SolveContext(scoreOver: scoreOver, usedDivision: false)));
     _statsRepo.save(_stats);
-  }
-
-  /// Bucket key for the just-finished game (for histogram highlighting).
-  String get currentBucket => GameStats.bucketFor(moves, par);
-
-  // ---- Share --------------------------------------------------------------
-
-  String shareText() {
-    final within = moves < par ? moves : par;
-    final over = (moves - par) > 0 ? moves - par : 0;
-    var grid = '🟦' * within + '🟧' * over;
-    if (_solved) grid += ' 🎯';
-    return 'NUMLINK #${puzzle.no}\n$moves moves · par $par\n$grid';
-  }
-
-  void markCopied() {
-    _copied = true;
     notifyListeners();
-    _copyTimer?.cancel();
-    _copyTimer = Timer(const Duration(milliseconds: 1800), () {
-      _copied = false;
-      notifyListeners();
-    });
   }
 
-  // ---- Transient feedback -------------------------------------------------
-
-  void _flash(String msg) {
-    _message = msg;
-    notifyListeners();
-    _messageTimer?.cancel();
-    _messageTimer = Timer(const Duration(milliseconds: 1600), () {
-      _message = null;
-      notifyListeners();
-    });
+  /// Grant [amount] XP and remember it for the win sheet.
+  void _awardXp(int amount) {
+    _lastXpGain = amount;
+    _stats = _stats.bumpCounter('xp', amount);
   }
 
-  void _shake(String id) {
-    _shakeOpId = id;
-    notifyListeners();
-    _shakeTimer?.cancel();
-    _shakeTimer = Timer(const Duration(milliseconds: 340), () {
-      _shakeOpId = null;
-      notifyListeners();
-    });
-  }
+  /// Whether today's daily has already been solved (drives the home week strip).
+  bool get todaySolved => _stats.lastDailyDay == _todayIndex();
 
-  @override
-  void dispose() {
-    _messageTimer?.cancel();
-    _shakeTimer?.cancel();
-    _copyTimer?.cancel();
-    _tickTimer?.cancel();
-    super.dispose();
-  }
+  int _todayIndex() => dayIndexOf(DateTime.now());
+
+  /// Local-date day index (days since epoch) for streak-gap math and the week
+  /// strip's per-day lookups. Only day-to-day *differences* matter, so a
+  /// constant tz offset is harmless.
+  static int dayIndexOf(DateTime d) =>
+      DateTime(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
 }

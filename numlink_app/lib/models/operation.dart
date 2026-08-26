@@ -19,27 +19,32 @@ class Operation {
   /// How many times this op may be used in a puzzle.
   final int tokens;
 
-  /// Display label, e.g. `×3`.
-  String get label => '$symbol$n';
+  /// Display label, e.g. `×3`. Unary ops (√ Σ ↺) and square drop the operand;
+  /// binary ops (incl. concat ⧺) keep it.
+  String get label => switch (symbol) {
+        '√' => '√',
+        'Σ' => 'Σ',
+        '↺' => '↺',
+        '^' => 'x²',
+        _ => '$symbol$n',
+      };
 
-  /// Applies the op to [cur]; returns null if the result is illegal
-  /// (non-integer, `< 0`, or `> cap`).
-  int? apply(int cur, {int cap = 999}) {
-    final num r;
-    switch (symbol) {
-      case '×':
-        r = cur * n;
-      case '+':
-        r = cur + n;
-      case '−':
-        r = cur - n;
-      case '÷':
-        if (cur % n != 0) return null;
-        r = cur ~/ n;
-      default:
-        return null;
-    }
-    if (r != r.roundToDouble() || r < 0 || r > cap) return null;
-    return r.toInt();
-  }
+  /// Unary ops ignore their operand: √ Σ ↺ and square (`^`). Everything else —
+  /// including concat (`⧺`) — is binary and keeps its operand.
+  bool get isUnary => symbol == '√' || symbol == 'Σ' || symbol == '↺' || symbol == '^';
+
+  /// Token-accounting identity, ported from the prototype `sig`: unary ops key
+  /// by kind (`u`-prefixed), binary ops by kind+operand. Signatures collide
+  /// across shuffled hands on purpose, so a spent token stays spent.
+  String get opSig => isUnary ? 'u$symbol' : '$symbol$n';
+
+  Map<String, dynamic> toJson() =>
+      {'id': id, 'symbol': symbol, 'n': n, 'tokens': tokens};
+
+  factory Operation.fromJson(Map<String, dynamic> j) => Operation(
+        id: j['id'] as String,
+        symbol: j['symbol'] as String,
+        n: j['n'] as int,
+        tokens: j['tokens'] as int,
+      );
 }

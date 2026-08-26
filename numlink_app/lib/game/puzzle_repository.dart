@@ -1,112 +1,54 @@
-import '../models/puzzle.dart';
-import 'game_mode.dart';
-import 'generator.dart';
+import 'campaign.dart';
 
-/// Source of puzzles. Swap [LocalPuzzleRepository] for a remote impl later
-/// without touching the game controller.
-abstract class PuzzleRepository {
-  /// Today's shared daily puzzle.
-  Future<Puzzle> today();
-
-  /// The deterministic daily puzzle for [date] — identical for everyone.
-  Future<Puzzle> daily(DateTime date);
-
-  /// A fresh puzzle at tier [d]. Deterministic when [seed] is given.
-  Future<Puzzle> generate(Difficulty d, {int? seed});
-
-  /// Reproduce a past daily by its number.
-  Future<Puzzle> archive(int puzzleNo);
-
-  /// Past daily numbers available to replay, newest first, excluding today.
-  List<int> archiveNumbers();
-
-  /// An escalating sequence of [count] puzzles for the timed ladder,
-  /// deterministic in [runSeed].
-  List<Puzzle> ladder(int count, {required int runSeed});
+/// Daily-puzzle identity (number + human date), shown on the Home hub and the
+/// settings credits. The board content itself comes from the branching engine
+/// (`dailyBranchingPuzzle`); this only supplies the calendar metadata.
+class DailyInfo {
+  const DailyInfo(this.no, this.dateLabel);
+  final int no;
+  final String dateLabel;
 }
 
-/// On-device puzzles via [PuzzleGenerator]. Daily/archive are seeded by date/
-/// number so they're reproducible and identical for every player.
-class LocalPuzzleRepository implements PuzzleRepository {
-  const LocalPuzzleRepository();
+/// Date math for the daily/archive schedule and the campaign length. Anchored
+/// so #128 lands on 2026-08-08 (the handoff daily). No puzzle generation lives
+/// here any more — the branching engine owns board content.
+class PuzzleCalendar {
+  const PuzzleCalendar();
 
-  static const _gen = PuzzleGenerator();
-
-  /// Launch epoch anchored so #128 lands on 2026-08-08 (the handoff daily).
   static final DateTime _epoch = DateTime.utc(2026, 8, 8);
   static const int _epochNo = 128;
 
-  /// Fixed daily tier (no weekday ramp — see the locked difficulty-UX decision).
-  static const Difficulty _dailyTier = Difficulty.medium;
+  /// The date daily number [no] fell on — the inverse of [_numberFor]. Sole
+  /// owner of the epoch, so Archive replay can't drift out of sync with the
+  /// numbering shown on the hub.
+  static DateTime dateForNumber(int no) =>
+      _epoch.add(Duration(days: no - _epochNo));
 
   static const _months = [
     'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
     'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
   ];
 
+  DateTime _dateOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
+
   int _numberFor(DateTime date) =>
       _dateOnly(date).difference(_epoch).inDays + _epochNo;
-
-  DateTime _dateOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 
   String _labelFor(DateTime date) =>
       '${_months[date.month - 1]} ${date.day} ${date.year}';
 
-  DateTime _dateForNumber(int no) =>
-      _epoch.add(Duration(days: no - _epochNo));
-
-  @override
-  Future<Puzzle> today() => daily(DateTime.now());
-
-  @override
-  Future<Puzzle> daily(DateTime date) async {
-    final no = _numberFor(date);
-    return _gen.generate(
-      _dailyTier,
-      no: no,
-      dateLabel: _labelFor(date),
-      seed: no, // same number → same puzzle for everyone
-    );
+  /// Today's daily identity.
+  DailyInfo today() {
+    final now = DateTime.now();
+    return DailyInfo(_numberFor(now), _labelFor(now));
   }
 
-  @override
-  Future<Puzzle> generate(Difficulty d, {int? seed}) async =>
-      _gen.generate(d, seed: seed);
-
-  @override
-  Future<Puzzle> archive(int puzzleNo) async {
-    final date = _dateForNumber(puzzleNo);
-    return _gen.generate(
-      _dailyTier,
-      no: puzzleNo,
-      dateLabel: _labelFor(date),
-      seed: puzzleNo,
-    );
-  }
-
-  @override
+  /// Past daily numbers available to replay, newest first, excluding today.
   List<int> archiveNumbers() {
     final todayNo = _numberFor(DateTime.now());
     return [for (var n = todayNo - 1; n >= _epochNo; n--) n];
   }
 
-  @override
-  List<Puzzle> ladder(int count, {required int runSeed}) {
-    // Escalate easy → medium → hard, cycling on hard for long runs.
-    const ramp = [
-      Difficulty.easy,
-      Difficulty.easy,
-      Difficulty.medium,
-      Difficulty.medium,
-      Difficulty.hard,
-    ];
-    return [
-      for (var i = 0; i < count; i++)
-        _gen.generate(
-          ramp[i < ramp.length ? i : ramp.length - 1],
-          no: i + 1,
-          seed: runSeed * 1000 + i,
-        ),
-    ];
-  }
+  /// Number of levels in the campaign.
+  int get campaignCount => kCampaign.length;
 }

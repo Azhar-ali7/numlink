@@ -42,7 +42,7 @@ class HowToPlaySheet extends StatelessWidget {
                 SizedBox(
                   width: 22,
                   child: Text('${i + 1}',
-                      style: Fonts.mono(
+                      style: Fonts.numeric(
                           size: 15,
                           color: t.success,
                           weight: FontWeight.w700)),

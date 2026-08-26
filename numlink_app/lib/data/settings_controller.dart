@@ -3,15 +3,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/feedback_service.dart';
 
-/// User settings. Defaults match the prototype: dark theme, high-contrast cues
-/// ON, sound + haptics OFF.
+/// User settings. Defaults to the bright Duo-playful light theme, high-contrast
+/// cues ON, sound + haptics OFF. (Dark stays available via the Settings toggle.)
 class AppSettings {
   const AppSettings({
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.highContrast = true,
     this.orangeSuccess = false,
     this.sound = false,
     this.haptics = false,
+    this.reduceMotion = false,
+    this.socialNudges = false,
+    this.showResultPreviews = false,
   });
 
   final ThemeMode themeMode;
@@ -20,12 +23,25 @@ class AppSettings {
   final bool sound;
   final bool haptics;
 
+  /// Player-forced reduce-motion (ORed with the OS `prefers-reduced-motion`).
+  final bool reduceMotion;
+
+  /// Opt-in competitive "friend passed you" nudges. Off by default.
+  final bool socialNudges;
+
+  /// Show the `→ result` preview under each operator tile. Off by default so
+  /// players do the arithmetic themselves.
+  final bool showResultPreviews;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     bool? highContrast,
     bool? orangeSuccess,
     bool? sound,
     bool? haptics,
+    bool? reduceMotion,
+    bool? socialNudges,
+    bool? showResultPreviews,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -33,6 +49,9 @@ class AppSettings {
         orangeSuccess: orangeSuccess ?? this.orangeSuccess,
         sound: sound ?? this.sound,
         haptics: haptics ?? this.haptics,
+        reduceMotion: reduceMotion ?? this.reduceMotion,
+        socialNudges: socialNudges ?? this.socialNudges,
+        showResultPreviews: showResultPreviews ?? this.showResultPreviews,
       );
 }
 
@@ -45,6 +64,7 @@ class SettingsController extends ChangeNotifier {
   }) : _prefs = prefs {
     _settings = _load();
     _apply();
+    _playerName = _prefs.getString('playerName') ?? 'Player';
     _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
     _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
   }
@@ -59,12 +79,26 @@ class SettingsController extends ChangeNotifier {
   late bool _tutorialSeen;
   bool _tutorialOpen = false;
 
+  // Display name shown on Home ("Hi {name}") and the Profile avatar initial.
+  late String _playerName;
+  String get playerName => _playerName;
+
+  /// Set the display name; blanks fall back to "Player". Persisted.
+  void setPlayerName(String v) {
+    _playerName = v.trim().isEmpty ? 'Player' : v.trim();
+    _prefs.setString('playerName', _playerName);
+    notifyListeners();
+  }
+
   AppSettings get settings => _settings;
   ThemeMode get themeMode => _settings.themeMode;
   bool get highContrast => _settings.highContrast;
   bool get orangeSuccess => _settings.orangeSuccess;
   bool get sound => _settings.sound;
   bool get haptics => _settings.haptics;
+  bool get reduceMotion => _settings.reduceMotion;
+  bool get socialNudges => _settings.socialNudges;
+  bool get showResultPreviews => _settings.showResultPreviews;
   bool get tutorialOpen => _tutorialOpen;
 
   /// True once the intro has ever been dismissed. Distinguishes a genuine
@@ -86,13 +120,16 @@ class SettingsController extends ChangeNotifier {
   }
 
   AppSettings _load() => AppSettings(
-        themeMode: (_prefs.getString('theme') ?? 'dark') == 'light'
-            ? ThemeMode.light
-            : ThemeMode.dark,
+        themeMode: (_prefs.getString('theme') ?? 'light') == 'dark'
+            ? ThemeMode.dark
+            : ThemeMode.light,
         highContrast: _prefs.getBool('highContrast') ?? true,
         orangeSuccess: _prefs.getBool('orangeSuccess') ?? false,
         sound: _prefs.getBool('sound') ?? false,
         haptics: _prefs.getBool('haptics') ?? false,
+        reduceMotion: _prefs.getBool('reduceMotion') ?? false,
+        socialNudges: _prefs.getBool('socialNudges') ?? false,
+        showResultPreviews: _prefs.getBool('showResultPreviews') ?? false,
       );
 
   void _apply() {
@@ -109,7 +146,10 @@ class SettingsController extends ChangeNotifier {
       ..setBool('highContrast', next.highContrast)
       ..setBool('orangeSuccess', next.orangeSuccess)
       ..setBool('sound', next.sound)
-      ..setBool('haptics', next.haptics);
+      ..setBool('haptics', next.haptics)
+      ..setBool('reduceMotion', next.reduceMotion)
+      ..setBool('socialNudges', next.socialNudges)
+      ..setBool('showResultPreviews', next.showResultPreviews);
   }
 
   void setThemeMode(ThemeMode mode) =>
@@ -118,4 +158,8 @@ class SettingsController extends ChangeNotifier {
   void setOrangeSuccess(bool v) => _update(_settings.copyWith(orangeSuccess: v));
   void setSound(bool v) => _update(_settings.copyWith(sound: v));
   void setHaptics(bool v) => _update(_settings.copyWith(haptics: v));
+  void setReduceMotion(bool v) => _update(_settings.copyWith(reduceMotion: v));
+  void setSocialNudges(bool v) => _update(_settings.copyWith(socialNudges: v));
+  void setShowResultPreviews(bool v) =>
+      _update(_settings.copyWith(showResultPreviews: v));
 }

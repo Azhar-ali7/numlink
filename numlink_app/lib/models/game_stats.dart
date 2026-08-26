@@ -11,6 +11,7 @@ class GameStats {
     required this.dist,
     this.counters = const <String, int>{},
     this.archiveSolved = const <int>{},
+    this.dailySolvedDays = const <int>{},
     this.unlocked = const <String>{},
     this.levelStars = const <int, int>{},
     this.lastDailyDay = 0,
@@ -35,6 +36,11 @@ class GameStats {
   /// Past daily numbers the player has replayed to a solve.
   final Set<int> archiveSolved;
 
+  /// Day-indices (as [lastDailyDay]) on which the daily was actually solved.
+  /// The home week strip renders from this instead of inferring checkmarks
+  /// from [streak], which marked days that were never played.
+  final Set<int> dailySolvedDays;
+
   /// Unlocked achievement ids (sticky once earned).
   final Set<String> unlocked;
 
@@ -44,7 +50,38 @@ class GameStats {
 
   static const List<String> bucketKeys = ['par', '+1', '+2', '+3+'];
 
+  /// Over-par value each bucket represents (`+3+` counts as 3 — a floor).
+  static const Map<String, int> bucketOverPar = {
+    'par': 0,
+    '+1': 1,
+    '+2': 2,
+    '+3+': 3,
+  };
+
   int get winRate => played == 0 ? 0 : (100 * wins / played).round();
+
+  /// Best round ever = the lowest non-empty bucket. `'—'` when nothing solved.
+  String get courseRecord {
+    for (final k in bucketKeys) {
+      if ((dist[k] ?? 0) > 0) return k == 'par' ? 'PAR' : k;
+    }
+    return '—';
+  }
+
+  /// Golf-style handicap, approximated from the solve distribution: the
+  /// average over-par across recorded solves × 0.9. (The exact spec — best 8
+  /// of the last 20 differentials — needs a per-solve history the model does
+  /// not retain; this is a faithful stand-in from stored buckets.)
+  double get handicap {
+    var total = 0, weighted = 0;
+    for (final k in bucketKeys) {
+      final n = dist[k] ?? 0;
+      total += n;
+      weighted += n * bucketOverPar[k]!;
+    }
+    if (total == 0) return 0;
+    return 0.9 * weighted / total;
+  }
 
   /// Solves across every mode (drives cumulative achievements). Timed is a
   /// run, not a single-puzzle solve, so it's excluded here.
@@ -68,6 +105,7 @@ class GameStats {
         dist: dist,
         counters: counters ?? this.counters,
         archiveSolved: archiveSolved ?? this.archiveSolved,
+        dailySolvedDays: dailySolvedDays,
         unlocked: unlocked ?? this.unlocked,
         levelStars: levelStars ?? this.levelStars,
         lastDailyDay: lastDailyDay,
@@ -141,15 +179,6 @@ class GameStats {
       ? this
       : _with(unlocked: {...unlocked, ...ids});
 
-  /// Demo seed used on first run, matching the prototype.
-  static const GameStats seed = GameStats(
-    played: 12,
-    wins: 11,
-    streak: 4,
-    maxStreak: 7,
-    dist: {'par': 3, '+1': 5, '+2': 2, '+3+': 1},
-  );
-
   static const GameStats empty = GameStats(
     played: 0,
     wins: 0,
@@ -207,6 +236,8 @@ class GameStats {
       dist: newDist,
       counters: {...counters, 'freezes': freezes},
       archiveSolved: archiveSolved,
+      dailySolvedDays:
+          today == null ? dailySolvedDays : {...dailySolvedDays, today},
       unlocked: unlocked,
       levelStars: levelStars,
       lastDailyDay: today ?? lastDailyDay,
@@ -221,6 +252,7 @@ class GameStats {
         'dist': dist,
         'counters': counters,
         'archiveSolved': archiveSolved.toList(),
+        'dailySolvedDays': dailySolvedDays.toList(),
         'unlocked': unlocked.toList(),
         'levelStars': levelStars.map((k, v) => MapEntry(k.toString(), v)),
         'lastDailyDay': lastDailyDay,
@@ -240,6 +272,9 @@ class GameStats {
             ) ??
             {},
         archiveSolved: ((j['archiveSolved'] as List?) ?? [])
+            .map((e) => (e as num).toInt())
+            .toSet(),
+        dailySolvedDays: ((j['dailySolvedDays'] as List?) ?? [])
             .map((e) => (e as num).toInt())
             .toSet(),
         unlocked:

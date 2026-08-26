@@ -9,9 +9,11 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final repo = LocalStatsRepository(prefs);
 
-    // First run returns the demo seed.
+    // A new player has played nothing — no fabricated streak or history.
     final seeded = await repo.load();
-    expect(seeded.played, GameStats.seed.played);
+    expect(seeded.played, 0);
+    expect(seeded.streak, 0);
+    expect(seeded.dailySolvedDays, isEmpty);
 
     final updated = seeded.recordWin(3, 3);
     await repo.save(updated);

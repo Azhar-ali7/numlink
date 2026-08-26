@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
+import '../theme/motion.dart';
 import '../theme/tokens.dart';
+
+/// The handoff's `cardIn` keyframe: fade + rise + a hair of scale, staggered by
+/// [index] down a list. Returns [child] untouched when [on] is false (reduced
+/// motion), so it stays a no-op in tests. One place so the chain isn't repeated.
+Widget entrance(Widget child, {required bool on, int index = 0}) {
+  if (!on) return child;
+  return child
+      .animate(delay: Duration(milliseconds: index * 60))
+      .fadeIn(duration: Motion.standard, curve: Motion.easeOut)
+      .moveY(begin: 16, end: 0, duration: Motion.standard, curve: Motion.easeOut)
+      .scaleXY(begin: 0.97, end: 1, duration: Motion.standard, curve: Motion.easeOut);
+}
 
 /// A 40×40 bordered icon button (header actions, sheet close). Hover/pressed
 /// highlights the border in [hoverColor] (defaults to success). Hover state
@@ -30,11 +44,11 @@ class IconSquareButton extends StatelessWidget {
         onTap: onTap,
         builder: (context, hover) => AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: 40,
-          height: 40,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
             border: Border.all(color: hover ? hi : t.border, width: 2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(icon, size: 20, color: t.text),
         ),
@@ -48,12 +62,10 @@ class HoverBorder extends StatefulWidget {
   const HoverBorder({
     super.key,
     required this.builder,
-    this.hoverColor,
     this.onTap,
   });
 
   final Widget Function(BuildContext context, bool hover) builder;
-  final Color? hoverColor;
   final VoidCallback? onTap;
 
   @override

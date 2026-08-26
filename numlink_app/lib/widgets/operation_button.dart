@@ -7,9 +7,21 @@ import '../theme/motion.dart';
 import '../theme/tokens.dart';
 import 'ui.dart';
 
-/// One operation button in the pad: big op label, result preview line, and a
-/// token-count pill top-right. Disabled (0.38 opacity) when solved, illegal,
-/// or out of tokens. Shakes on an illegal tap.
+/// Per-operator brand hue (prototype `hueMap`): multiplicative indigo, additive
+/// teal, subtract orange, divide pink, modulo amber, Σ gold, rest muted.
+Color opHue(Operation op, NumTokens t) => switch (op.symbol) {
+      '×' => t.hero,
+      '÷' => t.accent,
+      '+' => t.success,
+      '−' => t.tileOrange,
+      '%' => t.progress,
+      'Σ' => t.star,
+      _ => t.muted,
+    };
+
+/// One operation button in the pad: big colored op glyph, an optional result
+/// preview line, and a token-count pill top-right. Disabled (0.38 opacity) when
+/// solved, illegal, or out of tokens. Shakes on an illegal tap.
 class OperationButton extends StatelessWidget {
   const OperationButton({
     super.key,
@@ -38,6 +50,10 @@ class OperationButton extends StatelessWidget {
     final tokenColor = remaining <= 0
         ? t.muted
         : (remaining == 1 ? t.progress : t.text);
+    final hue = disabled ? t.muted : opHue(op, t);
+    final borderColor = highlighted || (shake)
+        ? t.progress
+        : Color.lerp(t.border, hue, 0.5)!;
 
     // Always delegate to the controller's apply(): an illegal/out-of-tokens
     // tap must still produce the shake + toast feedback (the button only looks
@@ -45,40 +61,68 @@ class OperationButton extends StatelessWidget {
     final content = HoverBorder(
       onTap: onTap,
       builder: (context, hover) => Opacity(
-        opacity: disabled ? 0.38 : 1,
+        opacity: disabled ? 0.42 : 1,
         child: AnimatedContainer(
           duration: Motion.micro,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 50), // handoff op tile
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: t.surface,
+            // Colored per-operator panel: faint hue fill + soft hued border.
+            color: disabled ? tint(t.text, 0.04) : tint(hue, 0.09),
             border: Border.all(
-              color: highlighted || (hover && !disabled) ? t.progress : t.border,
-              width: 2, // keep at 2 — a wider border re-triggers the 1.6px overflow
+              color: (hover && !disabled) ? hue : borderColor,
+              width: 2,
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: highlighted
-                ? [BoxShadow(color: t.progress, blurRadius: 10, spreadRadius: 1)]
-                : null,
+                ? [
+                    BoxShadow(
+                        color: t.progress.withValues(alpha: 0.5),
+                        blurRadius: 16,
+                        spreadRadius: 0)
+                  ]
+                : t.cardShadow,
           ),
           child: Stack(
+            alignment: Alignment.center,
             children: [
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(op.label,
-                      style: Fonts.mono(
-                          size: 23, color: t.text, weight: FontWeight.w700)),
-                  Text(previewText,
-                      style: Fonts.mono(size: 12, color: t.muted)),
+                      style: Fonts.numeric(
+                          size: 18, color: hue, weight: FontWeight.w800)),
+                  if (previewText.isNotEmpty)
+                    Text(previewText,
+                        style: Fonts.numeric(size: 12, color: t.muted)),
                 ],
               ),
+              // Token-count pill, tucked inside the top-right corner like the
+              // handoff. Kept inside the Stack's bounds (which clips) so the ×
+              // isn't chopped, and set in Nunito 800 to match the prototype.
               Positioned(
-                top: -3,
-                right: -3,
-                child: Text('$remaining×',
-                    style: Fonts.mono(
-                        size: 11, color: tokenColor, weight: FontWeight.w700)),
+                top: 4,
+                right: 5,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: remaining <= 0
+                        ? t.border
+                        : (remaining == 1
+                            ? tint(t.progress, 0.22)
+                            : tint(t.success, 0.15)),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('$remaining×',
+                      style: Fonts.ui(
+                          size: 8,
+                          color: tokenColor,
+                          weight: FontWeight.w800)),
+                ),
               ),
             ],
           ),

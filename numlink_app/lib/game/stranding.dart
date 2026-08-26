@@ -63,8 +63,14 @@ bool solveFrom(List<Vd> nodes, List<int> missing, List<Operation> hand,
 List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
     int branchMax, Map<String, int> left, Map<String, List<Step>?> memo) {
   final existing = [for (final n in tree) n.v]..sort();
+  // Keyed on (value, depth), not value alone: the same value multiset at
+  // different depths admits different arms — a node already at branchMax can
+  // launch nothing. Keying on values only let a cached "reachable" answer leak
+  // onto a deeper tree, which is a false positive: the guard would approve a
+  // move that strands the target for real.
+  final shape = [for (final n in tree) '${n.v}.${n.d}']..sort();
   final leftArr = [for (final o in hand) left[o.opSig] ?? 0];
-  final cacheKey = '$target|${existing.join(',')}|${leftArr.join(',')}';
+  final cacheKey = '$target|${shape.join(',')}|${leftArr.join(',')}';
   if (memo.containsKey(cacheKey)) return memo[cacheKey];
 
   final existingSet = existing.toSet();
@@ -75,7 +81,6 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
   outer:
   for (var step = 0; step < branchMax; step++) {
     final bestAt = <int, _Front>{};
-    final bestTotal = <int, int>{};
     for (final cur in front) {
       if (cur.d >= branchMax) continue;
       for (var hi = 0; hi < hand.length; hi++) {
@@ -89,13 +94,27 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
           result = path;
           break outer;
         }
+        // Dominance prune: one survivor per produced value. It must dominate
+        // on BOTH axes — tokens spent AND depth. Comparing tokens alone threw
+        // away a shallower equal-cost arm, and a shallower node has strictly
+        // more moves left under branchMax: that is how the guard came to
+        // approve a move and then reject every continuation of the very path
+        // it had approved (arm 2→5→25 lost to an equal-cost 16→25 one layer
+        // deeper, which could no longer reach the target).
+        // ponytail: still one survivor per value, not the full Pareto front —
+        // a costlier-but-shallower arm evicts a cheaper deep one. Keep a list
+        // per value only if a board turns up where that matters.
         final spentTotal = cur.spent.fold<int>(0, (a, b) => a + b) + 1;
-        final prev = bestTotal[r];
-        if (prev != null && prev <= spentTotal) continue;
+        final depth = cur.d + 1;
+        final prev = bestAt[r];
+        if (prev != null &&
+            prev.cost <= spentTotal &&
+            prev.d <= depth) {
+          continue;
+        }
         final spent = [...cur.spent];
         spent[hi] += 1;
-        bestAt[r] = _Front(r, cur.d + 1, spent, path);
-        bestTotal[r] = spentTotal;
+        bestAt[r] = _Front(r, depth, spent, path, spentTotal);
       }
     }
     front = bestAt.values.toList();
@@ -106,9 +125,12 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
 }
 
 class _Front {
-  _Front(this.v, this.d, this.spent, this.path);
+  _Front(this.v, this.d, this.spent, this.path, [this.cost = 0]);
   final int v;
   final int d;
   final List<int> spent;
   final List<Step> path;
+
+  /// Total tokens spent reaching [v] — one half of the dominance test.
+  final int cost;
 }

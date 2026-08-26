@@ -14,6 +14,7 @@ TreePuzzle fixture({
   required List<int> targets,
   required List<List<Operation>> hands,
   int shuffles = 1,
+  int hints = 1,
   int branchMax = 3,
 }) =>
     TreePuzzle(
@@ -22,6 +23,7 @@ TreePuzzle fixture({
       targets: targets,
       hands: hands,
       shuffles: shuffles,
+      hints: hints,
       branchMax: branchMax,
       par: 99,
       optimalPar: 1,
@@ -180,12 +182,12 @@ void main() {
       c.hint();
       expect(c.hintGlow, 'm'); // ×3 → 6 hits the target exactly
       c.hint();
-      expect(c.message, contains('spent'));
+      expect(c.message, contains('No hints left'));
     });
   });
 
   test('every generated board is winnable through the guard (integration)', () {
-    for (final tier in ['sprouts', 'junior', 'easy', 'medium', 'hard']) {
+    for (final tier in ['kids', 'easy', 'medium', 'hard']) {
       for (var i = 0; i < 15; i++) {
         final p = buildPuzzle(tier, 7000000 + i * 131);
         final c = TreeController(p)..init();
@@ -201,7 +203,7 @@ void main() {
   // dead-end means the guard let an earlier move strand a target.
   test('stranding guard never lets a board dead-end (no false negatives)', () {
     final rng = Random(20260824);
-    for (final tier in ['junior', 'easy', 'medium', 'hard']) {
+    for (final tier in ['kids', 'easy', 'medium', 'hard']) {
       for (var i = 0; i < 12; i++) {
         final p = buildPuzzle(tier, 8000000 + i * 173);
         final c = TreeController(p)..init();
@@ -284,7 +286,7 @@ void main() {
       c.hint();
       expect(c.hintGlow, isNull);
       expect(c.message, contains('No legal move'));
-      expect(c.hintUsed, isTrue, reason: 'spent either way, like the prototype');
+      expect(c.hintsLeft, 0, reason: 'spent either way, like the prototype');
     });
 
     test('selecting another node drops a stale glow', () {

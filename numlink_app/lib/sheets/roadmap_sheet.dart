@@ -215,6 +215,7 @@ class _Trail extends StatelessWidget {
   }
 
   static String _chapter(Difficulty tier) => switch (tier) {
+        Difficulty.kids => 'FIRST STEPS',
         Difficulty.easy => 'FOUNDATIONS',
         Difficulty.medium => 'ADVANCED',
         Difficulty.hard => 'EXPERT',

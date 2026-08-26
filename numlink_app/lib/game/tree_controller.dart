@@ -41,7 +41,9 @@ class TreeController extends ChangeNotifier {
   int handIndex = 0;
   int shufflesLeft = 0;
   bool solved = false;
-  bool hintUsed = false;
+
+  /// Hints still available this board — per-tier (`kTiers`), not a flat one.
+  int hintsLeft = 0;
 
   /// Last user-facing status line (rejection reason, shuffle result, …).
   String? message;
@@ -84,7 +86,7 @@ class TreeController extends ChangeNotifier {
     handIndex = 0;
     shufflesLeft = puzzle.shuffles;
     solved = false;
-    hintUsed = false;
+    hintsLeft = puzzle.hints;
     message = null;
     shakeOp = null;
     hintGlow = null;
@@ -284,7 +286,8 @@ class TreeController extends ChangeNotifier {
   }
 
   /// Glow the available op whose result lands nearest an outstanding target.
-  /// One hint per puzzle (prototype 1546–1562).
+  /// [hintsLeft] per puzzle, dealt by the tier (prototype 1546–1562, which
+  /// had a flat one).
   ///
   /// Every candidate must survive the same rules [apply] enforces — including
   /// the stranding guard, which is run only on candidates in nearest-first
@@ -292,8 +295,8 @@ class TreeController extends ChangeNotifier {
   /// per op.
   void hint() {
     if (solved) return;
-    if (hintUsed) {
-      _flash('Your hint is spent');
+    if (hintsLeft == 0) {
+      _flash('No hints left');
       return;
     }
     final missing =
@@ -312,7 +315,7 @@ class TreeController extends ChangeNotifier {
     }
     ranked.sort((a, b) => a.d.compareTo(b.d));
 
-    hintUsed = true; // spent either way, like the prototype
+    hintsLeft--; // spent either way, like the prototype
     for (final c in ranked) {
       final (next, nextUsed) = _boardAfter(from, c.o, c.r, used);
       if (_stranded(next, nextUsed)) continue;

@@ -19,6 +19,7 @@ TreePuzzle winnable() => TreePuzzle(
       hands: [
         [op('m', '×', 3), op('p', '+', 1)]
       ],
+      hints: 1,
       shuffles: 1,
       branchMax: 3,
       par: 3,
@@ -35,6 +36,7 @@ TreePuzzle rejecting() => TreePuzzle(
       hands: [
         [op('d', '÷', 2)]
       ],
+      hints: 1,
       shuffles: 0,
       branchMax: 3,
       par: 3,
@@ -100,6 +102,27 @@ void main() {
     expect(find.text('0/2'), findsOneWidget); // fresh: nothing reached
   });
 
+  testWidgets('the win sheet swipes down to reveal the board, and back',
+      (tester) async {
+    phone(tester);
+    await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '×3'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '+1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Play again'), findsOneWidget);
+
+    await tester.fling(find.text('Play again'), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Play again'), findsNothing, reason: 'collapsed to a pill');
+    expect(find.textContaining('2 moves'), findsOneWidget);
+
+    await tester.tap(find.textContaining('2 moves'));
+    await tester.pumpAndSettle();
+    expect(find.text('Play again'), findsOneWidget);
+  });
+
   testWidgets('onWin fires once with (moves, par) on solve', (tester) async {
     phone(tester);
     var calls = 0;
@@ -144,6 +167,32 @@ void main() {
     expect(find.textContaining("doesn't divide"), findsOneWidget);
   });
 
+  testWidgets('a kids board is one target, one move, + − × only',
+      (tester) async {
+    phone(tester);
+    await tester.pumpWidget(host(const TreeGamePage(tier: 'kids')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kids'), findsOneWidget);
+    expect(find.text('0/1'), findsOneWidget, reason: 'exactly one target');
+    for (final b in tester.widgetList<OperationButton>(
+        find.byType(OperationButton))) {
+      expect(['+', '−', '×'], contains(b.op.symbol),
+          reason: 'kids dealt ${b.op.symbol}');
+    }
+  });
+
+  // A fixed board (daily / campaign / archive / co-op) has no tier to switch:
+  // picking one would silently throw today's shared board away.
+  testWidgets('a fixed board hides the difficulty picker', (tester) async {
+    phone(tester);
+    await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('difficulty')));
+    await tester.pumpAndSettle();
+    expect(find.text('Difficulty'), findsNothing);
+    expect(find.byKey(const ValueKey('tier_kids')), findsNothing);
+  });
+
   testWidgets('changing difficulty deals a board of the new tier',
       (tester) async {
     phone(tester);
@@ -151,9 +200,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('difficulty')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('hard').last);
+    await tester.tap(find.byKey(const ValueKey('tier_hard')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Hard'), findsOneWidget); // header reflects the new tier
+    // header reflects the new tier, under its player-facing name
+    expect(find.text('Expert'), findsOneWidget);
   });
 }

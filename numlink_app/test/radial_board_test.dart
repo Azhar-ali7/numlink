@@ -20,6 +20,7 @@ TreePuzzle fixture() => TreePuzzle(
       hands: [
         [op('m', '×', 3), op('p', '+', 1)]
       ],
+      hints: 1,
       shuffles: 1,
       branchMax: 3,
       par: 3,

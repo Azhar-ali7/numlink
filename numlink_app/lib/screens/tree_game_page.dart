@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
 import '../game/campaign.dart' show starsFor;
+import '../game/game_mode.dart';
 import '../game/puzzle_repository.dart' show PuzzleCalendar;
 import '../game/score.dart';
 import '../game/steiner.dart' show compute;
@@ -19,8 +20,11 @@ import 'tree_game_screen.dart';
 
 /// What a recorded win reports back, for the win sheet's XP pill.
 class WinRecord {
-  const WinRecord(
-      {required this.xpGained, required this.level, required this.streak});
+  const WinRecord({
+    required this.xpGained,
+    required this.level,
+    required this.streak,
+  });
   final int xpGained;
   final int level;
   final int streak;
@@ -40,9 +44,12 @@ TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
 TreePuzzle weekendCoopPuzzle([DateTime? day]) {
   final d = day ?? DateTime.now();
   // Days since a fixed Monday epoch ÷ 7 → a stable per-week seed.
-  final week = DateTime(d.year, d.month, d.day)
-          .difference(DateTime(2026, 1, 5))
-          .inDays ~/
+  final week =
+      DateTime(
+        d.year,
+        d.month,
+        d.day,
+      ).difference(DateTime(2026, 1, 5)).inDays ~/
       7;
   return buildPuzzle('medium', 0x00C0FFEE ^ week);
 }
@@ -94,7 +101,8 @@ class _TreeGamePageState extends State<TreeGamePage> {
   late TreeController _c = _make();
 
   TreeController _make() {
-    final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))..init();
+    final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))
+      ..init();
     c.addListener(_onChange);
     return c;
   }
@@ -125,14 +133,22 @@ class _TreeGamePageState extends State<TreeGamePage> {
   }
 
   void _restart() {
-    _swap(TreeController(_c.puzzle)..init()..addListener(_onChange));
+    _swap(
+      TreeController(_c.puzzle)
+        ..init()
+        ..addListener(_onChange),
+    );
   }
 
   void _setTier(String tier) {
     if (tier == _tier && widget.puzzle == null) return;
     _tier = tier;
     _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
-    _swap(TreeController(buildPuzzle(_tier, _seed))..init()..addListener(_onChange));
+    _swap(
+      TreeController(buildPuzzle(_tier, _seed))
+        ..init()
+        ..addListener(_onChange),
+    );
   }
 
   @override
@@ -155,11 +171,15 @@ class _TreeGamePageState extends State<TreeGamePage> {
               Column(
                 children: [
                   _Header(
-                      tier: _tier,
-                      title: widget.title,
-                      onNew: _newBoard,
-                      onTier: _setTier,
-                      onRestart: _restart),
+                    tier: _tier,
+                    title: widget.title,
+                    onNew: _newBoard,
+                    // A fixed board (daily / campaign / archive / co-op) has
+                    // no tier to switch: picking one would silently throw
+                    // that board away. Null hides the section entirely.
+                    onTier: widget.puzzle == null ? _setTier : null,
+                    onRestart: _restart,
+                  ),
                   if (widget.coop) const _CoopBanner(),
                   const Expanded(child: TreeGameScreen()),
                 ],
@@ -179,7 +199,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
               Positioned.fill(child: ConfettiOverlay(pulse: _confetti)),
               Consumer<TreeController>(
                 builder: (_, c, __) => c.solved
-                    ? _WinSheet(controller: c, win: _win, onPlayAgain: _newBoard)
+                    ? _WinSheet(
+                        controller: c,
+                        win: _win,
+                        onPlayAgain: _newBoard,
+                      )
                     : const SizedBox.shrink(),
               ),
             ],
@@ -190,9 +214,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
   }
 }
 
-/// "hard" → "Hard" for the header fallback title.
-String _titleCase(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+/// A `kTiers` key as the player sees it — "medium" → "Normal". Falls back to
+/// the raw key for the synthetic 'test' tier used in widget tests.
+String tierLabel(String key) =>
+    difficultyOf(key)?.label ??
+    (key.isEmpty ? key : key[0].toUpperCase() + key.substring(1));
 
 class _Header extends StatelessWidget {
   const _Header({
@@ -205,7 +231,9 @@ class _Header extends StatelessWidget {
   final String tier;
   final String? title;
   final VoidCallback onNew;
-  final ValueChanged<String> onTier;
+
+  /// Null on a fixed board — hides the DIFFICULTY section in the ⋯ menu.
+  final ValueChanged<String>? onTier;
   final VoidCallback onRestart;
 
   @override
@@ -225,16 +253,24 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title ?? _titleCase(tier),
-                  style: Fonts.ui(
-                      size: 15,
-                      color: t.text,
-                      weight: FontWeight.w700,
-                      height: 1)),
+              Text(
+                title ?? tierLabel(tier),
+                style: Fonts.ui(
+                  size: 15,
+                  color: t.text,
+                  weight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
               const SizedBox(height: 1),
-              Text('${c.puzzle.targets.length} targets · par ${c.puzzle.par}',
-                  style: Fonts.ui(
-                      size: 10, color: t.muted, weight: FontWeight.w700)),
+              Text(
+                '${c.puzzle.targets.length} targets · par ${c.puzzle.par}',
+                style: Fonts.ui(
+                  size: 10,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
           const Spacer(),
@@ -265,8 +301,9 @@ class _Header extends StatelessWidget {
         onRestart: onRestart,
         // Defer past the overflow's pop frame so the two modal transitions
         // don't clobber each other.
-        onSolution: () => WidgetsBinding.instance
-            .addPostFrameCallback((_) => showSolutionSheet(context, puzzle)),
+        onSolution: () => WidgetsBinding.instance.addPostFrameCallback(
+          (_) => showSolutionSheet(context, puzzle),
+        ),
       ),
     );
   }
@@ -307,11 +344,14 @@ class _CoopBanner extends StatelessWidget {
                         color: _team[i].$2.withValues(alpha: 0.2),
                         border: Border.all(color: t.bg, width: 2),
                       ),
-                      child: Text(_team[i].$1,
-                          style: Fonts.ui(
-                              size: 11,
-                              color: _team[i].$2,
-                              weight: FontWeight.w800)),
+                      child: Text(
+                        _team[i].$1,
+                        style: Fonts.ui(
+                          size: 11,
+                          color: _team[i].$2,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -320,9 +360,13 @@ class _CoopBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-                'Teammates already started this chain — finish it together',
-                style: Fonts.ui(
-                    size: 11, color: t.muted, weight: FontWeight.w700)),
+              'Teammates already started this chain — finish it together',
+              style: Fonts.ui(
+                size: 11,
+                color: t.muted,
+                weight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -344,7 +388,7 @@ class _OverflowMenu extends StatelessWidget {
 
   final String tier;
   final VoidCallback onNew;
-  final ValueChanged<String> onTier;
+  final ValueChanged<String>? onTier;
   final VoidCallback onRestart;
   final VoidCallback onSolution;
 
@@ -359,14 +403,17 @@ class _OverflowMenu extends StatelessWidget {
       s = null;
     }
     Widget label(String text) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-          child: Text(text.toUpperCase(),
-              style: Fonts.ui(
-                  size: 11,
-                  color: t.muted,
-                  weight: FontWeight.w800,
-                  letterSpacing: 1.5)),
-        );
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+      child: Text(
+        text.toUpperCase(),
+        style: Fonts.ui(
+          size: 11,
+          color: t.muted,
+          weight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
     Widget action(IconData icon, String text, VoidCallback onTap, {Key? key}) =>
         InkWell(
           key: key,
@@ -376,30 +423,47 @@ class _OverflowMenu extends StatelessWidget {
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-            child: Row(children: [
-              Icon(icon, size: 20, color: t.text),
-              const SizedBox(width: 14),
-              Text(text,
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: t.text),
+                const SizedBox(width: 14),
+                Text(
+                  text,
                   style: Fonts.ui(
-                      size: 15, color: t.text, weight: FontWeight.w700)),
-            ]),
+                    size: 15,
+                    color: t.text,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
     Widget toggle(String text, bool value, VoidCallback onTap) => InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-            child: Row(children: [
-              Expanded(
-                child: Text(text,
-                    style: Fonts.ui(
-                        size: 15, color: t.text, weight: FontWeight.w700)),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: Fonts.ui(
+                  size: 15,
+                  color: t.text,
+                  weight: FontWeight.w700,
+                ),
               ),
-              Icon(value ? Icons.toggle_on : Icons.toggle_off,
-                  size: 34, color: value ? t.success : t.border),
-            ]),
-          ),
-        );
+            ),
+            Icon(
+              value ? Icons.toggle_on : Icons.toggle_off,
+              size: 34,
+              color: value ? t.success : t.border,
+            ),
+          ],
+        ),
+      ),
+    );
 
     return SafeArea(
       child: Column(
@@ -412,23 +476,33 @@ class _OverflowMenu extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: t.border, borderRadius: BorderRadius.circular(2)),
+                color: t.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           label('This puzzle'),
           action(Icons.refresh_rounded, 'Restart', onRestart),
           action(Icons.add_circle_outline, 'New board', onNew),
-          action(Icons.lightbulb_outline_rounded, 'Reveal solution', onSolution),
+          action(
+            Icons.lightbulb_outline_rounded,
+            'Reveal solution',
+            onSolution,
+          ),
           if (s != null)
             action(Icons.school_outlined, 'How to play', s.openTutorial),
-          label('Difficulty'),
-          for (final k in kTiers.keys)
-            action(
-              k == tier ? Icons.radio_button_checked : Icons.radio_button_off,
-              k,
-              () => onTier(k),
-              key: ValueKey('tier_$k'),
-            ),
+          if (onTier case final pick?) ...[
+            label('Difficulty'),
+            for (final d in Difficulty.values)
+              action(
+                d.name == tier
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                '${d.emoji}  ${d.label}',
+                () => pick(d.name),
+                key: ValueKey('tier_${d.name}'),
+              ),
+          ],
           if (s case final st?) ...[
             label('Quick settings'),
             toggle('Sound', st.sound, () => st.setSound(!st.sound)),
@@ -459,7 +533,7 @@ class _BoardActions extends StatelessWidget {
         ),
         _RoundIconBtn(
           icon: Icons.lightbulb_outline_rounded,
-          badge: c.hintUsed ? 0 : 1,
+          badge: c.hintsLeft,
           onTap: c.hint,
         ),
       ],
@@ -469,8 +543,12 @@ class _BoardActions extends StatelessWidget {
 
 /// A round tappable icon tile with an optional count badge (top-right).
 class _RoundIconBtn extends StatelessWidget {
-  const _RoundIconBtn(
-      {super.key, required this.icon, required this.onTap, this.badge});
+  const _RoundIconBtn({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.badge,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final int? badge;
@@ -507,12 +585,15 @@ class _RoundIconBtn extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: t.bg, width: 2),
                   ),
-                  child: Text('$badge',
-                      style: Fonts.numeric(
-                          size: 9,
-                          color: Colors.white,
-                          weight: FontWeight.w800,
-                          height: 1)),
+                  child: Text(
+                    '$badge',
+                    style: Fonts.numeric(
+                      size: 9,
+                      color: Colors.white,
+                      weight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -522,9 +603,16 @@ class _RoundIconBtn extends StatelessWidget {
   }
 }
 
-/// Eight escalating stages for one branching timed run (sprouts → hard).
+/// Eight escalating stages for one branching timed run (Kids → Expert).
 const _timedLadder = <String>[
-  'sprouts', 'junior', 'junior', 'easy', 'easy', 'medium', 'medium', 'hard',
+  'kids',
+  'kids',
+  'easy',
+  'easy',
+  'medium',
+  'medium',
+  'hard',
+  'hard',
 ];
 
 /// Timed ladder on the branching engine: a stopwatch race through
@@ -601,10 +689,10 @@ class _TimedTreePageState extends State<TimedTreePage> {
   }
 
   void _restart() => Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => TimedTreePage(onStageSolved: widget.onStageSolved),
-        ),
-      );
+    MaterialPageRoute<void>(
+      builder: (_) => TimedTreePage(onStageSolved: widget.onStageSolved),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -619,9 +707,10 @@ class _TimedTreePageState extends State<TimedTreePage> {
               Column(
                 children: [
                   _TimedHeader(
-                      stage: _stage + 1,
-                      total: _timedLadder.length,
-                      clock: _clock),
+                    stage: _stage + 1,
+                    total: _timedLadder.length,
+                    clock: _clock,
+                  ),
                   const Expanded(child: TreeGameScreen()),
                 ],
               ),
@@ -638,10 +727,11 @@ class _TimedTreePageState extends State<TimedTreePage> {
               Positioned.fill(child: ConfettiOverlay(pulse: _confetti)),
               if (_done)
                 _RunCompleteSheet(
-                    stages: _timedLadder.length,
-                    clock: _clock,
-                    win: _win,
-                    onPlayAgain: _restart),
+                  stages: _timedLadder.length,
+                  clock: _clock,
+                  win: _win,
+                  onPlayAgain: _restart,
+                ),
             ],
           ),
         ),
@@ -651,8 +741,11 @@ class _TimedTreePageState extends State<TimedTreePage> {
 }
 
 class _TimedHeader extends StatelessWidget {
-  const _TimedHeader(
-      {required this.stage, required this.total, required this.clock});
+  const _TimedHeader({
+    required this.stage,
+    required this.total,
+    required this.clock,
+  });
   final int stage;
   final int total;
   final String clock;
@@ -668,20 +761,28 @@ class _TimedHeader extends StatelessWidget {
             icon: Icon(Icons.arrow_back, color: t.text),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          Text('STAGE $stage/$total',
-              style: Fonts.ui(
-                  size: 14,
-                  color: t.text,
-                  weight: FontWeight.w800,
-                  letterSpacing: 2)),
+          Text(
+            'STAGE $stage/$total',
+            style: Fonts.ui(
+              size: 14,
+              color: t.text,
+              weight: FontWeight.w800,
+              letterSpacing: 2,
+            ),
+          ),
           const Spacer(),
           const _BoardActions(),
           const SizedBox(width: 8),
           Icon(Icons.bolt_rounded, size: 18, color: t.tileOrange),
           const SizedBox(width: 4),
-          Text(clock,
-              style: Fonts.numeric(
-                  size: 16, color: t.text, weight: FontWeight.w700)),
+          Text(
+            clock,
+            style: Fonts.numeric(
+              size: 16,
+              color: t.text,
+              weight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -691,11 +792,12 @@ class _TimedHeader extends StatelessWidget {
 /// Run summary shown when the last stage falls: total stages, elapsed clock,
 /// optional +XP pill, Play again / Home.
 class _RunCompleteSheet extends StatelessWidget {
-  const _RunCompleteSheet(
-      {required this.stages,
-      required this.clock,
-      required this.win,
-      required this.onPlayAgain});
+  const _RunCompleteSheet({
+    required this.stages,
+    required this.clock,
+    required this.win,
+    required this.onPlayAgain,
+  });
   final int stages;
   final String clock;
   final WinRecord? win;
@@ -715,36 +817,47 @@ class _RunCompleteSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: t.elevated,
               border: Border(top: BorderSide(color: t.success, width: 2)),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('RUN COMPLETE',
-                    style: Fonts.ui(
-                        size: 11,
-                        color: t.success,
-                        weight: FontWeight.w700,
-                        letterSpacing: 2)),
+                Text(
+                  'RUN COMPLETE',
+                  style: Fonts.ui(
+                    size: 11,
+                    color: t.success,
+                    weight: FontWeight.w700,
+                    letterSpacing: 2,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('$stages stages · $clock',
-                    style: Fonts.display(size: 34, color: t.text, height: 1)),
+                Text(
+                  '$stages stages · $clock',
+                  style: Fonts.display(size: 34, color: t.text, height: 1),
+                ),
                 if (win != null) ...[
                   const SizedBox(height: 14),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: tint(t.hero, 0.14),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text('+${win!.xpGained} XP  ·  Level ${win!.level}',
-                        style: Fonts.ui(
-                            size: 13,
-                            color: t.hero,
-                            weight: FontWeight.w800)),
+                    child: Text(
+                      '+${win!.xpGained} XP  ·  Level ${win!.level}',
+                      style: Fonts.ui(
+                        size: 13,
+                        color: t.hero,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 18),
@@ -782,14 +895,14 @@ class _RunCompleteSheet extends StatelessWidget {
 ScoreLabel _labelFor(int over) => over <= -2
     ? ScoreLabel.eagle
     : over == -1
-        ? ScoreLabel.birdie
-        : over == 0
-            ? ScoreLabel.par
-            : over == 1
-                ? ScoreLabel.bogey
-                : over == 2
-                    ? ScoreLabel.doubleBogey
-                    : ScoreLabel.over;
+    ? ScoreLabel.birdie
+    : over == 0
+    ? ScoreLabel.par
+    : over == 1
+    ? ScoreLabel.bogey
+    : over == 2
+    ? ScoreLabel.doubleBogey
+    : ScoreLabel.over;
 
 /// A light read on how this solve was built (prototype 2018–2024).
 String _boardCharacter(TreeController c) {
@@ -814,130 +927,233 @@ String _shareText(TreeController c) {
 /// Win sheet (handoff Screen 3): CHAIN COMPLETE kicker, golf score label,
 /// board-character read, moves-vs-par, an XP·Level pill when a win was
 /// recorded, a spoiler-free share preview, and Play-again / Home actions.
-class _WinSheet extends StatelessWidget {
-  const _WinSheet(
-      {required this.controller, required this.win, required this.onPlayAgain});
+class _WinSheet extends StatefulWidget {
+  const _WinSheet({
+    required this.controller,
+    required this.win,
+    required this.onPlayAgain,
+  });
   final TreeController controller;
   final WinRecord? win;
   final VoidCallback onPlayAgain;
 
   @override
+  State<_WinSheet> createState() => _WinSheetState();
+}
+
+class _WinSheetState extends State<_WinSheet> {
+  /// Swiped (or tapped) down to see the finished board underneath. Collapses
+  /// to a pill instead of vanishing, so the result is always one tap away.
+  bool _open = true;
+
+  @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    final c = controller;
+    final c = widget.controller;
+    final win = widget.win;
+    final onPlayAgain = widget.onPlayAgain;
     final over = c.moves - c.puzzle.par;
     final label = _labelFor(over).text(over);
-    return Positioned.fill(
-      child: ColoredBox(
-        color: Colors.black54,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
-            decoration: BoxDecoration(
-              color: t.elevated,
-              border: Border(top: BorderSide(color: t.success, width: 2)),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('CHAIN COMPLETE',
+    if (!_open) {
+      return Positioned(
+        left: 0,
+        right: 0,
+        bottom: 16,
+        child: Center(
+          child: GestureDetector(
+            onTap: () => setState(() => _open = true),
+            onVerticalDragEnd: (d) {
+              if ((d.primaryVelocity ?? 0) < 0) setState(() => _open = true);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+              decoration: BoxDecoration(
+                color: t.elevated,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: t.success, width: 2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.keyboard_arrow_up_rounded, color: t.success),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$label!  ·  ${c.moves} moves',
                     style: Fonts.ui(
-                        size: 11,
-                        color: t.success,
-                        weight: FontWeight.w700,
-                        letterSpacing: 2)),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('$label!',
-                        style: Fonts.display(
-                            size: 38, color: t.text, height: 1)),
-                    const SizedBox(width: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: _pill(_boardCharacter(c), t.hero),
+                      size: 14,
+                      color: t.text,
+                      weight: FontWeight.w800,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text('${c.moves} moves · par ${c.puzzle.par}',
-                    style: Fonts.numeric(
-                        size: 15,
-                        color: over > 0 ? t.progress : t.text,
-                        weight: FontWeight.w700)),
-                const SizedBox(height: 14),
-                _StarRow(stars: starsFor(c.moves, c.puzzle.par)),
-                if (win != null) ...[
-                  const SizedBox(height: 14),
-                  _xpPill(t, win!),
-                ],
-                const SizedBox(height: 18),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: tint(t.text, 0.04),
-                    border: Border.all(color: t.border, width: 2),
-                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(_shareText(c),
-                      style: Fonts.numeric(
-                          size: 14, color: t.text, height: 1.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () => setState(() => _open = false),
+        child: ColoredBox(
+          color: Colors.black54,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              // swallow the scrim tap, and let a downward flick collapse
+              onTap: () {},
+              onVerticalDragEnd: (d) {
+                if ((d.primaryVelocity ?? 0) > 0) setState(() => _open = false);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
+                decoration: BoxDecoration(
+                  color: t.elevated,
+                  border: Border(top: BorderSide(color: t.success, width: 2)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _action(
-                        label: 'Play again',
-                        bg: t.success,
-                        fg: Colors.white,
-                        onTap: onPlayAgain,
+                // Scrolls rather than overflows: on a short window (desktop
+                // browser, landscape phone) the panel is taller than the space
+                // it gets, and Play again / Home would sit off-screen with no
+                // way to reach them — the sheet is fixed, not draggable.
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: t.border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _action(
-                        label: 'Copy',
-                        bg: tint(t.text, 0.06),
-                        fg: t.text,
-                        onTap: () => Clipboard.setData(
-                            ClipboardData(text: _shareText(c))),
+                      Text(
+                        'CHAIN COMPLETE',
+                        style: Fonts.ui(
+                          size: 11,
+                          color: t.success,
+                          weight: FontWeight.w700,
+                          letterSpacing: 2,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$label!',
+                            style: Fonts.display(
+                              size: 38,
+                              color: t.text,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: _pill(_boardCharacter(c), t.hero),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '${c.moves} moves · par ${c.puzzle.par}',
+                        style: Fonts.numeric(
+                          size: 15,
+                          color: over > 0 ? t.progress : t.text,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _StarRow(stars: starsFor(c.moves, c.puzzle.par)),
+                      if (win != null) ...[
+                        const SizedBox(height: 14),
+                        _xpPill(t, win),
+                      ],
+                      const SizedBox(height: 18),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: tint(t.text, 0.04),
+                          border: Border.all(color: t.border, width: 2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          _shareText(c),
+                          style: Fonts.numeric(
+                            size: 14,
+                            color: t.text,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _action(
+                              label: 'Play again',
+                              bg: t.success,
+                              fg: Colors.white,
+                              onTap: onPlayAgain,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _action(
+                              label: 'Copy',
+                              bg: tint(t.text, 0.06),
+                              fg: t.text,
+                              onTap: () => Clipboard.setData(
+                                ClipboardData(text: _shareText(c)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                showSolutionSheet(context, c.puzzle),
+                            child: Text(
+                              'See solution',
+                              style: Fonts.ui(
+                                size: 13,
+                                color: t.muted,
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text('·', style: Fonts.ui(size: 13, color: t.muted)),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            child: Text(
+                              'Home',
+                              style: Fonts.ui(
+                                size: 13,
+                                color: t.muted,
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => showSolutionSheet(context, c.puzzle),
-                      child: Text('See solution',
-                          style: Fonts.ui(
-                              size: 13,
-                              color: t.muted,
-                              weight: FontWeight.w600)),
-                    ),
-                    Text('·',
-                        style: Fonts.ui(size: 13, color: t.muted)),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      child: Text('Home',
-                          style: Fonts.ui(
-                              size: 13,
-                              color: t.muted,
-                              weight: FontWeight.w600)),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -946,36 +1162,38 @@ class _WinSheet extends StatelessWidget {
   }
 
   Widget _pill(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          border: Border.all(color: color, width: 2),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(text,
-            style: Fonts.ui(
-                size: 11, color: color, weight: FontWeight.w800)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      border: Border.all(color: color, width: 2),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      text,
+      style: Fonts.ui(size: 11, color: color, weight: FontWeight.w800),
+    ),
+  );
 
   Widget _xpPill(NumTokens t, WinRecord w) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: tint(t.hero, 0.14),
-          borderRadius: BorderRadius.circular(999),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+    decoration: BoxDecoration(
+      color: tint(t.hero, 0.14),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '+${w.xpGained} XP',
+          style: Fonts.ui(size: 13, color: t.hero, weight: FontWeight.w800),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('+${w.xpGained} XP',
-                style: Fonts.ui(
-                    size: 13, color: t.hero, weight: FontWeight.w800)),
-            const SizedBox(width: 8),
-            Text('· Level ${w.level}  ·  🔥 ${w.streak}',
-                style: Fonts.ui(
-                    size: 13, color: t.muted, weight: FontWeight.w700)),
-          ],
+        const SizedBox(width: 8),
+        Text(
+          '· Level ${w.level}  ·  🔥 ${w.streak}',
+          style: Fonts.ui(size: 13, color: t.muted, weight: FontWeight.w700),
         ),
-      );
-
+      ],
+    ),
+  );
 }
 
 /// The handoff win-sheet star rating: three big stars, [stars] of them filled
@@ -1025,7 +1243,12 @@ List<SolutionStep> solutionSteps(TreePuzzle puzzle) {
     final i = remaining.indexWhere((e) => reached.contains(e.$1));
     if (i < 0) break; // disconnected (shouldn't happen for a valid tree)
     final e = remaining.removeAt(i);
-    steps.add((n: steps.length + 1, from: e.$1, op: labelFor(e.$1, e.$2), to: e.$2));
+    steps.add((
+      n: steps.length + 1,
+      from: e.$1,
+      op: labelFor(e.$1, e.$2),
+      to: e.$2,
+    ));
     reached.add(e.$2);
   }
   return steps;
@@ -1064,8 +1287,10 @@ class _SolutionSheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('Solution',
-                    style: Fonts.display(size: 28, color: t.text, weight: 700)),
+                Text(
+                  'Solution',
+                  style: Fonts.display(size: 28, color: t.text, weight: 700),
+                ),
                 const Spacer(),
                 IconButton(
                   icon: Icon(Icons.close, color: t.text),
@@ -1073,14 +1298,21 @@ class _SolutionSheet extends StatelessWidget {
                 ),
               ],
             ),
-            Text('Optimal line · ${puzzle.optimalPar} moves',
-                style: Fonts.ui(
-                    size: 12, color: t.muted, weight: FontWeight.w700)),
+            Text(
+              'Optimal line · ${puzzle.optimalPar} moves',
+              style: Fonts.ui(
+                size: 12,
+                color: t.muted,
+                weight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 16),
             for (final st in steps) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: t.border, width: 2),
                   borderRadius: BorderRadius.circular(18),
@@ -1089,27 +1321,40 @@ class _SolutionSheet extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 20,
-                      child: Text('${st.n}',
-                          style: Fonts.numeric(size: 12, color: t.muted)),
+                      child: Text(
+                        '${st.n}',
+                        style: Fonts.numeric(size: 12, color: t.muted),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text('${st.from}',
-                        style: Fonts.numeric(
-                            size: 18, color: t.text, weight: FontWeight.w700)),
+                    Text(
+                      '${st.from}',
+                      style: Fonts.numeric(
+                        size: 18,
+                        color: t.text,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Text(st.op,
-                        style: Fonts.numeric(
-                            size: 14,
-                            color: t.progress,
-                            weight: FontWeight.w700)),
+                    Text(
+                      st.op,
+                      style: Fonts.numeric(
+                        size: 14,
+                        color: t.progress,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Text('→', style: Fonts.numeric(size: 14, color: t.muted)),
                     const SizedBox(width: 12),
-                    Text('${st.to}',
-                        style: Fonts.numeric(
-                            size: 18,
-                            color: t.success,
-                            weight: FontWeight.w700)),
+                    Text(
+                      '${st.to}',
+                      style: Fonts.numeric(
+                        size: 18,
+                        color: t.success,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1135,18 +1380,19 @@ Widget _action({
   required Color bg,
   required Color fg,
   required VoidCallback onTap,
-}) =>
-    Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          alignment: Alignment.center,
-          child: Text(label,
-              style: Fonts.ui(size: 14, color: fg, weight: FontWeight.w800)),
-        ),
+}) => Material(
+  color: bg,
+  borderRadius: BorderRadius.circular(14),
+  child: InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: Fonts.ui(size: 14, color: fg, weight: FontWeight.w800),
       ),
-    );
+    ),
+  ),
+);

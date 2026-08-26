@@ -3,32 +3,44 @@ import 'rng.dart';
 import 'steiner.dart';
 import 'stranding.dart';
 
-/// A difficulty tier for the branching-tree generator. `kinds`/`unaries` null →
-/// `makeHand` defaults. A `null` entry in [unaries] is the "standard extra"
-/// slot that resolves to a random ↺ / x² / ⧺ tile.
+/// A difficulty tier for the branching-tree generator. A `null` entry in
+/// [unaries] is the "standard extra" slot that resolves to a random ↺ / x² / ⧺
+/// tile.
+///
+/// [kinds] and [unaries] are required, deliberately: they used to be optional
+/// with a `['×','+','+','−','÷','%']` / `['Σ']` fallback in [makeHand], and
+/// every tier but the two unreachable ones forgot to set them — which is how
+/// "easy" ended up dealing division, modulo and digit-sum.
 class Tier {
   const Tier({
     required this.targetsMin,
     required this.targetsMax,
     required this.branch,
     required this.shuffles,
+    required this.hints,
     required this.pool,
-    this.kinds,
-    this.unaries,
+    required this.kinds,
+    required this.unaries,
   });
-  final int targetsMin, targetsMax, branch, shuffles;
+  final int targetsMin, targetsMax, branch, shuffles, hints;
   final List<int> pool;
-  final List<String>? kinds;
-  final List<String?>? unaries;
+  final List<String> kinds;
+  final List<String?> unaries;
 }
 
-/// Tier table ported from the prototype `TIERS`.
+/// The four player-facing tiers (labels live in `DifficultyLabel`, so the copy
+/// isn't duplicated here). Operators, depth and target count all widen together;
+/// the rescue knobs — shuffles and hints — tighten as they do.
 const kTiers = <String, Tier>{
-  'sprouts': Tier(targetsMin: 1, targetsMax: 2, branch: 1, shuffles: 2, pool: [2, 3], kinds: ['×', '+', '−'], unaries: []),
-  'junior': Tier(targetsMin: 2, targetsMax: 3, branch: 2, shuffles: 3, pool: [2, 3, 4, 5], kinds: ['×', '+', '−', '÷'], unaries: []),
-  'easy': Tier(targetsMin: 2, targetsMax: 2, branch: 3, shuffles: 3, pool: [2, 3, 5, 7]),
-  'medium': Tier(targetsMin: 3, targetsMax: 3, branch: 3, shuffles: 4, pool: [2, 3, 4, 5, 7, 9], unaries: ['Σ', null]),
-  'hard': Tier(targetsMin: 4, targetsMax: 5, branch: 4, shuffles: 5, pool: [2, 3, 4, 5, 6, 7, 8, 9], unaries: ['Σ', '√']),
+  // 🧸 Kids: one target, one move, three operators. No branching to reason
+  // about at all — the whole board is "pick the tile that lands on the ring".
+  'kids': Tier(targetsMin: 1, targetsMax: 1, branch: 1, shuffles: 3, hints: 3, pool: [2, 3], kinds: ['+', '−', '×'], unaries: []),
+  // 🌱 Easy: a second target (so the first real branch) and ÷ joins.
+  'easy': Tier(targetsMin: 2, targetsMax: 2, branch: 2, shuffles: 3, hints: 2, pool: [2, 3, 4, 5], kinds: ['+', '+', '−', '×', '÷'], unaries: []),
+  // 🎯 Normal: % and the Σ/x²/⧺ extra tile.
+  'medium': Tier(targetsMin: 3, targetsMax: 3, branch: 3, shuffles: 2, hints: 1, pool: [2, 3, 4, 5, 7, 9], kinds: ['×', '+', '+', '−', '÷', '%'], unaries: ['Σ', null]),
+  // 🔥 Expert: everything, four deep, barely any rescues.
+  'hard': Tier(targetsMin: 4, targetsMax: 5, branch: 4, shuffles: 2, hints: 1, pool: [2, 3, 4, 5, 6, 7, 8, 9], kinds: ['×', '+', '+', '−', '÷', '%'], unaries: ['Σ', '√']),
 };
 
 /// A generated branching-tree board. Solution-first, so solvability is a
@@ -40,6 +52,7 @@ class TreePuzzle {
     required this.targets,
     required this.hands,
     required this.shuffles,
+    required this.hints,
     required this.branchMax,
     required this.par,
     required this.optimalPar,
@@ -50,7 +63,7 @@ class TreePuzzle {
   final int start;
   final List<int> targets;
   final List<List<Operation>> hands;
-  final int shuffles, branchMax, par, optimalPar;
+  final int shuffles, hints, branchMax, par, optimalPar;
   final List<Edge> optimalEdges;
   final bool dpValid;
 }
@@ -59,8 +72,8 @@ class TreePuzzle {
 /// tiles ×,+ (so a solution always exists). No duplicate tiles in one hand.
 List<Operation> makeHand(Rng rnd, Tier t, int h, bool forceMul) {
   X pick<X>(List<X> a) => a[(rnd() * a.length).floor()];
-  final kinds = t.kinds ?? const ['×', '+', '+', '−', '÷', '%'];
-  final unaries = t.unaries ?? const ['Σ'];
+  final kinds = t.kinds;
+  final unaries = t.unaries;
   final hand = <Operation>[];
   final seen = <String>{};
   var guard = 0;
@@ -187,8 +200,11 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
       targets: targets,
       hands: hands,
       shuffles: t.shuffles,
+      hints: t.hints,
       branchMax: t.branch,
-      par: trueOptimum + 2, // flat +2 slack, all tiers
+      // ponytail: flat +2 slack for every tier — retune per tier only if
+      // play-testing shows the star bands feel wrong at the extremes.
+      par: trueOptimum + 2,
       optimalPar: trueOptimum,
       optimalEdges: optimalEdges,
       dpValid: dpValid,
@@ -210,6 +226,7 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
     targets: const [12, 19],
     hands: [fb(0, 3, 7), fb(1, 3, 7), fb(2, 3, 7), fb(3, 3, 7)],
     shuffles: 3,
+    hints: 1,
     branchMax: 3,
     par: 3,
     optimalPar: 2,

@@ -50,11 +50,11 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 14),
               entrance(
                 _NavCard(
-                  eyebrow: 'EXPLORE · ${kSocialEnabled ? 3 : 2} MODES',
+                  eyebrow: 'EXPLORE · ${kSocialEnabled ? 4 : 3} MODES',
                   title: 'Game modes',
                   subtitle: kSocialEnabled
-                      ? 'Daily · Archive · Weekend Co-op'
-                      : 'Daily · Archive',
+                      ? 'Daily · Archive · Free Play · Co-op'
+                      : 'Daily · Archive · Free Play',
                   icon: Icons.sports_esports_rounded,
                   gradient: [t.heroTwo, t.hero],
                   onTap: () => Navigator.of(context).push(
@@ -915,7 +915,7 @@ class _ModesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                'PLAY · ${kSocialEnabled ? 3 : 2} MODES',
+                'PLAY · ${kSocialEnabled ? 4 : 3} MODES',
                 style: Fonts.ui(
                   size: 12,
                   color: t.muted,
@@ -929,7 +929,7 @@ class _ModesScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  _ModeChip(emoji: '🎮', label: '${kSocialEnabled ? 3 : 2} Modes'),
+                  _ModeChip(emoji: '🎮', label: '${kSocialEnabled ? 4 : 3} Modes'),
                   const SizedBox(width: 8),
                   _ModeChip(emoji: '🗺️', label: '${g.campaignCount} Levels'),
                 ],
@@ -977,6 +977,19 @@ class _ModesScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
+              entrance(
+                _ModeCard(
+                  icon: Icons.tune_rounded,
+                  color: t.success,
+                  badge: 'ANY TIME',
+                  kicker: 'PICK YOUR LEVEL',
+                  title: 'Free Play',
+                  onTap: () => openFreePlay(context),
+                ),
+                on: on,
+                index: 2,
+              ),
               if (kSocialEnabled) ...[
                 const SizedBox(height: 14),
                 entrance(
@@ -991,11 +1004,11 @@ class _ModesScreen extends StatelessWidget {
                     onTap: () => openCoop(context),
                   ),
                   on: on,
-                  index: 2,
+                  index: 3,
                 ),
               ],
               const SizedBox(height: 20),
-              entrance(_CampaignCard(g: g), on: on, index: 3),
+              entrance(_CampaignCard(g: g), on: on, index: 4),
               const SizedBox(height: 20),
               Center(
                 child: GestureDetector(
@@ -1062,9 +1075,9 @@ class _ModeCard extends StatelessWidget {
     required this.badge,
     required this.kicker,
     required this.title,
-    required this.avatars,
-    required this.extra,
     required this.onTap,
+    this.avatars = const [],
+    this.extra = 0,
   });
 
   final IconData icon;
@@ -1138,7 +1151,7 @@ class _ModeCard extends StatelessWidget {
                 // Fake "43 friends played this" social proof — nothing backs it
                 // until accounts exist, so the row is just spacer without it.
                 Expanded(
-                  child: kSocialEnabled
+                  child: kSocialEnabled && avatars.isNotEmpty
                       ? _AvatarStack(initials: avatars, extra: extra)
                       : const SizedBox.shrink(),
                 ),
@@ -1369,4 +1382,90 @@ void openCoop(BuildContext context) {
       ),
     ),
   );
+}
+
+/// Free Play: ask which tier, then hand [TreeGamePage] the key and let it deal
+/// an endless stream of boards at that difficulty ("New board" re-rolls in
+/// tier). This is the launcher [GameMode.practice] never had.
+void openFreePlay(BuildContext context) {
+  final g = context.read<GameController>();
+  final t = NumTheme.of(context);
+  showModalBottomSheet<Difficulty>(
+    context: context,
+    backgroundColor: t.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 14),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: t.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+            child: Text('Choose a difficulty',
+                style: Fonts.display(size: 22, color: t.text)),
+          ),
+          for (final d in Difficulty.values)
+            InkWell(
+              key: ValueKey('freeplay_${d.name}'),
+              onTap: () => Navigator.of(sheet).pop(d),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(children: [
+                  Text(d.emoji, style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(d.label,
+                            style: Fonts.ui(
+                                size: 16,
+                                color: t.text,
+                                weight: FontWeight.w800,
+                                height: 1.2)),
+                        Text(d.blurb,
+                            style: Fonts.ui(
+                                size: 12,
+                                color: t.muted,
+                                weight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: t.muted),
+                ]),
+              ),
+            ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  ).then((d) {
+    if (d == null || !context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TreeGamePage(
+          tier: d.name,
+          onWin: (m, p) {
+            g.recordBranchingWin(GameMode.practice, m, p);
+            return WinRecord(
+                xpGained: g.lastXpGain,
+                level: g.playerLevel,
+                streak: g.stats.streak);
+          },
+        ),
+      ),
+    );
+  });
 }

@@ -17,19 +17,21 @@ class LevelDef {
   final String? unlocks;
 }
 
-/// The ordered campaign. Tiers ramp so operators are introduced gradually:
-/// easy = `+ − ×`, medium adds `÷ %` (+ first milestones), hard adds `x² √ Σ`.
+/// The ordered campaign, ramping one idea at a time. The tier rows in `kTiers`
+/// are what actually enforce this — the operator lists there are per-tier, so
+/// a `kids` level cannot deal a `÷` tile no matter what.
 /// ponytail: this table + the seeds are play-test tunables — retune for feel.
 const List<LevelDef> kCampaign = [
-  // 1–6 — easy: + − ×, no division, small numbers.
-  LevelDef(1, Difficulty.easy, 4217),
-  LevelDef(2, Difficulty.easy, 4231),
-  LevelDef(3, Difficulty.easy, 4258),
-  LevelDef(4, Difficulty.easy, 4276),
+  // 1–3 — kids: one target, one move, + − ×. No branching to reason about.
+  LevelDef(1, Difficulty.kids, 4217),
+  LevelDef(2, Difficulty.kids, 4231),
+  LevelDef(3, Difficulty.kids, 4258),
+  // 4–6 — easy: a second target (the first real branch) and ÷ joins.
+  LevelDef(4, Difficulty.easy, 4276, 'a second target'),
   LevelDef(5, Difficulty.easy, 4293),
   LevelDef(6, Difficulty.easy, 4312),
-  // 7–14 — medium: ÷ and % join the pool, checkpoints may appear.
-  LevelDef(7, Difficulty.medium, 4338, '÷ divide & % modulo'),
+  // 7–14 — normal: % and the Σ extra tile join, checkpoints may appear.
+  LevelDef(7, Difficulty.medium, 4338, '% modulo & Σ digit-sum'),
   LevelDef(8, Difficulty.medium, 4351),
   LevelDef(9, Difficulty.medium, 4377),
   LevelDef(10, Difficulty.medium, 4390),

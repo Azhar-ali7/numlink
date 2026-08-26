@@ -16,7 +16,7 @@ void main() {
   // Port of the prototype `runSelfCheck` (generator-only invariants — the
   // guard false-pos/neg checks land with the controller in phase 3).
   group('buildPuzzle self-check', () {
-    const tiers = ['sprouts', 'junior', 'easy', 'medium', 'hard'];
+    const tiers = ['kids', 'easy', 'medium', 'hard'];
     const n = 30;
 
     for (final tier in tiers) {
@@ -48,6 +48,24 @@ void main() {
           expect(p.targets.toSet().length, p.targets.length, reason: '$tier #$i duplicate targets');
         }
       });
+    }
+  });
+
+  // The regression guard for the null-`kinds` bug: `easy`/`medium`/`hard` used
+  // to leave `kinds` unset, and `makeHand`'s fallback then dealt ÷ % Σ to every
+  // tier — which is how the "easy" campaign opener came to be anything but.
+  test('kids stays kids: one target, one move, + − × only', () {
+    for (var i = 0; i < 30; i++) {
+      final p = buildPuzzle('kids', 5000 + i * 97);
+      expect(p.targets.length, 1, reason: 'kids #$i should have one target');
+      expect(p.branchMax, 1, reason: 'kids #$i should be one move deep');
+      expect(p.hints, 3, reason: 'kids #$i should deal three hints');
+      for (final hand in p.hands) {
+        for (final o in hand) {
+          expect(['+', '−', '×'], contains(o.symbol),
+              reason: 'kids #$i dealt ${o.symbol}');
+        }
+      }
     }
   });
 

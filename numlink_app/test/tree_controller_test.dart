@@ -243,4 +243,64 @@ void main() {
       }
     }
   });
+
+  group('hint only suggests moves apply() accepts', () {
+    test('skips an op whose result is already on the board', () {
+      // 4 →×2→ 8 already placed. ×2 from 4 would re-make 8 (distance 4 from
+      // target 12, the nearest of any op) so the old hint picked it; +1 → 5 is
+      // farther but legal.
+      final c = TreeController(fixture(
+        start: 4,
+        targets: [8, 12],
+        hands: [
+          [op('m', '×', 2), op('p', '+', 1)]
+        ],
+      ))
+        ..init();
+      expect(c.apply(c.hand[0]), ApplyResult.placed); // 4 ×2 → 8
+      c.select(0); // back to 4, where ×2 would duplicate 8
+
+      c.hint();
+      expect(c.hintGlow, isNotNull, reason: '+1 is legal, hint should glow it');
+      expect(c.hintGlow, 'p');
+      expect(c.apply(c.hand.firstWhere((o) => o.id == c.hintGlow)),
+          isNot(ApplyResult.rejected));
+    });
+
+    test('an arm at branchMax flashes instead of glowing an illegal op', () {
+      // branchMax 1, so every arm is one move deep. 8 is still reachable from
+      // the start, but not from the node the player is standing on.
+      final c = TreeController(fixture(
+        start: 4,
+        targets: [5, 8],
+        hands: [
+          [op('p', '+', 1), op('m', '×', 2)]
+        ],
+        branchMax: 1,
+      ))
+        ..init();
+      expect(c.apply(c.hand[0]), ApplyResult.placed); // 4 +1 → 5, arm at cap
+
+      c.hint();
+      expect(c.hintGlow, isNull);
+      expect(c.message, contains('No legal move'));
+      expect(c.hintUsed, isTrue, reason: 'spent either way, like the prototype');
+    });
+
+    test('selecting another node drops a stale glow', () {
+      final c = TreeController(fixture(
+        start: 4,
+        targets: [8, 12],
+        hands: [
+          [op('m', '×', 2), op('p', '+', 1)]
+        ],
+      ))
+        ..init();
+      c.hint();
+      expect(c.hintGlow, isNotNull);
+      c.apply(c.hand[0]);
+      c.select(0);
+      expect(c.hintGlow, isNull);
+    });
+  });
 }

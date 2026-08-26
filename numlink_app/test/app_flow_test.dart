@@ -21,7 +21,7 @@ Future<GameController> _pumpApp(WidgetTester tester) async {
   final feedback = FeedbackService();
   final game = GameController(
     statsRepo: FakeStatsRepository(),
-    initialStats: GameStats.seed,
+    initialStats: GameStats.empty,
   );
 
   await tester.pumpWidget(
@@ -90,7 +90,8 @@ void main() {
     expect(find.text('Sound effects'), findsOneWidget);
     expect(find.text('Haptics'), findsOneWidget);
     expect(find.text('Reduce motion'), findsOneWidget);
-    expect(find.text('Social nudges'), findsOneWidget);
+    // Gated behind kSocialEnabled (lib/flags.dart) until accounts exist.
+    expect(find.text('Social nudges'), findsNothing);
 
     game.open(SheetOverlay.stats);
     await tester.pump(const Duration(milliseconds: 400));

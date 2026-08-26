@@ -73,6 +73,55 @@ void main() {
     });
   });
 
+  group('ghostLayout — targets never stack on a node or each other', () {
+    // Minimum centre-to-centre gap we require between any two markers. Node
+    // chips are ~100px wide but don't fill the slot; 88 catches true stacks
+    // (~0px) without disturbing the natural ~100px fan.
+    const minGap = 88.0;
+
+    void assertNoOverlap(List<Offset> markers) {
+      for (var i = 0; i < markers.length; i++) {
+        for (var j = i + 1; j < markers.length; j++) {
+          expect((markers[i] - markers[j]).distance, greaterThanOrEqualTo(minGap),
+              reason: 'markers $i and $j overlap');
+        }
+      }
+    }
+
+    test('after first move (×3 on 6→18): ghost 9 does not land on node 18', () {
+      // The reported bug: nodes {6, 18}, remaining targets {13, 9}. Target 9
+      // is nearest node 6 (the root, whose ray is now occupied by the 18 arm),
+      // so it used to be placed straight down — on top of node 18.
+      final nodes = [
+        const TreeNode(id: 0, v: 6),
+        const TreeNode(id: 1, v: 18, parent: 0),
+      ];
+      final pos = radialLayout(nodes);
+      final g = ghostLayout(
+          missing: const [13, 9], nodes: nodes, nodePos: pos, gap: 120);
+      assertNoOverlap([...pos.values, ...g.pos.values]);
+    });
+
+    test('initial board (no moves): two targets fan without overlapping', () {
+      final nodes = [const TreeNode(id: 0, v: 6)];
+      final pos = radialLayout(nodes);
+      final g = ghostLayout(
+          missing: const [13, 9], nodes: nodes, nodePos: pos, gap: 120);
+      assertNoOverlap([...pos.values, ...g.pos.values]);
+    });
+
+    test('several ghosts on one occupied anchor all stay clear', () {
+      final nodes = [
+        const TreeNode(id: 0, v: 6),
+        const TreeNode(id: 1, v: 12, parent: 0),
+      ];
+      final pos = radialLayout(nodes);
+      final g = ghostLayout(
+          missing: const [7, 8, 9, 10], nodes: nodes, nodePos: pos, gap: 120);
+      assertNoOverlap([...pos.values, ...g.pos.values]);
+    });
+  });
+
   group('TreeGameScreen', () {
     testWidgets('renders start node, targets bar, and op pad', (tester) async {
       phone(tester);

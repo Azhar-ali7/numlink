@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import 'data/settings_controller.dart';
+import 'flags.dart';
 import 'game/game_controller.dart';
 import 'screens/intro_carousel.dart';
 import 'screens/welcome_screen.dart';
@@ -265,7 +266,7 @@ class _AppShell extends StatelessWidget {
                       const Positioned.fill(child: ArchiveSheet()),
                     if (g.overlay == SheetOverlay.notifications)
                       const Positioned.fill(child: NotificationsSheet()),
-                    if (g.overlay == SheetOverlay.leaderboard)
+                    if (kSocialEnabled && g.overlay == SheetOverlay.leaderboard)
                       const Positioned.fill(child: LeaderboardSheet()),
 
                     // First-run intro carousel — above everything else.

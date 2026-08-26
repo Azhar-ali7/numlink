@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
 import '../game/campaign.dart' show starsFor;
+import '../game/puzzle_repository.dart' show PuzzleCalendar;
 import '../game/score.dart';
 import '../game/steiner.dart' show compute;
 import '../game/tree_controller.dart';
@@ -46,11 +47,10 @@ TreePuzzle weekendCoopPuzzle([DateTime? day]) {
   return buildPuzzle('medium', 0x00C0FFEE ^ week);
 }
 
-/// The board a given past daily served, for Archive replay. ponytail: mirrors
-/// PuzzleRepository's epoch (#128 → 2026-08-08); keep the two in sync, or fold
-/// into one source when GameController is retired.
+/// The board a given past daily served, for Archive replay. The epoch lives in
+/// PuzzleCalendar, which also owns the numbering shown on the hub.
 TreePuzzle archiveBranchingPuzzle(int no) =>
-    dailyBranchingPuzzle(DateTime.utc(2026, 8, 8).add(Duration(days: no - 128)));
+    dailyBranchingPuzzle(PuzzleCalendar.dateForNumber(no));
 
 /// Self-contained branching-tree game: owns its [TreeController], deals fresh
 /// boards, switches difficulty, and shows a win overlay. Launched from home via
@@ -190,6 +190,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
   }
 }
 
+/// "hard" → "Hard" for the header fallback title.
+String _titleCase(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
 class _Header extends StatelessWidget {
   const _Header({
     required this.tier,
@@ -221,17 +225,16 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title ?? tier.toUpperCase(),
+              Text(title ?? _titleCase(tier),
                   style: Fonts.ui(
-                      size: 14,
+                      size: 15,
                       color: t.text,
-                      weight: FontWeight.w800,
-                      letterSpacing: 2,
+                      weight: FontWeight.w700,
                       height: 1)),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text('${c.puzzle.targets.length} targets · par ${c.puzzle.par}',
                   style: Fonts.ui(
-                      size: 11, color: t.muted, weight: FontWeight.w700)),
+                      size: 10, color: t.muted, weight: FontWeight.w700)),
             ],
           ),
           const Spacer(),

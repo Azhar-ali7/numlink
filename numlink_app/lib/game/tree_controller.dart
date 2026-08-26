@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' hide compute;
 
 import '../models/operation.dart';
@@ -50,7 +52,32 @@ class TreeController extends ChangeNotifier {
   /// Op id to glow after a hint; null otherwise.
   String? hintGlow;
 
+  Timer? _msgTimer;
+  Timer? _glowTimer;
+
+  /// Show a transient status line that auto-clears after 1.6s, cancelling any
+  /// prior auto-clear (prototype `flash`). Non-transient states (solved) set
+  /// [message] directly.
+  void _flash(String msg) {
+    message = msg;
+    _msgTimer?.cancel();
+    _msgTimer = Timer(const Duration(milliseconds: 1600), () {
+      message = null;
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _msgTimer?.cancel();
+    _glowTimer?.cancel();
+    super.dispose();
+  }
+
   void init() {
+    _msgTimer?.cancel();
+    _glowTimer?.cancel();
     nodes = [TreeNode(id: 0, v: puzzle.start)];
     sel = 0;
     _nextId = 1;
@@ -107,7 +134,58 @@ class TreeController extends ChangeNotifier {
 
   void select(int id) {
     sel = id;
+    // The glow was computed against the old selection — it may be illegal here.
+    _clearGlow();
     notifyListeners();
+  }
+
+  /// The cheap half of the legality rules — everything [apply] checks before
+  /// the expensive stranding guard. Returns the resulting value, or null with
+  /// [why] set to the player-facing reason.
+  ///
+  /// Shared with [hint] so a hint can never glow a move [apply] would reject:
+  /// duplicating these conditions in [hint] is exactly how it ended up
+  /// suggesting values already on the board.
+  ({int? r, String? why}) _legality(
+      TreeNode from, Operation o, Map<String, int> used) {
+    if ((used[o.opSig] ?? 0) >= o.tokens) {
+      return (r: null, why: 'No ${o.label} tokens left');
+    }
+    if (depthOf(from) >= puzzle.branchMax) {
+      return (
+        r: null,
+        why: 'This arm is at its ${puzzle.branchMax}-move limit'
+      );
+    }
+    final r = compute(from.v, o);
+    if (r == null) {
+      return (
+        r: null,
+        why: switch (o.symbol) {
+          '÷' => "That doesn't divide evenly",
+          '√' => 'Not a perfect square',
+          _ => 'That goes out of range',
+        }
+      );
+    }
+    if (r == from.v) return (r: null, why: 'That leaves ${from.v} unchanged');
+    if (nodes.any((n) => n.v == r)) {
+      return (r: null, why: '$r is already on the board');
+    }
+    return (r: r, why: null);
+  }
+
+  /// The board [from] + [o] would produce, paired with the token map after it.
+  (List<TreeNode>, Map<String, int>) _boardAfter(
+      TreeNode from, Operation o, int r, Map<String, int> used) {
+    final node = TreeNode(
+      id: _nextId,
+      v: r,
+      parent: from.id,
+      opSig: o.opSig,
+      opLabel: o.label,
+    );
+    return ([...nodes, node], {...used, o.opSig: (used[o.opSig] ?? 0) + 1});
   }
 
   /// Enforcement order (prototype 1394–1425): token → depth cap → compute-null →
@@ -116,49 +194,23 @@ class TreeController extends ChangeNotifier {
   ApplyResult apply(Operation o) {
     if (solved) return ApplyResult.ignored;
     final used = usedMap();
-    final sig = o.opSig;
-    if ((used[sig] ?? 0) >= o.tokens) {
-      return _reject(o, 'No ${o.label} tokens left');
-    }
     final from = _selNode;
-    if (depthOf(from) >= puzzle.branchMax) {
-      return _reject(o, 'This arm is at its ${puzzle.branchMax}-move limit');
-    }
-    final r = compute(from.v, o);
-    if (r == null) {
-      return _reject(
-        o,
-        switch (o.symbol) {
-          '÷' => "That doesn't divide evenly",
-          '√' => 'Not a perfect square',
-          _ => 'That goes out of range',
-        },
-      );
-    }
-    if (r == from.v) return _reject(o, 'That leaves ${from.v} unchanged');
-    if (nodes.any((n) => n.v == r)) {
-      return _reject(o, '$r is already on the board');
-    }
+    final check = _legality(from, o, used);
+    if (check.r == null) return _reject(o, check.why!);
 
-    final node = TreeNode(
-      id: _nextId,
-      v: r,
-      parent: from.id,
-      opSig: sig,
-      opLabel: o.label,
-    );
-    final next = [...nodes, node];
-    final nextUsed = {...used, sig: (used[sig] ?? 0) + 1};
+    final (next, nextUsed) = _boardAfter(from, o, check.r!, used);
     if (_stranded(next, nextUsed)) {
       return _reject(o, 'That would strand a target');
     }
 
     nodes = next;
+    final node = next.last;
     sel = node.id;
     _nextId++;
-    hintGlow = null;
+    _clearGlow();
     shakeOp = null;
     message = null;
+    _msgTimer?.cancel();
     if (puzzle.targets.every((t) => nodes.any((n) => n.v == t))) {
       solved = true;
       notifyListeners();
@@ -169,9 +221,8 @@ class TreeController extends ChangeNotifier {
   }
 
   ApplyResult _reject(Operation o, String msg) {
-    message = msg;
     shakeOp = o.id;
-    notifyListeners();
+    _flash(msg);
     return ApplyResult.rejected;
   }
 
@@ -202,8 +253,7 @@ class TreeController extends ChangeNotifier {
   /// the current hand. Costs a shuffle either way (prototype 1433–1457).
   void shuffleHand() {
     if (shufflesLeft <= 0) {
-      message = 'No shuffles left';
-      notifyListeners();
+      _flash('No shuffles left');
       return;
     }
     final missing =
@@ -224,22 +274,26 @@ class TreeController extends ChangeNotifier {
       if (works(puzzle.hands[idx])) {
         handIndex = idx;
         shufflesLeft--;
-        message = 'New hand dealt — still solvable';
-        notifyListeners();
+        _clearGlow(); // the glowed op may not be in the new hand (proto 1451)
+        _flash('New hand dealt — still solvable');
         return;
       }
     }
     shufflesLeft--;
-    message = 'No alternate hand keeps this solvable — kept your current hand';
-    notifyListeners();
+    _flash('No alternate hand keeps this solvable — kept your current hand');
   }
 
   /// Glow the available op whose result lands nearest an outstanding target.
   /// One hint per puzzle (prototype 1546–1562).
+  ///
+  /// Every candidate must survive the same rules [apply] enforces — including
+  /// the stranding guard, which is run only on candidates in nearest-first
+  /// order so the expensive `solveFrom` sweep usually happens once, not once
+  /// per op.
   void hint() {
+    if (solved) return;
     if (hintUsed) {
-      message = 'Your hint is spent';
-      notifyListeners();
+      _flash('Your hint is spent');
       return;
     }
     final missing =
@@ -247,24 +301,41 @@ class TreeController extends ChangeNotifier {
     if (missing.isEmpty) return;
     final from = _selNode;
     final used = usedMap();
-    Operation? best;
-    var bestD = 1 << 30;
+
+    final ranked = <({Operation o, int r, int d})>[];
     for (final o in hand) {
-      if ((used[o.opSig] ?? 0) >= o.tokens) continue;
-      final r = compute(from.v, o);
-      if (r == null || r == from.v) continue;
-      final d = missing
-          .map((t) => (t - r).abs())
-          .reduce((a, b) => a < b ? a : b);
-      if (d < bestD) {
-        bestD = d;
-        best = o;
-      }
+      final r = _legality(from, o, used).r;
+      if (r == null) continue;
+      final d =
+          missing.map((t) => (t - r).abs()).reduce((a, b) => a < b ? a : b);
+      ranked.add((o: o, r: r, d: d));
     }
-    if (best != null) {
-      hintGlow = best.id;
-      hintUsed = true;
+    ranked.sort((a, b) => a.d.compareTo(b.d));
+
+    hintUsed = true; // spent either way, like the prototype
+    for (final c in ranked) {
+      final (next, nextUsed) = _boardAfter(from, c.o, c.r, used);
+      if (_stranded(next, nextUsed)) continue;
+      _glow(c.o.id);
+      return;
+    }
+    _flash('No legal move from here — pick another node');
+  }
+
+  /// Light an op for 2.5s (prototype 1561). Cleared early by [apply],
+  /// [shuffleHand] and [select], any of which invalidate the suggestion.
+  void _glow(String opId) {
+    hintGlow = opId;
+    _glowTimer?.cancel();
+    _glowTimer = Timer(const Duration(milliseconds: 2500), () {
+      hintGlow = null;
       notifyListeners();
-    }
+    });
+    notifyListeners();
+  }
+
+  void _clearGlow() {
+    _glowTimer?.cancel();
+    hintGlow = null;
   }
 }

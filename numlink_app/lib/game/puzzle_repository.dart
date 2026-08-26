@@ -18,6 +18,12 @@ class PuzzleCalendar {
   static final DateTime _epoch = DateTime.utc(2026, 8, 8);
   static const int _epochNo = 128;
 
+  /// The date daily number [no] fell on — the inverse of [_numberFor]. Sole
+  /// owner of the epoch, so Archive replay can't drift out of sync with the
+  /// numbering shown on the hub.
+  static DateTime dateForNumber(int no) =>
+      _epoch.add(Duration(days: no - _epochNo));
+
   static const _months = [
     'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
     'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',

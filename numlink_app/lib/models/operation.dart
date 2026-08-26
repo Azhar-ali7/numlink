@@ -1,5 +1,3 @@
-import 'dart:math' show sqrt;
-
 /// A single arithmetic operation the player can chain, with a token cap.
 class Operation {
   const Operation({
@@ -39,54 +37,6 @@ class Operation {
   /// by kind (`u`-prefixed), binary ops by kind+operand. Signatures collide
   /// across shuffled hands on purpose, so a spent token stays spent.
   String get opSig => isUnary ? 'u$symbol' : '$symbol$n';
-
-  /// Applies the op to [cur]; returns null if the result is illegal
-  /// (non-integer, `< 0`, or `> cap`).
-  int? apply(int cur, {int cap = 999}) {
-    final num r;
-    switch (symbol) {
-      case '×':
-        r = cur * n;
-      case '+':
-        r = cur + n;
-      case '−':
-        r = cur - n;
-      case '÷':
-        if (cur % n != 0) return null;
-        r = cur ~/ n;
-      case '%': // modulo — remainder of cur ÷ n
-        if (n <= 0) return null;
-        r = cur % n;
-      case '^': // square (operand ignored; label x²)
-        r = cur * cur;
-      case '√': // integer (floored) square root — unary
-        r = sqrt(cur).floor();
-      case 'Σ': // digit sum — unary
-        r = _digitSum(cur);
-      case '↺': // digit-reverse — unary
-        r = _reverse(cur);
-      case '⧺': // concat a fixed digit — binary
-        r = cur * 10 + n;
-      default:
-        return null;
-    }
-    if (r != r.roundToDouble() || r < 0 || r > cap) return null;
-    return r.toInt();
-  }
-
-  static int _digitSum(int v) {
-    var x = v.abs(), s = 0;
-    while (x > 0) {
-      s += x % 10;
-      x ~/= 10;
-    }
-    return s;
-  }
-
-  /// Digit-reverse, e.g. 250 → 52 (leading zeros drop). Ported from the
-  /// prototype `parseInt(reverse(String(cur)))`.
-  static int _reverse(int v) =>
-      int.parse(v.abs().toString().split('').reversed.join());
 
   Map<String, dynamic> toJson() =>
       {'id': id, 'symbol': symbol, 'n': n, 'tokens': tokens};

@@ -62,12 +62,10 @@ class HoverBorder extends StatefulWidget {
   const HoverBorder({
     super.key,
     required this.builder,
-    this.hoverColor,
     this.onTap,
   });
 
   final Widget Function(BuildContext context, bool hover) builder;
-  final Color? hoverColor;
   final VoidCallback? onTap;
 
   @override

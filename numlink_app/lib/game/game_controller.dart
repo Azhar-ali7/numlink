@@ -21,12 +21,10 @@ class GameController extends ChangeNotifier {
     required GameStats initialStats,
     this.calendar = const PuzzleCalendar(),
   })  : _statsRepo = statsRepo,
-        _stats = initialStats,
-        _daily = calendar.today();
+        _stats = initialStats;
 
   final StatsRepository _statsRepo;
   final PuzzleCalendar calendar;
-  final DailyInfo _daily;
 
   GameStats _stats;
   SheetOverlay? _overlay;
@@ -38,7 +36,9 @@ class GameController extends ChangeNotifier {
   SheetOverlay? get overlay => _overlay;
 
   /// Daily identity for the Home hub / settings credits.
-  DailyInfo get dailyPuzzle => _daily;
+  /// Recomputed per read, not cached at construction: an app left open across
+  /// midnight must roll over to the new daily.
+  DailyInfo get dailyPuzzle => calendar.today();
 
   List<int> get archiveNumbers => calendar.archiveNumbers();
   int get campaignCount => calendar.campaignCount;
@@ -133,11 +133,12 @@ class GameController extends ChangeNotifier {
   /// Whether today's daily has already been solved (drives the home week strip).
   bool get todaySolved => _stats.lastDailyDay == _todayIndex();
 
-  /// Local-date day index (days since epoch) for streak-gap math. Only day-to-
-  /// day *differences* matter, so a constant tz offset is harmless.
-  int _todayIndex() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day).millisecondsSinceEpoch ~/
-        Duration.millisecondsPerDay;
-  }
+  int _todayIndex() => dayIndexOf(DateTime.now());
+
+  /// Local-date day index (days since epoch) for streak-gap math and the week
+  /// strip's per-day lookups. Only day-to-day *differences* matter, so a
+  /// constant tz offset is harmless.
+  static int dayIndexOf(DateTime d) =>
+      DateTime(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
 }

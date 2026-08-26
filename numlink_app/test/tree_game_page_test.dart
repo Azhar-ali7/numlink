@@ -154,6 +154,6 @@ void main() {
     await tester.tap(find.text('hard').last);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('HARD'), findsOneWidget); // header reflects the new tier
+    expect(find.text('Hard'), findsOneWidget); // header reflects the new tier
   });
 }

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../flags.dart';
 import '../game/game_controller.dart';
 import '../game/game_mode.dart';
 import '../theme/app_theme.dart';
@@ -49,9 +50,11 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 14),
               entrance(
                 _NavCard(
-                  eyebrow: 'EXPLORE · 3 MODES',
+                  eyebrow: 'EXPLORE · ${kSocialEnabled ? 3 : 2} MODES',
                   title: 'Game modes',
-                  subtitle: 'Daily · Archive · Weekend Co-op',
+                  subtitle: kSocialEnabled
+                      ? 'Daily · Archive · Weekend Co-op'
+                      : 'Daily · Archive',
                   icon: Icons.sports_esports_rounded,
                   gradient: [t.heroTwo, t.hero],
                   onTap: () => Navigator.of(context).push(
@@ -78,32 +81,34 @@ class WelcomeScreen extends StatelessWidget {
                 on: on,
                 index: 3,
               ),
-              const SizedBox(height: 14),
-              entrance(
-                _NavCard(
-                  eyebrow: 'YOUR CIRCLE',
-                  title: 'Friends',
-                  subtitle: 'Leaderboard · This week by XP',
-                  icon: Icons.emoji_events_rounded,
-                  gradient: [t.hero, t.accent],
-                  onTap: () => g.open(SheetOverlay.leaderboard),
+              if (kSocialEnabled) ...[
+                const SizedBox(height: 14),
+                entrance(
+                  _NavCard(
+                    eyebrow: 'YOUR CIRCLE',
+                    title: 'Friends',
+                    subtitle: 'Leaderboard · This week by XP',
+                    icon: Icons.emoji_events_rounded,
+                    gradient: [t.hero, t.accent],
+                    onTap: () => g.open(SheetOverlay.leaderboard),
+                  ),
+                  on: on,
+                  index: 4,
                 ),
-                on: on,
-                index: 4,
-              ),
-              const SizedBox(height: 14),
-              entrance(
-                _NavCard(
-                  eyebrow: 'WEEKENDS ONLY',
-                  title: 'Weekend Co-op',
-                  subtitle: 'Shared board · resets Monday',
-                  icon: Icons.groups_rounded,
-                  gradient: [t.heroTwo, t.hero],
-                  onTap: () => openCoop(context),
+                const SizedBox(height: 14),
+                entrance(
+                  _NavCard(
+                    eyebrow: 'WEEKENDS ONLY',
+                    title: 'Weekend Co-op',
+                    subtitle: 'Shared board · resets Monday',
+                    icon: Icons.groups_rounded,
+                    gradient: [t.heroTwo, t.hero],
+                    onTap: () => openCoop(context),
+                  ),
+                  on: on,
+                  index: 5,
                 ),
-                on: on,
-                index: 5,
-              ),
+              ],
             ],
           ),
         ),
@@ -627,9 +632,10 @@ class _RobotMascot extends StatelessWidget {
 // ── Streak card ──────────────────────────────────────────────────────────────
 
 /// "This week" daily calendar strip (handoff): 7 day cells ending today, each
-/// solved/today/pending state derived from `streak` + `todaySolved` (no
-/// per-day history is persisted). Header chevron → archive; the 🔥·Stats chip →
-/// stats overlay. Tapping today launches the daily; past days open the archive.
+/// solved/today/pending state read from the persisted `dailySolvedDays` set —
+/// a cell is green only if that day's daily was actually solved. Header chevron
+/// → archive; the 🔥·Stats chip → stats overlay. Tapping today launches the
+/// daily; past days open the archive.
 class _WeekStripCard extends StatelessWidget {
   const _WeekStripCard({required this.g});
   final GameController g;
@@ -711,7 +717,7 @@ class _WeekStripCard extends StatelessWidget {
             children: [
               for (var idx = 0; idx < 7; idx++) ...[
                 if (idx > 0) const SizedBox(width: 6),
-                Expanded(child: _dayCell(context, t, today, idx, streak)),
+                Expanded(child: _dayCell(context, t, today, idx)),
               ],
             ],
           ),
@@ -720,12 +726,13 @@ class _WeekStripCard extends StatelessWidget {
     );
   }
 
-  Widget _dayCell(
-      BuildContext context, NumTokens t, DateTime today, int idx, int streak) {
+  Widget _dayCell(BuildContext context, NumTokens t, DateTime today, int idx) {
     final back = 6 - idx; // 0 = today (rightmost)
     final date = today.subtract(Duration(days: back));
     final isToday = back == 0;
-    final done = isToday ? g.todaySolved : back <= streak;
+    final done = isToday
+        ? g.todaySolved
+        : g.stats.dailySolvedDays.contains(GameController.dayIndexOf(date));
 
     final Color border, dayColor, markColor;
     final Color bg;
@@ -908,7 +915,7 @@ class _ModesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                'PLAY · 3 MODES',
+                'PLAY · ${kSocialEnabled ? 3 : 2} MODES',
                 style: Fonts.ui(
                   size: 12,
                   color: t.muted,
@@ -922,7 +929,7 @@ class _ModesScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  _ModeChip(emoji: '🎮', label: '3 Modes'),
+                  _ModeChip(emoji: '🎮', label: '${kSocialEnabled ? 3 : 2} Modes'),
                   const SizedBox(width: 8),
                   _ModeChip(emoji: '🗺️', label: '${g.campaignCount} Levels'),
                 ],
@@ -970,21 +977,23 @@ class _ModesScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              entrance(
-                _ModeCard(
-                  icon: Icons.groups_rounded,
-                  color: t.heroTwo,
-                  badge: 'CHALLENGE',
-                  kicker: 'WEEKENDS ONLY',
-                  title: 'Weekend Co-op',
-                  avatars: const ['K', 'P', 'U'],
-                  extra: 3,
-                  onTap: () => openCoop(context),
+              if (kSocialEnabled) ...[
+                const SizedBox(height: 14),
+                entrance(
+                  _ModeCard(
+                    icon: Icons.groups_rounded,
+                    color: t.heroTwo,
+                    badge: 'CHALLENGE',
+                    kicker: 'WEEKENDS ONLY',
+                    title: 'Weekend Co-op',
+                    avatars: const ['K', 'P', 'U'],
+                    extra: 3,
+                    onTap: () => openCoop(context),
+                  ),
+                  on: on,
+                  index: 2,
                 ),
-                on: on,
-                index: 2,
-              ),
+              ],
               const SizedBox(height: 20),
               entrance(_CampaignCard(g: g), on: on, index: 3),
               const SizedBox(height: 20),
@@ -1126,7 +1135,13 @@ class _ModeCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _AvatarStack(initials: avatars, extra: extra)),
+                // Fake "43 friends played this" social proof — nothing backs it
+                // until accounts exist, so the row is just spacer without it.
+                Expanded(
+                  child: kSocialEnabled
+                      ? _AvatarStack(initials: avatars, extra: extra)
+                      : const SizedBox.shrink(),
+                ),
                 const SizedBox(width: 8),
                 _arrowNudge(
                   !reducedMotion(context),

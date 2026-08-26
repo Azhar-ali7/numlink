@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../flags.dart';
 import '../game/game_controller.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
@@ -63,12 +64,13 @@ class SettingsSheet extends StatelessWidget {
           trailing:
               _Pill(value: s.reduceMotion, onTap: () => s.setReduceMotion(!s.reduceMotion)),
         ),
-        _Row(
-          title: 'Social nudges',
-          subtitle: 'Occasional "a friend passed you" notifications',
-          trailing:
-              _Pill(value: s.socialNudges, onTap: () => s.setSocialNudges(!s.socialNudges)),
-        ),
+        if (kSocialEnabled)
+          _Row(
+            title: 'Social nudges',
+            subtitle: 'Occasional "a friend passed you" notifications',
+            trailing:
+                _Pill(value: s.socialNudges, onTap: () => s.setSocialNudges(!s.socialNudges)),
+          ),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {

@@ -45,26 +45,26 @@ class _StatusBar extends StatelessWidget {
         : (left == 1 ? '1 left on this arm' : '$left left on this arm');
     final armColor = left <= 1 ? t.accent : (left <= 2 ? t.progress : t.muted);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: t.border, width: 2)),
+        border: Border(bottom: BorderSide(color: t.border, width: 1)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // left: reached/total TARGETS
+          // left: reached/total TARGETS (Baloo 2 heading face, per handoff)
           Text('${g.reached}/$total',
-              style: Fonts.numeric(
-                  size: 34,
+              style: Fonts.display(
+                  size: 17,
                   color: g.solved ? t.success : t.text,
-                  weight: FontWeight.w800,
+                  weight: 800,
                   height: 1)),
-          const SizedBox(width: 8),
+          const SizedBox(width: 5),
           Padding(
-            padding: const EdgeInsets.only(bottom: 5),
+            padding: const EdgeInsets.only(bottom: 2),
             child: Text('TARGETS',
                 style: Fonts.ui(
-                    size: 10,
+                    size: 9,
                     color: t.muted,
                     weight: FontWeight.w800,
                     letterSpacing: 1.5)),
@@ -75,16 +75,30 @@ class _StatusBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('${g.moves}/${g.puzzle.par}',
-                  style: Fonts.numeric(
-                      size: 22,
-                      color: overPar ? t.progress : t.text,
-                      weight: FontWeight.w800,
-                      height: 1)),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                        text: '${g.moves}',
+                        style: Fonts.numeric(
+                            size: 14,
+                            color: overPar ? t.progress : t.text,
+                            weight: FontWeight.w800,
+                            height: 1)),
+                    TextSpan(
+                        text: '/${g.puzzle.par}',
+                        style: Fonts.numeric(
+                            size: 14,
+                            color: t.muted,
+                            weight: FontWeight.w700,
+                            height: 1)),
+                  ],
+                ),
+              ),
               const SizedBox(height: 4),
               Text(armLabel,
                   style: Fonts.ui(
-                      size: 11, color: armColor, weight: FontWeight.w700)),
+                      size: 10, color: armColor, weight: FontWeight.w700)),
             ],
           ),
         ],
@@ -109,17 +123,17 @@ class _OpPad extends StatelessWidget {
       showPreviews = false;
     }
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       decoration: BoxDecoration(
         color: t.bg,
-        border: Border(top: BorderSide(color: t.border, width: 2)),
+        border: Border(top: BorderSide(color: t.border, width: 1)),
       ),
       child: GridView.count(
         crossAxisCount: 3,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
         // Shorter tiles (taller cells) when the preview line is showing.
         childAspectRatio: showPreviews ? 1.8 : 2.1,
         children: g.hand.map((op) {

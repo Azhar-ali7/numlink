@@ -17,7 +17,7 @@ void main() {
 
     final game = GameController(
       statsRepo: FakeStatsRepository(),
-      initialStats: GameStats.seed,
+      initialStats: GameStats.empty,
     );
 
     await tester.pumpWidget(

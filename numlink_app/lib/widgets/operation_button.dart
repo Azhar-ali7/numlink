@@ -65,7 +65,7 @@ class OperationButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: Motion.micro,
           constraints: const BoxConstraints(minHeight: 50), // handoff op tile
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             // Colored per-operator panel: faint hue fill + soft hued border.
             color: disabled ? tint(t.text, 0.04) : tint(hue, 0.09),
@@ -81,17 +81,18 @@ class OperationButton extends StatelessWidget {
                         blurRadius: 16,
                         spreadRadius: 0)
                   ]
-                : null,
+                : t.cardShadow,
           ),
           child: Stack(
+            alignment: Alignment.center,
             children: [
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(op.label,
                       style: Fonts.numeric(
-                          size: 26, color: hue, weight: FontWeight.w800)),
+                          size: 18, color: hue, weight: FontWeight.w800)),
                   if (previewText.isNotEmpty)
                     Text(previewText,
                         style: Fonts.numeric(size: 12, color: t.muted)),
@@ -101,8 +102,8 @@ class OperationButton extends StatelessWidget {
               // handoff. Kept inside the Stack's bounds (which clips) so the ×
               // isn't chopped, and set in Nunito 800 to match the prototype.
               Positioned(
-                top: 2,
-                right: 2,
+                top: 4,
+                right: 5,
                 child: Container(
                   constraints: const BoxConstraints(minWidth: 18),
                   padding:
@@ -118,7 +119,7 @@ class OperationButton extends StatelessWidget {
                   ),
                   child: Text('$remaining×',
                       style: Fonts.ui(
-                          size: 9,
+                          size: 8,
                           color: tokenColor,
                           weight: FontWeight.w800)),
                 ),

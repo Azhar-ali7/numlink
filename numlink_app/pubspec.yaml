@@ -31,8 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # Not referenced from lib/, but the framework's own text-selection toolbar
+  # resolves CupertinoIcons: dropping it makes the build warn about a missing
+  # font family and renders those glyphs as tofu. Keep it.
   cupertino_icons: ^1.0.8
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
@@ -48,7 +49,6 @@ dependencies:
   # dev_dependencies from release builds, which would break the gated import.
   flutter_driver:
     sdk: flutter
-  lottie: ^3.5.1
 
 dev_dependencies:
   flutter_test:
@@ -74,7 +74,6 @@ flutter:
 
   assets:
     - assets/sfx/
-    - assets/lottie/
     # Bundled so google_fonts loads them from assets instead of fetching over
     # the network at runtime — the fetch fails offline everywhere (macOS App
     # Sandbox blocks the socket, the test device has no DNS). OFL-1.1 fonts

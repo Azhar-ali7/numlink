@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/settings_controller.dart';
+import '../flags.dart';
 import '../game/game_controller.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
@@ -65,7 +66,9 @@ class NotificationsSheet extends StatelessWidget {
       ));
     }
 
-    if (s.socialNudges) {
+    // Also gated on the flag: the settings toggle is hidden, so socialNudges
+    // keeps whatever value it defaults/persisted to and would still fire here.
+    if (kSocialEnabled && s.socialNudges) {
       items.add(_Item(
         icon: Icons.groups_rounded,
         color: t.hero,

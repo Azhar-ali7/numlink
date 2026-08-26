@@ -193,6 +193,38 @@ void main() {
     expect(find.byKey(const ValueKey('tier_kids')), findsNothing);
   });
 
+  // Handing over the answer on the first look is a spoiler; after two
+  // restarts of the same board it's a rescue.
+  testWidgets('Reveal solution appears only after two restarts',
+      (tester) async {
+    phone(tester);
+    await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
+    await tester.pumpAndSettle();
+
+    Future<void> openMenu() async {
+      await tester.tap(find.byKey(const Key('difficulty')));
+      await tester.pumpAndSettle();
+    }
+
+    await openMenu();
+    expect(find.text('Reveal solution'), findsNothing);
+    await tester.tap(find.text('Restart')); // 1st
+    await tester.pumpAndSettle();
+
+    await openMenu();
+    expect(find.text('Reveal solution'), findsNothing, reason: 'one restart');
+    await tester.tap(find.text('Restart')); // 2nd
+    await tester.pumpAndSettle();
+
+    await openMenu();
+    expect(find.text('Reveal solution'), findsOneWidget);
+    await tester.tap(find.text('New board')); // fresh puzzle resets the count
+    await tester.pumpAndSettle();
+
+    await openMenu();
+    expect(find.text('Reveal solution'), findsNothing);
+  });
+
   testWidgets('changing difficulty deals a board of the new tier',
       (tester) async {
     phone(tester);

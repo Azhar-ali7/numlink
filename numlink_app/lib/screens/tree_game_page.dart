@@ -98,6 +98,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
   bool _winReported = false;
   WinRecord? _win;
   int _confetti = 0;
+
+  /// Restarts of the CURRENT puzzle. Gates "Reveal solution": handing over the
+  /// answer on the first look is a spoiler, after two retries it's a rescue.
+  int _restarts = 0;
   late TreeController _c = _make();
 
   TreeController _make() {
@@ -128,11 +132,13 @@ class _TreeGamePageState extends State<TreeGamePage> {
   }
 
   void _newBoard() {
+    _restarts = 0; // different puzzle, struggle starts over
     _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
     _swap(_make());
   }
 
   void _restart() {
+    _restarts++;
     _swap(
       TreeController(_c.puzzle)
         ..init()
@@ -140,8 +146,11 @@ class _TreeGamePageState extends State<TreeGamePage> {
     );
   }
 
+  void _showSolution() => showSolutionSheet(context, _c.puzzle);
+
   void _setTier(String tier) {
     if (tier == _tier && widget.puzzle == null) return;
+    _restarts = 0;
     _tier = tier;
     _seed = _seed * 1103515245 + 12345 & 0x7fffffff;
     _swap(
@@ -179,6 +188,8 @@ class _TreeGamePageState extends State<TreeGamePage> {
                     // that board away. Null hides the section entirely.
                     onTier: widget.puzzle == null ? _setTier : null,
                     onRestart: _restart,
+                    // Null until the player has restarted twice — see _restarts.
+                    onSolution: _restarts >= 2 ? _showSolution : null,
                   ),
                   if (widget.coop) const _CoopBanner(),
                   const Expanded(child: TreeGameScreen()),
@@ -226,6 +237,7 @@ class _Header extends StatelessWidget {
     required this.onNew,
     required this.onTier,
     required this.onRestart,
+    required this.onSolution,
     this.title,
   });
   final String tier;
@@ -235,6 +247,9 @@ class _Header extends StatelessWidget {
   /// Null on a fixed board — hides the DIFFICULTY section in the ⋯ menu.
   final ValueChanged<String>? onTier;
   final VoidCallback onRestart;
+
+  /// Null until the player has earned it — hides "Reveal solution" in the menu.
+  final VoidCallback? onSolution;
 
   @override
   Widget build(BuildContext context) {
@@ -278,14 +293,14 @@ class _Header extends StatelessWidget {
           _RoundIconBtn(
             key: const Key('difficulty'),
             icon: Icons.more_horiz_rounded,
-            onTap: () => _showOverflow(context, c.puzzle),
+            onTap: () => _showOverflow(context),
           ),
         ],
       ),
     );
   }
 
-  void _showOverflow(BuildContext context, TreePuzzle puzzle) {
+  void _showOverflow(BuildContext context) {
     final t = NumTheme.of(context);
     showModalBottomSheet<void>(
       context: context,
@@ -301,9 +316,11 @@ class _Header extends StatelessWidget {
         onRestart: onRestart,
         // Defer past the overflow's pop frame so the two modal transitions
         // don't clobber each other.
-        onSolution: () => WidgetsBinding.instance.addPostFrameCallback(
-          (_) => showSolutionSheet(context, puzzle),
-        ),
+        onSolution: onSolution == null
+            ? null
+            : () => WidgetsBinding.instance.addPostFrameCallback(
+                (_) => onSolution!(),
+              ),
       ),
     );
   }
@@ -390,7 +407,9 @@ class _OverflowMenu extends StatelessWidget {
   final VoidCallback onNew;
   final ValueChanged<String>? onTier;
   final VoidCallback onRestart;
-  final VoidCallback onSolution;
+
+  /// Null hides "Reveal solution" — gated on restarts by the page.
+  final VoidCallback? onSolution;
 
   @override
   Widget build(BuildContext context) {
@@ -484,11 +503,8 @@ class _OverflowMenu extends StatelessWidget {
           label('This puzzle'),
           action(Icons.refresh_rounded, 'Restart', onRestart),
           action(Icons.add_circle_outline, 'New board', onNew),
-          action(
-            Icons.lightbulb_outline_rounded,
-            'Reveal solution',
-            onSolution,
-          ),
+          if (onSolution case final reveal?)
+            action(Icons.lightbulb_outline_rounded, 'Reveal solution', reveal),
           if (s != null)
             action(Icons.school_outlined, 'How to play', s.openTutorial),
           if (onTier case final pick?) ...[
@@ -1124,19 +1140,6 @@ class _WinSheetState extends State<_WinSheet> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TextButton(
-                            onPressed: () =>
-                                showSolutionSheet(context, c.puzzle),
-                            child: Text(
-                              'See solution',
-                              style: Fonts.ui(
-                                size: 13,
-                                color: t.muted,
-                                weight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Text('·', style: Fonts.ui(size: 13, color: t.muted)),
                           TextButton(
                             onPressed: () => Navigator.of(context).maybePop(),
                             child: Text(

@@ -21,11 +21,11 @@ class LocalStatsRepository implements StatsRepository {
   @override
   Future<GameStats> load() async {
     final raw = _prefs.getString(_key);
-    if (raw == null) return GameStats.seed; // seed demo values on first run
+    if (raw == null) return GameStats.empty; // a new player has played nothing
     try {
       return GameStats.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
-      return GameStats.seed;
+      return GameStats.empty;
     }
   }
 

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../game/game_controller.dart';
 import '../models/achievement.dart';
 import '../models/game_stats.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import '../theme/tokens.dart';
 import '../widgets/streak_flame.dart';
+import '../widgets/ui.dart';
 import 'bottom_sheet_shell.dart';
 
 class StatsSheet extends StatelessWidget {
@@ -23,23 +24,48 @@ class StatsSheet extends StatelessWidget {
       1,
       ...GameStats.bucketKeys.map((k) => s.dist[k] ?? 0),
     ].reduce((a, b) => a > b ? a : b);
+    final on = !reducedMotion(context);
 
     return BottomSheetShell(
       title: 'Statistics',
       onClose: g.close,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _StatCell(value: '${s.played}', label: 'PLAYED'),
-            _StatCell(value: '${s.winRate}', label: 'WIN %'),
-            _StatCell(
-                value: '${s.streak}',
-                label: 'STREAK',
-                color: t.success,
-                flame: true),
-            _StatCell(value: '${s.maxStreak}', label: 'BEST'),
-          ],
+        entrance(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _StatCell(value: '${s.played}', label: 'PLAYED'),
+              _StatCell(value: '${s.winRate}', label: 'WIN %'),
+              _StatCell(
+                  value: '${s.streak}',
+                  label: 'STREAK',
+                  color: t.success,
+                  flame: true),
+              _StatCell(value: '${s.maxStreak}', label: 'BEST'),
+            ],
+          ),
+          on: on,
+          index: 0,
+        ),
+        const SizedBox(height: 16),
+        entrance(_FreezeCard(freezes: s.freezes), on: on, index: 1),
+        const SizedBox(height: 12),
+        entrance(
+          Row(
+            children: [
+              Expanded(
+                child: _MetricBox(
+                    label: 'HANDICAP', value: s.handicap.toStringAsFixed(1)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MetricBox(
+                    label: 'COURSE RECORD', value: s.courseRecord),
+              ),
+            ],
+          ),
+          on: on,
+          index: 2,
         ),
         const SizedBox(height: 22),
         Text('MOVES vs PAR',
@@ -53,7 +79,6 @@ class StatsSheet extends StatelessWidget {
         ...GameStats.bucketKeys.map((k) {
           final count = s.dist[k] ?? 0;
           final pct = (100 * count / maxCount).round();
-          final isCurrent = g.solved && k == g.currentBucket;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
@@ -61,7 +86,7 @@ class StatsSheet extends StatelessWidget {
                 SizedBox(
                   width: 40,
                   child: Text(k == 'par' ? 'PAR' : k,
-                      style: Fonts.mono(
+                      style: Fonts.numeric(
                           size: 13, color: t.text, weight: FontWeight.w700)),
                 ),
                 const SizedBox(width: 10),
@@ -79,11 +104,11 @@ class StatsSheet extends StatelessWidget {
                         widthFactor: (pct / 100).clamp(0.0, 1.0),
                         child: Container(
                           constraints: const BoxConstraints(minWidth: 26),
-                          color: isCurrent ? t.success : t.muted,
+                          color: t.muted,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 8),
                           child: Text('$count',
-                              style: Fonts.mono(
+                              style: Fonts.numeric(
                                   size: 12,
                                   color: Colors.white,
                                   weight: FontWeight.w700)),
@@ -97,35 +122,18 @@ class StatsSheet extends StatelessWidget {
           );
         }),
         const SizedBox(height: 22),
-        _SectionLabel('BY MODE'),
+        _SectionLabel('ACHIEVEMENTS'),
         const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            _StatCell(
-                value: '${s.counters['practice'] ?? 0}', label: 'PRACTICE'),
-            _StatCell(value: '${s.counters['zen'] ?? 0}', label: 'ZEN'),
-            _StatCell(
-                value: '${s.archiveSolved.length}', label: 'ARCHIVE'),
-            _StatCell(
-                value: '${s.counters['timedBestStage'] ?? 0}',
-                label: 'TIMED BEST'),
+            for (final a in kAchievements)
+              _BadgeChip(
+                achievement: a,
+                unlocked: s.unlocked.contains(a.id),
+              ),
           ],
-        ),
-        const SizedBox(height: 22),
-        _SectionLabel('BADGES'),
-        const SizedBox(height: 12),
-        ...kAchievements.map((a) => _BadgeRow(
-              achievement: a,
-              unlocked: s.unlocked.contains(a.id),
-            )),
-        const SizedBox(height: 14),
-        PrimaryButton(
-          label: g.copied ? 'Copied to clipboard' : 'Share result',
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: g.shareText()));
-            g.markCopied();
-          },
         ),
       ],
     );
@@ -148,8 +156,108 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _BadgeRow extends StatelessWidget {
-  const _BadgeRow({required this.achievement, required this.unlocked});
+/// The banked streak-freeze card: a shield tile + count + one-line copy.
+class _FreezeCard extends StatelessWidget {
+  const _FreezeCard({required this.freezes});
+  final int freezes;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.border, width: 2),
+        boxShadow: t.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: tint(t.accent, 0.14),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Text('🛡', style: TextStyle(fontSize: 22)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text('$freezes',
+                        style: Fonts.numeric(
+                            size: 20, color: t.text, weight: FontWeight.w700)),
+                    const SizedBox(width: 6),
+                    Text('STREAK FREEZE${freezes == 1 ? '' : 'S'}',
+                        style: Fonts.ui(
+                            size: 12,
+                            color: t.text,
+                            weight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            height: 1)),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text('Banked saves for a missed day.',
+                    style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A labelled metric box (HANDICAP / COURSE RECORD).
+class _MetricBox extends StatelessWidget {
+  const _MetricBox({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: t.border, width: 2),
+        boxShadow: t.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value,
+              style: Fonts.numeric(
+                  size: 22, color: t.text, weight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(label,
+              style: Fonts.ui(
+                  size: 10,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                  letterSpacing: 1,
+                  height: 1)),
+        ],
+      ),
+    );
+  }
+}
+
+/// One achievement pill: name only, dimmed when locked.
+class _BadgeChip extends StatelessWidget {
+  const _BadgeChip({required this.achievement, required this.unlocked});
 
   final Achievement achievement;
   final bool unlocked;
@@ -157,43 +265,33 @@ class _BadgeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    final c = unlocked ? t.text : t.muted;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: unlocked ? tint(t.success, 0.14) : t.surface,
-              border: Border.all(
-                  color: unlocked ? t.success : t.border, width: 2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(unlocked ? '★' : '☆',
-                style: Fonts.mono(
-                    size: 15,
+    return Opacity(
+      opacity: unlocked ? 1 : 0.4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: unlocked ? tint(t.success, 0.12) : t.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+              color: unlocked ? t.success : t.border, width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(unlocked ? '★' : '☆',
+                style: Fonts.numeric(
+                    size: 13,
                     color: unlocked ? t.success : t.muted,
                     weight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(achievement.name,
-                    style: Fonts.ui(
-                        size: 14, color: c, weight: FontWeight.w700, height: 1.1)),
-                const SizedBox(height: 2),
-                Text(achievement.desc,
-                    style: Fonts.ui(size: 12, color: t.muted, height: 1.2)),
-              ],
-            ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(achievement.name,
+                style: Fonts.ui(
+                    size: 12.5,
+                    color: unlocked ? t.text : t.muted,
+                    weight: FontWeight.w700,
+                    height: 1)),
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +322,7 @@ class _StatCell extends StatelessWidget {
           Row(
             children: [
               Text(value,
-                  style: Fonts.mono(size: 28, color: c, weight: FontWeight.w700)),
+                  style: Fonts.numeric(size: 28, color: c, weight: FontWeight.w700)),
               if (flame && streak > 0) ...[
                 const SizedBox(width: 4),
                 StreakFlame(streak: streak, color: c, size: 18),

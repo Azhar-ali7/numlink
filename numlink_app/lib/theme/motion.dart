@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../data/settings_controller.dart';
 
 /// Motion budget from the handoff research:
 /// 120ms micro / 260ms standard / 480ms celebrate.
@@ -25,8 +28,15 @@ class Motion {
   static const Curve overshootSoft = Cubic(0.34, 1.2, 0.64, 1);
 }
 
-/// True when the OS requests reduced motion — in that case animations should
-/// degrade to instant. Mirrors the handoff's
-/// `@media (prefers-reduced-motion: reduce) { * { animation: none } }`.
-bool reducedMotion(BuildContext context) =>
-    MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+/// True when motion should degrade to instant — either the OS requests reduced
+/// motion (`prefers-reduced-motion`) or the player forced it in Settings.
+/// The Settings read is listen:false: flipping the toggle takes effect on the
+/// next navigation, not by rebuilding every in-flight animation.
+bool reducedMotion(BuildContext context) {
+  if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) return true;
+  try {
+    return Provider.of<SettingsController>(context, listen: false).reduceMotion;
+  } on ProviderNotFoundException {
+    return false; // no settings in scope (isolated widget tests) → OS flag only
+  }
+}

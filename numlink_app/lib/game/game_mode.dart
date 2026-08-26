@@ -1,79 +1,43 @@
 /// The play modes. `daily` is the shared, deterministic puzzle of the day;
-/// `practice` is unlimited generated puzzles at a chosen difficulty; `zen` is
-/// pressure-free (no par/score); `timed` is an escalating ladder against a
-/// clock; `archive` replays a past daily (no streak effect).
-enum GameMode { daily, practice, zen, timed, archive }
+/// `practice` is unlimited generated puzzles at a chosen difficulty (Free Play);
+/// `zen` is pressure-free (no par/score); `timed` is an escalating ladder
+/// against a clock; `archive` replays a past daily (no streak effect);
+/// `campaign` is a curated, star-rated level from the roadmap.
+enum GameMode { daily, practice, zen, timed, archive, campaign }
 
-/// Difficulty tiers for generated puzzles. Player-chosen in practice/zen; the
-/// timed ladder walks up these; daily uses a fixed tier ([Difficulty.daily]).
-enum Difficulty { easy, medium, hard }
+/// The four difficulty tiers. `.name` is the key into `kTiers`
+/// (`tree_generator.dart`), which holds the actual generation knobs — this enum
+/// is only the ordered, typed spelling of them for the campaign table and the
+/// Free Play picker. Declaration order is the ramp; `campaign_test` asserts
+/// levels never step backwards through it.
+enum Difficulty { kids, easy, medium, hard }
 
-/// The generation knobs for one difficulty tier. Tuned during play-test.
-///
-/// A puzzle is reverse-generated to a solution of length in [minPar, maxPar],
-/// then its true par is BFS-verified (see `generator.dart`).
-class DifficultySpec {
-  const DifficultySpec({
-    required this.minPar,
-    required this.maxPar,
-    required this.maxTarget,
-    required this.startMax,
-    required this.allowDivide,
-    required this.extraTokens,
-  });
-
-  /// Inclusive par band (solution length).
-  final int minPar;
-  final int maxPar;
-
-  /// Upper bound for the generated target and every intermediate value —
-  /// keeps easy tiers in small, eyeball-able numbers.
-  final int maxTarget;
-
-  /// Upper bound for the random start value (inclusive, min 1).
-  final int startMax;
-
-  /// Whether `÷` may appear in the op set.
-  final bool allowDivide;
-
-  /// Token headroom above each op's actual usage in the solution. Smaller =
-  /// tighter = harder (hard = 0 = exactly enough).
-  final int extraTokens;
-
-  static const Map<Difficulty, DifficultySpec> table = {
-    Difficulty.easy: DifficultySpec(
-      minPar: 2,
-      maxPar: 3,
-      maxTarget: 50,
-      startMax: 9,
-      allowDivide: false,
-      extraTokens: 2,
-    ),
-    Difficulty.medium: DifficultySpec(
-      minPar: 3,
-      maxPar: 4,
-      maxTarget: 200,
-      startMax: 15,
-      allowDivide: true,
-      extraTokens: 1,
-    ),
-    Difficulty.hard: DifficultySpec(
-      minPar: 4,
-      maxPar: 6,
-      maxTarget: 999,
-      startMax: 20,
-      allowDivide: true,
-      extraTokens: 0,
-    ),
-  };
-
-  static DifficultySpec of(Difficulty d) => table[d]!;
-}
-
+/// Player-facing copy for a tier — the one place it lives. Read by the Free
+/// Play difficulty sheet, the in-board ⋯ menu and the roadmap chapter bands.
 extension DifficultyLabel on Difficulty {
   String get label => switch (this) {
+        Difficulty.kids => 'Kids',
         Difficulty.easy => 'Easy',
-        Difficulty.medium => 'Medium',
-        Difficulty.hard => 'Hard',
+        Difficulty.medium => 'Normal',
+        Difficulty.hard => 'Expert',
+      };
+
+  String get emoji => switch (this) {
+        Difficulty.kids => '🧸',
+        Difficulty.easy => '🌱',
+        Difficulty.medium => '🎯',
+        Difficulty.hard => '🔥',
+      };
+
+  /// One-line "what am I in for" — mirrors the matching `kTiers` row.
+  String get blurb => switch (this) {
+        Difficulty.kids => '1 target · 1 move · + − ×',
+        Difficulty.easy => '2 targets · 2 deep · + − × ÷',
+        Difficulty.medium => '3 targets · 3 deep · adds % and Σ',
+        Difficulty.hard => '4–5 targets · 4 deep · everything',
       };
 }
+
+/// The tier a `kTiers` key names, for UI that only has the string.
+Difficulty? difficultyOf(String key) =>
+    Difficulty.values.where((d) => d.name == key).firstOrNull;

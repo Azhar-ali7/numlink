@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/settings_controller.dart';
 import '../game/steiner.dart' show compute;
 import '../game/tree_controller.dart';
+import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import '../widgets/operation_button.dart';
@@ -116,9 +117,13 @@ class _OpPad extends StatelessWidget {
     final t = NumTheme.of(context);
     // Settings may be absent in isolated widget tests; default previews off.
     bool showPreviews = false;
+    // Every board in the app applies ops through this one tap handler, so
+    // hooking feedback here covers daily, campaign, timed and co-op at once.
+    FeedbackService? fb;
     try {
       showPreviews = context.select<SettingsController, bool>(
           (s) => s.showResultPreviews);
+      fb = context.read<SettingsController>().feedback;
     } on ProviderNotFoundException {
       showPreviews = false;
     }
@@ -152,7 +157,12 @@ class _OpPad extends StatelessWidget {
             disabled: rem <= 0 || g.solved,
             shake: g.shakeOp == op.id,
             highlighted: g.hintGlow == op.id,
-            onTap: () => g.apply(op),
+            onTap: () => switch (g.apply(op)) {
+              ApplyResult.solved => fb?.onSolve(),
+              ApplyResult.rejected => fb?.onIllegal(),
+              ApplyResult.placed => fb?.onTap(),
+              ApplyResult.ignored => null,
+            },
           );
         }).toList(),
       ),

@@ -123,6 +123,28 @@ void main() {
     expect(find.text('Play again'), findsOneWidget);
   });
 
+  // Campaign only: clearing a level should lead into the next one, not send
+  // the player back through the roadmap.
+  testWidgets('onNext takes the primary slot and demotes Play again',
+      (tester) async {
+    phone(tester);
+    var next = 0;
+    await tester.pumpWidget(host(TreeGamePage(
+      puzzle: winnable(),
+      onNext: () => next++,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '×3'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OperationButton, '+1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Next level'), findsOneWidget);
+    expect(find.text('Play again'), findsOneWidget, reason: 'demoted, not gone');
+    await tester.tap(find.text('Next level'));
+    expect(next, 1);
+  });
+
   testWidgets('onWin fires once with (moves, par) on solve', (tester) async {
     phone(tester);
     var calls = 0;

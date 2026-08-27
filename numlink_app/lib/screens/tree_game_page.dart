@@ -68,6 +68,7 @@ class TreeGamePage extends StatefulWidget {
     this.tier = 'easy',
     this.puzzle,
     this.onWin,
+    this.onNext,
     this.title,
     this.coop = false,
   });
@@ -87,6 +88,10 @@ class TreeGamePage extends StatefulWidget {
   /// record the win into the shared stats and hand back XP/level/streak for the
   /// win sheet. Null (or a null return) for standalone/free play: no XP pill.
   final WinRecord? Function(int moves, int par)? onWin;
+
+  /// Where to go after this board, when there is a "next" — campaign level n+1.
+  /// Null everywhere else (daily, free play, co-op have no successor board).
+  final VoidCallback? onNext;
 
   @override
   State<TreeGamePage> createState() => _TreeGamePageState();
@@ -214,6 +219,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
                         controller: c,
                         win: _win,
                         onPlayAgain: _newBoard,
+                        onNext: widget.onNext,
                       )
                     : const SizedBox.shrink(),
               ),
@@ -948,10 +954,15 @@ class _WinSheet extends StatefulWidget {
     required this.controller,
     required this.win,
     required this.onPlayAgain,
+    this.onNext,
   });
   final TreeController controller;
   final WinRecord? win;
   final VoidCallback onPlayAgain;
+
+  /// Non-null on a campaign level that has a successor — takes the primary
+  /// slot so clearing a level leads straight into the next one.
+  final VoidCallback? onNext;
 
   @override
   State<_WinSheet> createState() => _WinSheetState();
@@ -968,6 +979,7 @@ class _WinSheetState extends State<_WinSheet> {
     final c = widget.controller;
     final win = widget.win;
     final onPlayAgain = widget.onPlayAgain;
+    final onNext = widget.onNext;
     final over = c.moves - c.puzzle.par;
     final label = _labelFor(over).text(over);
     if (!_open) {
@@ -1117,10 +1129,10 @@ class _WinSheetState extends State<_WinSheet> {
                         children: [
                           Expanded(
                             child: _action(
-                              label: 'Play again',
+                              label: onNext == null ? 'Play again' : 'Next level',
                               bg: t.success,
                               fg: Colors.white,
-                              onTap: onPlayAgain,
+                              onTap: onNext ?? onPlayAgain,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -1140,6 +1152,24 @@ class _WinSheetState extends State<_WinSheet> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // Replaying is still one tap away, just demoted —
+                          // "Next level" owns the primary slot on a campaign
+                          // board.
+                          if (onNext != null) ...[
+                            TextButton(
+                              onPressed: onPlayAgain,
+                              child: Text(
+                                'Play again',
+                                style: Fonts.ui(
+                                  size: 13,
+                                  color: t.muted,
+                                  weight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Text('·',
+                                style: Fonts.ui(size: 13, color: t.muted)),
+                          ],
                           TextButton(
                             onPressed: () => Navigator.of(context).maybePop(),
                             child: Text(

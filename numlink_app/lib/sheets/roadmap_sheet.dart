@@ -463,11 +463,22 @@ class _TrailNode extends StatelessWidget {
 /// "Play again" retries the same level; the win records stars, which unlocks
 /// the next node on the roadmap.
 void _openBranchingLevel(BuildContext context, GameController g, LevelDef def) {
-  Navigator.of(context).push(
+  final nav = Navigator.of(context);
+  // Clearing level n unlocks n+1, so the win sheet can hand it over directly
+  // instead of bouncing the player back through the roadmap. kCampaign is
+  // 0-indexed, so entry [def.no] is level def.no + 1.
+  final next = def.no < kCampaign.length ? kCampaign[def.no] : null;
+  nav.push(
     MaterialPageRoute<void>(
       builder: (_) => TreeGamePage(
         tier: def.tier.name,
         puzzle: buildPuzzle(def.tier.name, def.seed),
+        onNext: next == null
+            ? null
+            : () {
+                nav.pop();
+                _openBranchingLevel(context, g, next);
+              },
         onWin: (m, p) {
           g.recordCampaignWin(def.no, m, p);
           return WinRecord(

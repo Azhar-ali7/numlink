@@ -11,6 +11,7 @@ import 'data/settings_controller.dart';
 import 'data/stats_repository.dart';
 import 'game/game_controller.dart';
 import 'services/feedback_service.dart';
+import 'services/reminder_service.dart';
 
 Future<void> main() async {
   // Opt-in only (--dart-define=ENABLE_FLUTTER_DRIVER=true) so normal and release
@@ -36,6 +37,7 @@ Future<void> main() async {
   const AccountService account = LocalOnlyAccountService();
 
   final feedback = FeedbackService();
+  final reminders = ReminderService();
   final stats = await statsRepo.load();
 
   runApp(
@@ -46,13 +48,12 @@ Future<void> main() async {
           create: (_) => SettingsController(
             prefs: prefs,
             feedback: feedback,
+            reminders: reminders,
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => GameController(
-            statsRepo: statsRepo,
-            initialStats: stats,
-          ),
+          create: (_) =>
+              GameController(statsRepo: statsRepo, initialStats: stats),
         ),
       ],
       child: const NumlinkApp(),

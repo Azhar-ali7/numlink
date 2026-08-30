@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/feedback_service.dart';
+import '../services/reminder_service.dart';
 
 /// User settings. Defaults to the bright Duo-playful light theme, high-contrast
 /// cues ON, sound + haptics OFF. (Dark stays available via the Settings toggle.)
@@ -16,6 +17,9 @@ class AppSettings {
     this.socialNudges = false,
     this.showResultPreviews = false,
     this.relaxedArms = false,
+    this.reminderOn = false,
+    this.reminderHour = 9,
+    this.reminderMinute = 0,
   });
 
   final ThemeMode themeMode;
@@ -38,6 +42,11 @@ class AppSettings {
   /// growing. Off by default: the cap is what makes a tier a tier.
   final bool relaxedArms;
 
+  /// Daily local reminder: on/off and the wall-clock time it fires.
+  final bool reminderOn;
+  final int reminderHour;
+  final int reminderMinute;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     bool? highContrast,
@@ -48,18 +57,23 @@ class AppSettings {
     bool? socialNudges,
     bool? showResultPreviews,
     bool? relaxedArms,
-  }) =>
-      AppSettings(
-        themeMode: themeMode ?? this.themeMode,
-        highContrast: highContrast ?? this.highContrast,
-        orangeSuccess: orangeSuccess ?? this.orangeSuccess,
-        sound: sound ?? this.sound,
-        haptics: haptics ?? this.haptics,
-        reduceMotion: reduceMotion ?? this.reduceMotion,
-        socialNudges: socialNudges ?? this.socialNudges,
-        showResultPreviews: showResultPreviews ?? this.showResultPreviews,
-        relaxedArms: relaxedArms ?? this.relaxedArms,
-      );
+    bool? reminderOn,
+    int? reminderHour,
+    int? reminderMinute,
+  }) => AppSettings(
+    themeMode: themeMode ?? this.themeMode,
+    highContrast: highContrast ?? this.highContrast,
+    orangeSuccess: orangeSuccess ?? this.orangeSuccess,
+    sound: sound ?? this.sound,
+    haptics: haptics ?? this.haptics,
+    reduceMotion: reduceMotion ?? this.reduceMotion,
+    socialNudges: socialNudges ?? this.socialNudges,
+    showResultPreviews: showResultPreviews ?? this.showResultPreviews,
+    relaxedArms: relaxedArms ?? this.relaxedArms,
+    reminderOn: reminderOn ?? this.reminderOn,
+    reminderHour: reminderHour ?? this.reminderHour,
+    reminderMinute: reminderMinute ?? this.reminderMinute,
+  );
 }
 
 /// Holds live [AppSettings], persists changes to `shared_preferences`, and
@@ -68,6 +82,7 @@ class SettingsController extends ChangeNotifier {
   SettingsController({
     required SharedPreferences prefs,
     required this.feedback,
+    this.reminders,
   }) : _prefs = prefs {
     _settings = _load();
     _apply();
@@ -75,10 +90,16 @@ class SettingsController extends ChangeNotifier {
     _notificationsSeen = _prefs.getInt('notificationsSeen') ?? 0;
     _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
     _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
+    // Re-arm on every launch: the OS drops pending alarms on reinstall and on
+    // some upgrades, and re-scheduling an identical notification is a no-op.
+    _reschedule();
   }
 
   final SharedPreferences _prefs;
   final FeedbackService feedback;
+
+  /// Null in tests, which pump the controller without the plugin.
+  final ReminderService? reminders;
   late AppSettings _settings;
 
   // First-run intro carousel: [_tutorialSeen] is persisted once dismissed;
@@ -124,6 +145,9 @@ class SettingsController extends ChangeNotifier {
   bool get socialNudges => _settings.socialNudges;
   bool get showResultPreviews => _settings.showResultPreviews;
   bool get relaxedArms => _settings.relaxedArms;
+  bool get reminderOn => _settings.reminderOn;
+  int get reminderHour => _settings.reminderHour;
+  int get reminderMinute => _settings.reminderMinute;
   bool get tutorialOpen => _tutorialOpen;
 
   /// True once the intro has ever been dismissed. Distinguishes a genuine
@@ -145,18 +169,21 @@ class SettingsController extends ChangeNotifier {
   }
 
   AppSettings _load() => AppSettings(
-        themeMode: (_prefs.getString('theme') ?? 'light') == 'dark'
-            ? ThemeMode.dark
-            : ThemeMode.light,
-        highContrast: _prefs.getBool('highContrast') ?? true,
-        orangeSuccess: _prefs.getBool('orangeSuccess') ?? false,
-        sound: _prefs.getBool('sound') ?? false,
-        haptics: _prefs.getBool('haptics') ?? false,
-        reduceMotion: _prefs.getBool('reduceMotion') ?? false,
-        socialNudges: _prefs.getBool('socialNudges') ?? false,
-        showResultPreviews: _prefs.getBool('showResultPreviews') ?? false,
-        relaxedArms: _prefs.getBool('relaxedArms') ?? false,
-      );
+    themeMode: (_prefs.getString('theme') ?? 'light') == 'dark'
+        ? ThemeMode.dark
+        : ThemeMode.light,
+    highContrast: _prefs.getBool('highContrast') ?? true,
+    orangeSuccess: _prefs.getBool('orangeSuccess') ?? false,
+    sound: _prefs.getBool('sound') ?? false,
+    haptics: _prefs.getBool('haptics') ?? false,
+    reduceMotion: _prefs.getBool('reduceMotion') ?? false,
+    socialNudges: _prefs.getBool('socialNudges') ?? false,
+    showResultPreviews: _prefs.getBool('showResultPreviews') ?? false,
+    relaxedArms: _prefs.getBool('relaxedArms') ?? false,
+    reminderOn: _prefs.getBool('reminderOn') ?? false,
+    reminderHour: _prefs.getInt('reminderHour') ?? 9,
+    reminderMinute: _prefs.getInt('reminderMinute') ?? 0,
+  );
 
   void _apply() {
     feedback.sound = _settings.sound;
@@ -176,13 +203,17 @@ class SettingsController extends ChangeNotifier {
       ..setBool('reduceMotion', next.reduceMotion)
       ..setBool('socialNudges', next.socialNudges)
       ..setBool('showResultPreviews', next.showResultPreviews)
-      ..setBool('relaxedArms', next.relaxedArms);
+      ..setBool('relaxedArms', next.relaxedArms)
+      ..setBool('reminderOn', next.reminderOn)
+      ..setInt('reminderHour', next.reminderHour)
+      ..setInt('reminderMinute', next.reminderMinute);
   }
 
   void setThemeMode(ThemeMode mode) =>
       _update(_settings.copyWith(themeMode: mode));
   void setHighContrast(bool v) => _update(_settings.copyWith(highContrast: v));
-  void setOrangeSuccess(bool v) => _update(_settings.copyWith(orangeSuccess: v));
+  void setOrangeSuccess(bool v) =>
+      _update(_settings.copyWith(orangeSuccess: v));
   void setSound(bool v) => _update(_settings.copyWith(sound: v));
   void setHaptics(bool v) => _update(_settings.copyWith(haptics: v));
   void setReduceMotion(bool v) => _update(_settings.copyWith(reduceMotion: v));
@@ -190,4 +221,24 @@ class SettingsController extends ChangeNotifier {
   void setShowResultPreviews(bool v) =>
       _update(_settings.copyWith(showResultPreviews: v));
   void setRelaxedArms(bool v) => _update(_settings.copyWith(relaxedArms: v));
+
+  /// Turn the daily reminder on/off. Asks the OS the first time it goes on and
+  /// stays off if the player says no, so the toggle never lies about what will
+  /// actually happen.
+  Future<void> setReminderOn(bool v) async {
+    if (v && !(await reminders?.requestPermission() ?? true)) return;
+    _update(_settings.copyWith(reminderOn: v));
+    _reschedule();
+  }
+
+  void setReminderTime(int hour, int minute) {
+    _update(_settings.copyWith(reminderHour: hour, reminderMinute: minute));
+    _reschedule();
+  }
+
+  void _reschedule() => reminders?.schedule(
+    on: _settings.reminderOn,
+    hour: _settings.reminderHour,
+    minute: _settings.reminderMinute,
+  );
 }

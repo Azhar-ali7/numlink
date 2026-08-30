@@ -39,23 +39,55 @@ class SettingsSheet extends StatelessWidget {
           title: 'High-contrast cues',
           subtitle:
               'Colorblind-safe blue/orange with text labels on every state',
-          trailing: _Pill(value: s.highContrast, onTap: () => s.setHighContrast(!s.highContrast)),
+          trailing: _Pill(
+            value: s.highContrast,
+            onTap: () => s.setHighContrast(!s.highContrast),
+          ),
         ),
         _Row(
           title: 'Show result previews',
           subtitle: 'Preview each operator\'s result under its tile',
           trailing: _Pill(
-              value: s.showResultPreviews,
-              onTap: () => s.setShowResultPreviews(!s.showResultPreviews)),
+            value: s.showResultPreviews,
+            onTap: () => s.setShowResultPreviews(!s.showResultPreviews),
+          ),
         ),
         _Row(
           title: 'Relaxed arms',
-          subtitle: 'An "arm" is one branch of the tree. Normally each can '
+          subtitle:
+              'An "arm" is one branch of the tree. Normally each can '
               'only take a few moves before it\'s full — this lifts that cap '
               'so any branch can keep growing. Par still counts, so scores '
               'suffer.',
           trailing: _Pill(
-              value: s.relaxedArms, onTap: () => s.setRelaxedArms(!s.relaxedArms)),
+            value: s.relaxedArms,
+            onTap: () => s.setRelaxedArms(!s.relaxedArms),
+          ),
+        ),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          // The row toggles; the time itself opens the platform time picker
+          // rather than a hand-rolled one.
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay(
+                hour: s.reminderHour,
+                minute: s.reminderMinute,
+              ),
+            );
+            if (picked != null) s.setReminderTime(picked.hour, picked.minute);
+          },
+          child: _Row(
+            title: 'Daily reminder',
+            subtitle:
+                'A nudge at ${TimeOfDay(hour: s.reminderHour, minute: s.reminderMinute).format(context)} '
+                'when the new board is up — tap to change the time',
+            trailing: _Pill(
+              value: s.reminderOn,
+              onTap: () => s.setReminderOn(!s.reminderOn),
+            ),
+          ),
         ),
         _Row(
           title: 'Sound effects',
@@ -65,20 +97,27 @@ class SettingsSheet extends StatelessWidget {
         _Row(
           title: 'Haptics',
           subtitle: 'Vibration feedback on supported devices',
-          trailing: _Pill(value: s.haptics, onTap: () => s.setHaptics(!s.haptics)),
+          trailing: _Pill(
+            value: s.haptics,
+            onTap: () => s.setHaptics(!s.haptics),
+          ),
         ),
         _Row(
           title: 'Reduce motion',
           subtitle: 'Disable pop-ins, pulses, and the shake; states still cue',
-          trailing:
-              _Pill(value: s.reduceMotion, onTap: () => s.setReduceMotion(!s.reduceMotion)),
+          trailing: _Pill(
+            value: s.reduceMotion,
+            onTap: () => s.setReduceMotion(!s.reduceMotion),
+          ),
         ),
         if (kSocialEnabled)
           _Row(
             title: 'Social nudges',
             subtitle: 'Occasional "a friend passed you" notifications',
-            trailing:
-                _Pill(value: s.socialNudges, onTap: () => s.setSocialNudges(!s.socialNudges)),
+            trailing: _Pill(
+              value: s.socialNudges,
+              onTap: () => s.setSocialNudges(!s.socialNudges),
+            ),
           ),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -125,19 +164,19 @@ void _showMoreSettings(BuildContext context) {
     ),
     builder: (_) {
       Widget item(String title, String body) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: Fonts.ui(
-                        size: 15, color: t.text, weight: FontWeight.w800)),
-                const SizedBox(height: 3),
-                Text(body,
-                    style: Fonts.ui(size: 13, color: t.muted, height: 1.4)),
-              ],
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Fonts.ui(size: 15, color: t.text, weight: FontWeight.w800),
             ),
-          );
+            const SizedBox(height: 3),
+            Text(body, style: Fonts.ui(size: 13, color: t.muted, height: 1.4)),
+          ],
+        ),
+      );
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
@@ -145,25 +184,41 @@ void _showMoreSettings(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('More settings',
-                  style: Fonts.display(size: 24, color: t.text, weight: 700)),
+              Text(
+                'More settings',
+                style: Fonts.display(size: 24, color: t.text, weight: 700),
+              ),
               const SizedBox(height: 6),
-              item('About NUMLINK',
-                  'Chain numbers together to reach each target in as few moves as possible.'),
+              item(
+                'About NUMLINK',
+                'Chain numbers together to reach each target in as few moves as possible.',
+              ),
               // The words the board uses without ever defining them. Everything
               // here is jargon a player meets first as a rejection toast.
-              item('Arm',
-                  'One branch of the tree. Each arm holds only a few moves before it is full — tap an earlier number to start a new one. "Relaxed arms" in Settings lifts the cap.'),
-              item('Par',
-                  'The move count a clean solve takes. Finishing at or under par is three stars; every move over costs one.'),
-              item('Target',
-                  'A number you must land on exactly. The counter at the top left is how many you have reached.'),
-              item('Shuffle & hint',
-                  'Shuffle deals a different set of operators that still solves the board. A hint glows the next useful operator. Both are limited per board, and easier tiers get more.'),
-              item('Help',
-                  'Tap operators to branch from any reached number. Stuck? Replay the walkthrough from How to play.'),
-              item('Privacy',
-                  'Your progress lives on this device. Nothing is shared without your say-so.'),
+              item(
+                'Arm',
+                'One branch of the tree. Each arm holds only a few moves before it is full — tap an earlier number to start a new one. "Relaxed arms" in Settings lifts the cap.',
+              ),
+              item(
+                'Par',
+                'The move count a clean solve takes. Finishing at or under par is three stars; every move over costs one.',
+              ),
+              item(
+                'Target',
+                'A number you must land on exactly. The counter at the top left is how many you have reached.',
+              ),
+              item(
+                'Shuffle & hint',
+                'Shuffle deals a different set of operators that still solves the board. A hint glows the next useful operator. Both are limited per board, and easier tiers get more.',
+              ),
+              item(
+                'Help',
+                'Tap operators to branch from any reached number. Stuck? Replay the walkthrough from How to play.',
+              ),
+              item(
+                'Privacy',
+                'Your progress lives on this device. Nothing is shared without your say-so.',
+              ),
             ],
           ),
         ),
@@ -219,8 +274,10 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
             ),
           ),
           alignment: Alignment.center,
-          child: Text(name.characters.first.toUpperCase(),
-              style: Fonts.display(size: 24, color: Colors.white, weight: 800)),
+          child: Text(
+            name.characters.first.toUpperCase(),
+            style: Fonts.display(size: 24, color: Colors.white, weight: 800),
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -236,12 +293,17 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                         autofocus: true,
                         onSubmitted: (_) => _save(),
                         style: Fonts.ui(
-                            size: 16, color: t.text, weight: FontWeight.w700),
+                          size: 16,
+                          color: t.text,
+                          weight: FontWeight.w700,
+                        ),
                         decoration: InputDecoration(
                           isDense: true,
                           hintText: 'Your name',
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 9),
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide(color: t.border, width: 2),
@@ -263,8 +325,11 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                           color: t.success,
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.check,
-                            size: 18, color: Colors.white),
+                        child: const Icon(
+                          Icons.check,
+                          size: 18,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -276,10 +341,15 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                   child: Row(
                     children: [
                       Flexible(
-                        child: Text(name,
-                            overflow: TextOverflow.ellipsis,
-                            style: Fonts.display(
-                                size: 20, color: t.text, weight: 700)),
+                        child: Text(
+                          name,
+                          overflow: TextOverflow.ellipsis,
+                          style: Fonts.display(
+                            size: 20,
+                            color: t.text,
+                            weight: 700,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Icon(Icons.edit_outlined, size: 16, color: t.muted),
@@ -287,8 +357,14 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                   ),
                 ),
               const SizedBox(height: 3),
-              Text('Level ${widget.level} · Earn XP to level up',
-                  style: Fonts.ui(size: 12, color: t.muted, weight: FontWeight.w700)),
+              Text(
+                'Level ${widget.level} · Earn XP to level up',
+                style: Fonts.ui(
+                  size: 12,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
@@ -323,12 +399,20 @@ class _Row extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: Fonts.ui(
-                        size: 15, color: t.text, weight: FontWeight.w700, height: 1.2)),
+                Text(
+                  title,
+                  style: Fonts.ui(
+                    size: 15,
+                    color: t.text,
+                    weight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                    style: Fonts.ui(size: 12, color: t.muted, height: 1.35)),
+                Text(
+                  subtitle,
+                  style: Fonts.ui(size: 12, color: t.muted, height: 1.35),
+                ),
               ],
             ),
           ),
@@ -368,13 +452,16 @@ class _Segmented extends StatelessWidget {
                 ? Border(right: BorderSide(color: t.border, width: 2))
                 : null,
           ),
-          child: Text(label,
-              style: Fonts.ui(
-                  size: 12,
-                  color: selected ? t.success : t.muted,
-                  weight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  height: 1)),
+          child: Text(
+            label,
+            style: Fonts.ui(
+              size: 12,
+              color: selected ? t.success : t.muted,
+              weight: FontWeight.w700,
+              letterSpacing: 0.5,
+              height: 1,
+            ),
+          ),
         ),
       );
     }

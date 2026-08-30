@@ -193,7 +193,7 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
                       return WinRecord(
                           xpGained: g.lastXpGain,
                           level: g.playerLevel,
-                          streak: g.stats.streak);
+                          streak: g.streak);
                     },
                   ),
                 ),

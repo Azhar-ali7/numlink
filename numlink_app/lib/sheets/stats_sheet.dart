@@ -37,7 +37,7 @@ class StatsSheet extends StatelessWidget {
               _StatCell(value: '${s.played}', label: 'PLAYED'),
               _StatCell(value: '${s.winRate}', label: 'WIN %'),
               _StatCell(
-                  value: '${s.streak}',
+                  value: '${g.streak}',
                   label: 'STREAK',
                   color: t.success,
                   flame: true),

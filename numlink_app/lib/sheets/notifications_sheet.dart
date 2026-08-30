@@ -67,12 +67,12 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
       ),
     ];
 
-    if (stats.streak > 0) {
+    if (g.streak > 0) {
       items.add(
         _Item(
           icon: Icons.local_fire_department_rounded,
           color: t.tileOrange,
-          title: '${stats.streak}-day streak',
+          title: '${g.streak}-day streak',
           body: 'Solve today to keep it going.',
           when: 'today',
           onTap: openStats,

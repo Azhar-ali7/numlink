@@ -647,7 +647,7 @@ class _WeekStripCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    final streak = g.stats.streak;
+    final streak = g.streak;
     final today = DateTime.now();
 
     return Container(
@@ -1336,7 +1336,7 @@ void openDailyBranching(BuildContext context) {
           return WinRecord(
               xpGained: g.lastXpGain,
               level: g.playerLevel,
-              streak: g.stats.streak);
+              streak: g.streak);
         },
       ),
     ),
@@ -1379,7 +1379,7 @@ void openCoop(BuildContext context) {
           return WinRecord(
               xpGained: g.lastXpGain,
               level: g.playerLevel,
-              streak: g.stats.streak);
+              streak: g.streak);
         },
       ),
     ),
@@ -1464,7 +1464,7 @@ void openFreePlay(BuildContext context) {
             return WinRecord(
                 xpGained: g.lastXpGain,
                 level: g.playerLevel,
-                streak: g.stats.streak);
+                streak: g.streak);
           },
         ),
       ),

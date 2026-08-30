@@ -199,25 +199,36 @@ class GameStats {
   /// Streak milestones that each grant one streak-freeze.
   static const List<int> freezeMilestones = [3, 7, 14, 30];
 
+  /// The streak as it stands on day [today] — the stored [streak] decayed by
+  /// any days missed since [lastDailyDay], with banked freezes covering them.
+  /// Read-only: nothing is spent until the next daily win actually lands, so
+  /// the home screen stops lying about a streak that is already dead.
+  int streakOn(int today) {
+    if (lastDailyDay == 0) return streak;
+    final missed = today - lastDailyDay - 1;
+    return missed <= freezes ? streak : 0;
+  }
+
   /// Records a daily win of [moves] against [par]. [today] is the day-index of
   /// the solve (days since epoch); when given it makes the streak *honest*:
-  /// same day → unchanged, next day → +1, a gap → reset to 1 unless a banked
-  /// freeze is spent to preserve it. Reaching a [freezeMilestones] streak earns
-  /// a freeze. When [today] is null (or no prior daily), it just increments —
-  /// the legacy behaviour.
+  /// same day → unchanged, next day → +1, a gap → reset to 1 unless enough
+  /// banked freezes cover every missed day. Reaching a [freezeMilestones]
+  /// streak earns a freeze. When [today] is null (or no prior daily), it just
+  /// increments — the legacy behaviour.
   GameStats recordWin(int moves, int par, {int? today}) {
     var freezes = this.freezes;
     int nextStreak;
     if (today == null || lastDailyDay == 0) {
       nextStreak = streak + 1;
+    } else if (today <= lastDailyDay) {
+      nextStreak = streak; // already counted today
     } else {
-      final gap = today - lastDailyDay;
-      if (gap <= 0) {
-        nextStreak = streak; // already counted today
-      } else if (gap == 1) {
-        nextStreak = streak + 1;
-      } else if (freezes > 0) {
-        freezes -= 1; // spend a freeze to survive the missed day(s)
+      // One freeze per missed day, not one per gap: skipping three weeks used
+      // to cost the same single freeze as skipping one day. Zero missed days
+      // spends nothing, so the common case falls out of the same branch.
+      final missed = today - lastDailyDay - 1;
+      if (missed <= freezes) {
+        freezes -= missed;
         nextStreak = streak + 1;
       } else {
         nextStreak = 1; // streak broken

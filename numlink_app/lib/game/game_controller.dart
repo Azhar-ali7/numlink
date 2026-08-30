@@ -49,6 +49,10 @@ class GameController extends ChangeNotifier {
   /// Current player level (from lifetime XP).
   int get playerLevel => _stats.playerLevel;
 
+  /// The streak as of right now — [GameStats.streak] is only recomputed on a
+  /// daily win, so read this anywhere it is shown.
+  int get streak => _stats.streakOn(_todayIndex());
+
   // ---- Overlay routing ----------------------------------------------------
 
   void open(SheetOverlay o) {

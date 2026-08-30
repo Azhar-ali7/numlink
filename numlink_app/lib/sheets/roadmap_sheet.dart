@@ -484,7 +484,7 @@ void _openBranchingLevel(BuildContext context, GameController g, LevelDef def) {
           return WinRecord(
               xpGained: g.lastXpGain,
               level: g.playerLevel,
-              streak: g.stats.streak);
+              streak: g.streak);
         },
       ),
     ),

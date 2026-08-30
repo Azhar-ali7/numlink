@@ -97,9 +97,26 @@ void main() {
     });
 
     test('a missed day spends a freeze and preserves the run', () {
-      final s = at(5, 100, freezes: 1).recordWin(3, 3, today: 103);
+      final s = at(5, 100, freezes: 1).recordWin(3, 3, today: 102); // 1 missed
       expect(s.streak, 6);
       expect(s.freezes, 0); // freeze consumed
+    });
+
+    test('freezes are spent per missed day, not per gap', () {
+      // 3 days missed: two freezes are not enough, three are.
+      expect(at(5, 100, freezes: 2).recordWin(3, 3, today: 104).streak, 1);
+      final saved = at(5, 100, freezes: 3).recordWin(3, 3, today: 104);
+      expect(saved.streak, 6);
+      expect(saved.freezes, 0);
+    });
+
+    test('streakOn decays the shown streak before the next win lands', () {
+      final s = at(10, 100, freezes: 1);
+      expect(s.streakOn(100), 10, reason: 'solved today');
+      expect(s.streakOn(101), 10, reason: 'still live, nothing missed yet');
+      expect(s.streakOn(102), 10, reason: 'one missed day, one banked freeze');
+      expect(s.streakOn(103), 0, reason: 'two missed, only one freeze — dead');
+      expect(s.streak, 10, reason: 'nothing is spent until a win records');
     });
 
     test('hitting a milestone streak earns a freeze', () {

@@ -49,6 +49,15 @@ class SettingsSheet extends StatelessWidget {
               onTap: () => s.setShowResultPreviews(!s.showResultPreviews)),
         ),
         _Row(
+          title: 'Relaxed arms',
+          subtitle: 'An "arm" is one branch of the tree. Normally each can '
+              'only take a few moves before it\'s full — this lifts that cap '
+              'so any branch can keep growing. Par still counts, so scores '
+              'suffer.',
+          trailing: _Pill(
+              value: s.relaxedArms, onTap: () => s.setRelaxedArms(!s.relaxedArms)),
+        ),
+        _Row(
           title: 'Sound effects',
           subtitle: 'Taps, solve chime, and error tones',
           trailing: _Pill(value: s.sound, onTap: () => s.setSound(!s.sound)),
@@ -141,6 +150,16 @@ void _showMoreSettings(BuildContext context) {
               const SizedBox(height: 6),
               item('About NUMLINK',
                   'Chain numbers together to reach each target in as few moves as possible.'),
+              // The words the board uses without ever defining them. Everything
+              // here is jargon a player meets first as a rejection toast.
+              item('Arm',
+                  'One branch of the tree. Each arm holds only a few moves before it is full — tap an earlier number to start a new one. "Relaxed arms" in Settings lifts the cap.'),
+              item('Par',
+                  'The move count a clean solve takes. Finishing at or under par is three stars; every move over costs one.'),
+              item('Target',
+                  'A number you must land on exactly. The counter at the top left is how many you have reached.'),
+              item('Shuffle & hint',
+                  'Shuffle deals a different set of operators that still solves the board. A hint glows the next useful operator. Both are limited per board, and easier tiers get more.'),
               item('Help',
                   'Tap operators to branch from any reached number. Stuck? Replay the walkthrough from How to play.'),
               item('Privacy',

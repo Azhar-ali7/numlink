@@ -305,4 +305,40 @@ void main() {
       expect(c.hintGlow, isNull);
     });
   });
+
+  // "Relaxed arms" lifts the per-arm cap without touching the puzzle, so the
+  // stranding guard and hint solver must still terminate at the higher depth.
+  group('relaxed arms', () {
+    test('lifts the cap on the live board and restores it', () {
+      final c = TreeController(buildPuzzle('kids', 99))..init();
+      expect(c.branchMax, 1, reason: 'kids arms hold one move');
+      c.relaxedArms = true;
+      expect(c.branchMax, kRelaxedBranchMax);
+      c.relaxedArms = false;
+      expect(c.branchMax, 1);
+    });
+
+    test('the same move is rejected at the cap and accepted when relaxed', () {
+      TreeController at(bool relaxed) {
+        final c = TreeController(buildPuzzle('kids', 99))..init();
+        c.relaxedArms = relaxed;
+        // Kids arms hold one move, so the first tap fills the arm and the
+        // second is the one the cap is there to refuse.
+        c.apply(c.hand.firstWhere((o) => c.apply(o) != ApplyResult.rejected));
+        return c;
+      }
+
+      expect(at(false).armLeft, 0, reason: 'arm full at the tier cap');
+      expect(at(true).armLeft, greaterThan(0), reason: 'room to keep growing');
+    });
+
+    test('hint still terminates at the relaxed depth', () {
+      final c = TreeController(buildPuzzle('hard', 7))..init();
+      c.relaxedArms = true;
+      final sw = Stopwatch()..start();
+      c.hint();
+      expect(sw.elapsedMilliseconds, lessThan(2000),
+          reason: 'depth-12 search must not blow up');
+    });
+  });
 }

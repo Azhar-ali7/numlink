@@ -15,6 +15,7 @@ class AppSettings {
     this.reduceMotion = false,
     this.socialNudges = false,
     this.showResultPreviews = false,
+    this.relaxedArms = false,
   });
 
   final ThemeMode themeMode;
@@ -33,6 +34,10 @@ class AppSettings {
   /// players do the arithmetic themselves.
   final bool showResultPreviews;
 
+  /// Lift the per-arm move cap to [kRelaxedBranchMax] so a branch can keep
+  /// growing. Off by default: the cap is what makes a tier a tier.
+  final bool relaxedArms;
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     bool? highContrast,
@@ -42,6 +47,7 @@ class AppSettings {
     bool? reduceMotion,
     bool? socialNudges,
     bool? showResultPreviews,
+    bool? relaxedArms,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -52,6 +58,7 @@ class AppSettings {
         reduceMotion: reduceMotion ?? this.reduceMotion,
         socialNudges: socialNudges ?? this.socialNudges,
         showResultPreviews: showResultPreviews ?? this.showResultPreviews,
+        relaxedArms: relaxedArms ?? this.relaxedArms,
       );
 }
 
@@ -65,6 +72,7 @@ class SettingsController extends ChangeNotifier {
     _settings = _load();
     _apply();
     _playerName = _prefs.getString('playerName') ?? 'Player';
+    _notificationsSeen = _prefs.getInt('notificationsSeen') ?? 0;
     _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
     _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
   }
@@ -78,6 +86,22 @@ class SettingsController extends ChangeNotifier {
   // Settings).
   late bool _tutorialSeen;
   bool _tutorialOpen = false;
+
+  // The daily-puzzle number whose notifications the player has already read.
+  // Every entry in the sheet is derived from the current daily, so one number
+  // is the whole read state: a new daily makes the bell unread again.
+  late int _notificationsSeen;
+
+  /// Whether the bell should show its unread dot for daily puzzle [no].
+  bool notificationsUnread(int no) => no != _notificationsSeen;
+
+  /// Called when the player opens the notifications sheet.
+  void markNotificationsSeen(int no) {
+    if (no == _notificationsSeen) return;
+    _notificationsSeen = no;
+    _prefs.setInt('notificationsSeen', no);
+    notifyListeners();
+  }
 
   // Display name shown on Home ("Hi {name}") and the Profile avatar initial.
   late String _playerName;
@@ -99,6 +123,7 @@ class SettingsController extends ChangeNotifier {
   bool get reduceMotion => _settings.reduceMotion;
   bool get socialNudges => _settings.socialNudges;
   bool get showResultPreviews => _settings.showResultPreviews;
+  bool get relaxedArms => _settings.relaxedArms;
   bool get tutorialOpen => _tutorialOpen;
 
   /// True once the intro has ever been dismissed. Distinguishes a genuine
@@ -130,6 +155,7 @@ class SettingsController extends ChangeNotifier {
         reduceMotion: _prefs.getBool('reduceMotion') ?? false,
         socialNudges: _prefs.getBool('socialNudges') ?? false,
         showResultPreviews: _prefs.getBool('showResultPreviews') ?? false,
+        relaxedArms: _prefs.getBool('relaxedArms') ?? false,
       );
 
   void _apply() {
@@ -149,7 +175,8 @@ class SettingsController extends ChangeNotifier {
       ..setBool('haptics', next.haptics)
       ..setBool('reduceMotion', next.reduceMotion)
       ..setBool('socialNudges', next.socialNudges)
-      ..setBool('showResultPreviews', next.showResultPreviews);
+      ..setBool('showResultPreviews', next.showResultPreviews)
+      ..setBool('relaxedArms', next.relaxedArms);
   }
 
   void setThemeMode(ThemeMode mode) =>
@@ -162,4 +189,5 @@ class SettingsController extends ChangeNotifier {
   void setSocialNudges(bool v) => _update(_settings.copyWith(socialNudges: v));
   void setShowResultPreviews(bool v) =>
       _update(_settings.copyWith(showResultPreviews: v));
+  void setRelaxedArms(bool v) => _update(_settings.copyWith(relaxedArms: v));
 }

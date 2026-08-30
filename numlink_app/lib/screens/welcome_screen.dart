@@ -158,7 +158,9 @@ class _Header extends StatelessWidget {
         _IconButton(
           icon: Icons.notifications_none_rounded,
           onTap: () => g.open(SheetOverlay.notifications),
-          badge: true,
+          badge: context.select<SettingsController, bool>(
+            (s) => s.notificationsUnread(g.dailyPuzzle.no),
+          ),
         ),
         const SizedBox(width: 10),
         GestureDetector(

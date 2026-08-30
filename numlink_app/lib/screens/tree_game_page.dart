@@ -116,6 +116,24 @@ class _TreeGamePageState extends State<TreeGamePage> {
     return c;
   }
 
+  /// Provider.of with listen:true is legal here (unlike in [build]), so this
+  /// re-runs whenever "Relaxed arms" is flipped — the cap changes on the board
+  /// in front of the player, not only on the next one. Deferred a frame because
+  /// the setter notifies, and notifying mid-build would rebuild widgets that
+  /// have already built this frame.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      final relaxed = Provider.of<SettingsController>(context).relaxedArms;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => mounted ? _c.relaxedArms = relaxed : null,
+      );
+    } on ProviderNotFoundException {
+      // Tests pump the page bare; the puzzle's own cap stands.
+    }
+  }
+
   void _onChange() {
     if (_c.solved && !_winReported) {
       _winReported = true;

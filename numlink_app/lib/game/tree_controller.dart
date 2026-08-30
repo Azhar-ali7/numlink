@@ -30,10 +30,29 @@ class TreeNode {
 /// Branching-tree gameplay controller (ported from the prototype `Component`).
 /// Pure state + rules; no UI, no persistence. The stranding guard and token
 /// economy live here.
+/// The cap "Relaxed arms" swaps in. Deliberately a large *number* rather than
+/// no limit at all: the stranding guard and the Steiner solver both search to
+/// this depth, so an unbounded cap would hang them. 12 is three times the
+/// deepest tier (Expert, 4) — far beyond anything a board needs.
+const int kRelaxedBranchMax = 12;
+
 class TreeController extends ChangeNotifier {
   TreeController(this.puzzle);
 
   TreePuzzle puzzle;
+
+  /// Play-time depth cap: the puzzle's own, or [kRelaxedBranchMax] when the
+  /// player has turned the limit off in Settings. Everything that reasons about
+  /// depth — legality, the arm meter, the stranding guard, hints — reads this
+  /// and not `puzzle.branchMax`, so the whole board agrees on one cap.
+  int get branchMax => _relaxedArms ? kRelaxedBranchMax : puzzle.branchMax;
+
+  bool _relaxedArms = false;
+  set relaxedArms(bool v) {
+    if (v == _relaxedArms) return;
+    _relaxedArms = v;
+    notifyListeners();
+  }
 
   List<TreeNode> nodes = const [];
   int sel = 0;
@@ -107,7 +126,7 @@ class TreeController extends ChangeNotifier {
 
   /// Moves still allowed on the selected arm before it hits [branchMax].
   int get armLeft =>
-      (puzzle.branchMax - depthOf(_selNode)).clamp(0, puzzle.branchMax);
+      (branchMax - depthOf(_selNode)).clamp(0, branchMax);
 
   TreeNode get _selNode => nodes.firstWhere((n) => n.id == sel);
 
@@ -153,10 +172,10 @@ class TreeController extends ChangeNotifier {
     if ((used[o.opSig] ?? 0) >= o.tokens) {
       return (r: null, why: 'No ${o.label} tokens left');
     }
-    if (depthOf(from) >= puzzle.branchMax) {
+    if (depthOf(from) >= branchMax) {
       return (
         r: null,
-        why: 'This arm is at its ${puzzle.branchMax}-move limit'
+        why: 'This arm is at its $branchMax-move limit'
       );
     }
     final r = compute(from.v, o);
@@ -239,12 +258,12 @@ class TreeController extends ChangeNotifier {
     final tree = [for (final n in ns) (v: n.v, d: depthOf(n, ns))];
     Map<String, int> leftFor(List<Operation> h) =>
         {for (final o in h) o.opSig: o.tokens - (used[o.opSig] ?? 0)};
-    if (solveFrom(tree, missing, hand, puzzle.branchMax, leftFor(hand))) {
+    if (solveFrom(tree, missing, hand, branchMax, leftFor(hand))) {
       return false;
     }
     if (shufflesLeft <= 0) return true;
     for (final alt in puzzle.hands) {
-      if (solveFrom(tree, missing, alt, puzzle.branchMax, leftFor(alt))) {
+      if (solveFrom(tree, missing, alt, branchMax, leftFor(alt))) {
         return false;
       }
     }
@@ -267,7 +286,7 @@ class TreeController extends ChangeNotifier {
       final left = {
         for (final o in cand) o.opSig: o.tokens - (used[o.opSig] ?? 0)
       };
-      return solveFrom(tree, missing, cand, puzzle.branchMax, left);
+      return solveFrom(tree, missing, cand, branchMax, left);
     }
 
     for (var step = 1; step <= puzzle.hands.length; step++) {

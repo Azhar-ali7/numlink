@@ -46,6 +46,17 @@ class _IntroCarouselState extends State<IntroCarousel> {
           'Tap an operation like ×3 or +7 to apply it. The chain grows '
           'downward, and the orange node is where you are now.',
     ),
+    // The arm limit is the one rule players hit without ever being told it
+    // exists — the board just refuses the tap. Explain it before that happens.
+    (
+      icon: Icons.account_tree_rounded,
+      kicker: 'ARMS',
+      title: 'Every branch has a limit',
+      body:
+          'Each number you reach can sprout its own branch — an "arm". An arm '
+          'only holds a few moves before it fills up, so tap back to an '
+          'earlier number and grow a new one.',
+    ),
     (
       icon: Icons.flag_rounded,
       kicker: 'THE GOAL',

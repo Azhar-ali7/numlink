@@ -40,4 +40,21 @@ void main() {
     s.dismissTutorial();
     expect(s.tutorialOpen, isFalse);
   });
+
+  test('reminder time persists; the toggle defaults off at 9:00', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    final first = await make();
+    expect(first.reminderOn, isFalse);
+    expect(first.reminderHour, 9);
+    expect(first.reminderMinute, 0);
+
+    first.setReminderTime(20, 30);
+    await first.setReminderOn(true); // no ReminderService here, so no prompt
+
+    final reloaded = await make();
+    expect(reloaded.reminderOn, isTrue);
+    expect(reloaded.reminderHour, 20);
+    expect(reloaded.reminderMinute, 30);
+  });
 }

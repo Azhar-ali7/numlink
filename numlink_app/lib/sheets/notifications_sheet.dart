@@ -15,8 +15,30 @@ import 'bottom_sheet_shell.dart';
 /// a real streak-summary entry (only when the player actually has a streak),
 /// and read-only log entries derived from real stats. The competitive
 /// "friend passed you" nudge appears only when Settings → Social nudges is on.
-class NotificationsSheet extends StatelessWidget {
+class NotificationsSheet extends StatefulWidget {
   const NotificationsSheet({super.key});
+
+  @override
+  State<NotificationsSheet> createState() => _NotificationsSheetState();
+}
+
+class _NotificationsSheetState extends State<NotificationsSheet> {
+  /// Snapshotted on open, then marked read a frame later. Marking on close
+  /// instead would miss the system back button and the scrim's own paths;
+  /// marking without the snapshot would clear the highlight from under the
+  /// player while they are still looking at the entry that was new.
+  bool? _unread;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_unread != null) return;
+    final s = context.read<SettingsController>();
+    final no = context.read<GameController>().dailyPuzzle.no;
+    _unread = s.notificationsUnread(no);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => s.markNotificationsSeen(no));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +59,7 @@ class NotificationsSheet extends StatelessWidget {
         title: 'Today\'s board is ready',
         body: 'NUMLINK #${g.dailyPuzzle.no} · ${g.dailyPuzzle.dateLabel}',
         when: 'now',
-        unread: true,
+        unread: _unread ?? false,
         onTap: () {
           g.close();
           openDailyBranching(context);

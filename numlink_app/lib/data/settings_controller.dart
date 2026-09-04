@@ -245,10 +245,23 @@ class SettingsController extends ChangeNotifier {
   /// Turn the daily reminder on/off. Asks the OS the first time it goes on and
   /// stays off if the player says no, so the toggle never lies about what will
   /// actually happen.
-  Future<void> setReminderOn(bool v) async {
-    if (v && !(await reminders?.requestPermission() ?? true)) return;
+  /// Returns false when the OS refused (or the platform cannot schedule), so
+  /// the caller can say why instead of leaving a toggle that silently won't
+  /// move. The request is wrapped because a misconfigured platform throws from
+  /// `initialize()` rather than returning false.
+  Future<bool> setReminderOn(bool v) async {
+    if (v) {
+      var ok = false;
+      try {
+        ok = await reminders?.requestPermission() ?? true;
+      } catch (e) {
+        debugPrint('reminder permission failed: $e');
+      }
+      if (!ok) return false;
+    }
     _update(_settings.copyWith(reminderOn: v));
     _reschedule();
+    return true;
   }
 
   void setReminderTime(int hour, int minute) {

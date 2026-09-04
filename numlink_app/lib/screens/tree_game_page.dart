@@ -19,6 +19,17 @@ import '../widgets/confetti_overlay.dart';
 import '../widgets/game_toast.dart';
 import 'tree_game_screen.dart';
 
+/// `m:ss` for a second count.
+String clockText(int seconds) =>
+    '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+
+/// Seconds allowed for one board when the clock is on. Derived from `par`
+/// (= optimalPar + 2) rather than a per-tier table, so it re-scales itself when
+/// tiers are retuned: kids lands ~36s, hard ~100-120s.
+// ponytail: one formula, one constant. Per-tier overrides only if a tier feels
+// wrong at the extremes after play-testing.
+int budgetFor(TreePuzzle p) => p.par * 12 < 30 ? 30 : p.par * 12;
+
 /// What a recorded win reports back, for the win sheet's XP pill.
 class WinRecord {
   const WinRecord({
@@ -45,12 +56,14 @@ TreePuzzle dailyBranchingPuzzle([DateTime? day]) {
 TreePuzzle weekendCoopPuzzle([DateTime? day]) {
   final d = day ?? DateTime.now();
   // Days since a fixed Monday epoch ÷ 7 → a stable per-week seed.
+  // utc both sides: local DateTimes make .inDays under-count by one across a
+  // spring-forward transition, which would serve the wrong weekly board.
   final week =
-      DateTime(
+      DateTime.utc(
         d.year,
         d.month,
         d.day,
-      ).difference(DateTime(2026, 1, 5)).inDays ~/
+      ).difference(DateTime.utc(2026, 1, 5)).inDays ~/
       7;
   return buildPuzzle('medium', 0x00C0FFEE ^ week);
 }
@@ -72,6 +85,7 @@ class TreeGamePage extends StatefulWidget {
     this.onNext,
     this.title,
     this.coop = false,
+    this.timed = false,
   });
 
   final String tier;
@@ -82,13 +96,18 @@ class TreeGamePage extends StatefulWidget {
   /// Co-op board: shows the "teammates already started" banner.
   final bool coop;
 
+  /// Play against the clock: a per-board countdown from [budgetFor]. Opt-in
+  /// from Free Play; daily and campaign never set it, so a par-scored streak
+  /// board keeps meaning what it meant.
+  final bool timed;
+
   /// Injected board (daily/tests); when set, "New board" re-deals it.
   final TreePuzzle? puzzle;
 
   /// Fired once per board when solved, with (moves, par) — lets the daily entry
   /// record the win into the shared stats and hand back XP/level/streak for the
   /// win sheet. Null (or a null return) for standalone/free play: no XP pill.
-  final WinRecord? Function(int moves, int par)? onWin;
+  final WinRecord? Function(int moves, int par, bool usedDivision)? onWin;
 
   /// Where to go after this board, when there is a "next" — campaign level n+1.
   /// Null everywhere else (daily, free play, co-op have no successor board).
@@ -104,6 +123,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
   bool _winReported = false;
   WinRecord? _win;
   int _confetti = 0;
+
+  Timer? _ticker;
+  int _left = 0;
+  bool _outOfTime = false;
 
   /// Restarts of the CURRENT puzzle. Gates "Reveal solution": handing over the
   /// answer on the first look is a spoiler, after two retries it's a rescue.
@@ -159,6 +182,12 @@ class _TreeGamePageState extends State<TreeGamePage> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _armClock();
+  }
+
   TreeController _make() {
     final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))
       ..init();
@@ -188,7 +217,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
     if (_c.solved && !_winReported) {
       _winReported = true;
       setState(() {
-        _win = widget.onWin?.call(_c.moves, _c.puzzle.par);
+        _win = widget.onWin?.call(_c.moves, _c.puzzle.par, _c.usedDivision);
         _confetti++;
       });
     }
@@ -201,6 +230,28 @@ class _TreeGamePageState extends State<TreeGamePage> {
       _winReported = false;
       _win = null;
       _c = next;
+    });
+    _armClock();
+  }
+
+  /// (Re)start the countdown for the board now on screen. Every re-rolled or
+  /// restarted board gets its own budget.
+  void _armClock() {
+    _ticker?.cancel();
+    if (!widget.timed) return;
+    setState(() {
+      _left = budgetFor(_c.puzzle);
+      _outOfTime = false;
+    });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_c.solved) return _ticker?.cancel();
+      setState(() {
+        if (--_left <= 0) {
+          _left = 0;
+          _outOfTime = true;
+          _ticker?.cancel();
+        }
+      });
     });
   }
 
@@ -235,6 +286,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _c.removeListener(_onChange);
     _c.dispose();
     super.dispose();
@@ -257,31 +309,37 @@ class _TreeGamePageState extends State<TreeGamePage> {
         body: SafeArea(
           child: Stack(
             children: [
-              Column(
-                children: [
-                  _Header(
-                    tier: _tier,
-                    title: widget.title,
-                    onNew: _newBoard,
-                    // A fixed board (daily / campaign / archive / co-op) has
-                    // no tier to switch: picking one would silently throw
-                    // that board away. Null hides the section entirely.
-                    onTier: widget.puzzle == null ? _setTier : null,
-                    onRestart: _restart,
-                    // Null until the player has restarted twice — see _restarts.
-                    onSolution: _restarts >= 2 ? _showSolution : null,
-                    actionsKey: _actionsKey,
-                    menuKey: _menuKey,
-                  ),
-                  if (widget.coop) const _CoopBanner(),
-                  Expanded(
-                    child: TreeGameScreen(
-                      statusKey: _statusKey,
-                      boardKey: _boardKey,
-                      padKey: _padKey,
+              // Out of time freezes the board: the sheet only covers the pad's
+              // bottom, so without this the chips above stay tappable.
+              AbsorbPointer(
+                absorbing: _outOfTime,
+                child: Column(
+                  children: [
+                    _Header(
+                      tier: _tier,
+                      title: widget.title,
+                      onNew: _newBoard,
+                      // A fixed board (daily / campaign / archive / co-op) has
+                      // no tier to switch: picking one would silently throw
+                      // that board away. Null hides the section entirely.
+                      onTier: widget.puzzle == null ? _setTier : null,
+                      onRestart: _restart,
+                      // Null until the player has restarted twice — see _restarts.
+                      onSolution: _restarts >= 2 ? _showSolution : null,
+                      actionsKey: _actionsKey,
+                      menuKey: _menuKey,
+                      secondsLeft: widget.timed ? _left : null,
                     ),
-                  ),
-                ],
+                    if (widget.coop) const _CoopBanner(),
+                    Expanded(
+                      child: TreeGameScreen(
+                        statusKey: _statusKey,
+                        boardKey: _boardKey,
+                        padKey: _padKey,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               // reject / shuffle status line, floated above the pad
               Positioned(
@@ -302,6 +360,12 @@ class _TreeGamePageState extends State<TreeGamePage> {
                     steps: _coachSteps,
                     onDone: settings.markCoachSeen,
                   ),
+                ),
+              if (_outOfTime && !_c.solved)
+                _TimeUpSheet(
+                  reached: _c.reached,
+                  total: _c.puzzle.targets.length,
+                  onRetry: _restart, // _swap re-arms the clock
                 ),
               Consumer<TreeController>(
                 builder: (_, c, __) => c.solved
@@ -337,8 +401,12 @@ class _Header extends StatelessWidget {
     this.title,
     this.actionsKey,
     this.menuKey,
+    this.secondsLeft,
   });
   final String tier;
+
+  /// Remaining seconds when the board is timed; null when it is not.
+  final int? secondsLeft;
 
   /// Coach-mark handles: the hint/shuffle pair and the ⋯ button.
   final GlobalKey? actionsKey, menuKey;
@@ -362,6 +430,7 @@ class _Header extends StatelessWidget {
         children: [
           _RoundIconBtn(
             icon: Icons.arrow_back,
+            label: 'Back',
             onTap: () => Navigator.of(context).maybePop(),
           ),
           const SizedBox(width: 12),
@@ -390,12 +459,25 @@ class _Header extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          if (secondsLeft != null) ...[
+            Text(
+              clockText(secondsLeft!),
+              style: Fonts.numeric(
+                size: 17,
+                color: secondsLeft! <= 10 ? t.accent : t.text,
+                weight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           _BoardActions(key: actionsKey),
           KeyedSubtree(
             key: menuKey,
             child: _RoundIconBtn(
               key: const Key('difficulty'),
               icon: Icons.more_horiz_rounded,
+              label: 'More options',
               onTap: () => _showOverflow(context),
             ),
           ),
@@ -648,11 +730,13 @@ class _BoardActions extends StatelessWidget {
       children: [
         _RoundIconBtn(
           icon: Icons.shuffle_rounded,
+          label: 'Shuffle hand',
           badge: c.shufflesLeft,
           onTap: c.shuffleHand,
         ),
         _RoundIconBtn(
           icon: Icons.lightbulb_outline_rounded,
+          label: 'Hint',
           badge: c.hintsLeft,
           onTap: c.hint,
         ),
@@ -667,10 +751,14 @@ class _RoundIconBtn extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onTap,
+    required this.label,
     this.badge,
   });
   final IconData icon;
   final VoidCallback onTap;
+
+  /// Spoken name — these are icon-only, so without it VoiceOver reads nothing.
+  final String label;
   final int? badge;
 
   @override
@@ -678,44 +766,116 @@ class _RoundIconBtn extends StatelessWidget {
     final t = NumTheme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                border: Border.all(color: t.border, width: 2),
-                borderRadius: BorderRadius.circular(16),
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                // 44 is the minimum comfortable tap target; the glyph stays 19.
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  border: Border.all(color: t.border, width: 2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, size: 19, color: t.text),
               ),
-              child: Icon(icon, size: 19, color: t.text),
-            ),
-            if (badge != null)
-              Positioned(
-                top: -3,
-                right: -3,
-                child: Container(
-                  width: 17,
-                  height: 17,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: badge! > 0 ? t.progress : t.muted,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: t.bg, width: 2),
-                  ),
-                  child: Text(
-                    '$badge',
-                    style: Fonts.numeric(
-                      size: 9,
-                      color: Colors.white,
-                      weight: FontWeight.w800,
-                      height: 1,
+              if (badge != null)
+                Positioned(
+                  top: -3,
+                  right: -3,
+                  child: Container(
+                    width: 17,
+                    height: 17,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: badge! > 0 ? t.progress : t.muted,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: t.bg, width: 2),
+                    ),
+                    child: Text(
+                      '$badge',
+                      style: Fonts.numeric(
+                        size: 9,
+                        color: Colors.white,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ),
-              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when a timed board's countdown hits zero: the board freezes and no
+/// win is recorded, so the streak/XP path is untouched.
+class _TimeUpSheet extends StatelessWidget {
+  const _TimeUpSheet({
+    required this.reached,
+    required this.total,
+    required this.onRetry,
+  });
+  final int reached, total;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        decoration: BoxDecoration(
+          color: t.elevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          border: Border.all(color: t.border, width: 2),
+          boxShadow: t.cardShadow,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Time's up",
+              style: Fonts.display(size: 24, color: t.text, height: 1.1),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'You reached $reached of $total targets.',
+              style: Fonts.ui(size: 13, color: t.muted, height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _action(
+                    label: 'Try again',
+                    bg: t.accent,
+                    fg: Colors.white,
+                    onTap: onRetry,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _action(
+                    label: 'Back',
+                    bg: tint(t.text, 0.06),
+                    fg: t.text,
+                    onTap: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -757,6 +917,7 @@ class _TimedTreePageState extends State<TimedTreePage> {
   bool _done = false;
   WinRecord? _win;
   int _confetti = 0;
+
   Timer? _tick;
   late TreeController _c = _make();
 
@@ -1241,9 +1402,12 @@ class _WinSheetState extends State<_WinSheet> {
                               label: 'Copy',
                               bg: tint(t.text, 0.06),
                               fg: t.text,
-                              onTap: () => Clipboard.setData(
-                                ClipboardData(text: _shareText(c)),
-                              ),
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: _shareText(c)),
+                                );
+                                c.flash('Copied to clipboard');
+                              },
                             ),
                           ),
                         ],

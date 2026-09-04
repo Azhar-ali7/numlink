@@ -58,7 +58,9 @@ class WelcomeScreen extends StatelessWidget {
                   icon: Icons.sports_esports_rounded,
                   gradient: [t.heroTwo, t.hero],
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const _ModesScreen()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const _ModesScreen(),
+                    ),
                   ),
                 ),
                 on: on,
@@ -75,7 +77,34 @@ class WelcomeScreen extends StatelessWidget {
                   gradient: [t.tileOrange, t.star],
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                        builder: (_) => const CampaignPage()),
+                      builder: (_) => const CampaignPage(),
+                    ),
+                  ),
+                ),
+                on: on,
+                index: 3,
+              ),
+              const SizedBox(height: 14),
+              entrance(
+                _ModeCard(
+                  icon: Icons.timer_outlined,
+                  color: t.progress,
+                  badge: 'RUN',
+                  kicker: '8 STAGES, ONE CLOCK',
+                  title: 'Timed Run',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TimedTreePage(
+                        onStageSolved: (stage, runDone) {
+                          g.recordTimedStage(stage, runDone: runDone);
+                          return WinRecord(
+                            xpGained: g.lastXpGain,
+                            level: g.playerLevel,
+                            streak: g.streak,
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
                 on: on,
@@ -128,11 +157,22 @@ class _Header extends StatelessWidget {
     final t = NumTheme.of(context);
     const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const mo = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final now = DateTime.now();
-    final dateLabel = '${wd[(now.weekday - 1) % 7]}, ${now.day} ${mo[now.month - 1]}';
+    final dateLabel =
+        '${wd[(now.weekday - 1) % 7]}, ${now.day} ${mo[now.month - 1]}';
     final name = context.watch<SettingsController>().playerName;
     return Row(
       children: [
@@ -177,8 +217,10 @@ class _Header extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: Text(name.characters.first.toUpperCase(),
-                style: Fonts.display(size: 18, color: Colors.white)),
+            child: Text(
+              name.characters.first.toUpperCase(),
+              style: Fonts.display(size: 18, color: Colors.white),
+            ),
           ),
         ),
       ],
@@ -187,7 +229,11 @@ class _Header extends StatelessWidget {
 }
 
 class _IconButton extends StatelessWidget {
-  const _IconButton({required this.icon, required this.onTap, this.badge = false});
+  const _IconButton({
+    required this.icon,
+    required this.onTap,
+    this.badge = false,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final bool badge;
@@ -201,9 +247,10 @@ class _IconButton extends StatelessWidget {
       glyph = glyph
           .animate(onPlay: (c) => c.repeat())
           .shake(
-              duration: const Duration(milliseconds: 700),
-              hz: 4,
-              rotation: 0.08)
+            duration: const Duration(milliseconds: 700),
+            hz: 4,
+            rotation: 0.08,
+          )
           .then(delay: const Duration(milliseconds: 2600));
     }
     return GestureDetector(
@@ -276,141 +323,164 @@ class _DailyHeroCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'DAILY PUZZLE · #${g.dailyPuzzle.no}',
-                      style: Fonts.ui(
-                        size: 12,
-                        color: Colors.white.withValues(alpha: 0.85),
-                        weight: FontWeight.w800,
-                        letterSpacing: 1,
-                        height: 1,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DAILY PUZZLE · #${g.dailyPuzzle.no}',
+                            style: Fonts.ui(
+                              size: 12,
+                              color: Colors.white.withValues(alpha: 0.85),
+                              weight: FontWeight.w800,
+                              letterSpacing: 1,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Today's number chain",
+                            style: Fonts.display(
+                              size: 26,
+                              color: Colors.white,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Today's number chain",
-                      style: Fonts.display(size: 26, color: Colors.white, height: 1.1),
+                    const SizedBox(width: 12),
+                    const RobotMascot(),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Expanding ring pulse behind the CTA (handoff `playpulse`), gated.
+                    if (!reducedMotion(context))
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child:
+                              Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        width: 2,
+                                      ),
+                                    ),
+                                  )
+                                  .animate(onPlay: (c) => c.repeat())
+                                  .scaleXY(
+                                    begin: 1,
+                                    end: 1.16,
+                                    duration: const Duration(
+                                      milliseconds: 2400,
+                                    ),
+                                    curve: Curves.easeOut,
+                                  )
+                                  .fadeOut(
+                                    duration: const Duration(
+                                      milliseconds: 2400,
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ChunkyButton(
+                      color: Colors.white,
+                      baseColor: const Color(0xFFE7E1F6),
+                      radius: 16,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      onTap: () => openDailyBranching(context),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.play_arrow_rounded,
+                            size: 20,
+                            color: t.hero,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Play today's puzzle",
+                            style: Fonts.ui(
+                              size: 15,
+                              color: t.hero,
+                              weight: FontWeight.w800,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              const RobotMascot(),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Expanding ring pulse behind the CTA (handoff `playpulse`), gated.
-              if (!reducedMotion(context))
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            width: 2),
-                      ),
-                    )
-                        .animate(onPlay: (c) => c.repeat())
-                        .scaleXY(
-                            begin: 1,
-                            end: 1.16,
-                            duration: const Duration(milliseconds: 2400),
-                            curve: Curves.easeOut)
-                        .fadeOut(duration: const Duration(milliseconds: 2400)),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => g.open(SheetOverlay.how),
+                    child: Text(
+                      'How to play',
+                      style: Fonts.ui(
+                        size: 14,
+                        color: Colors.white,
+                        weight: FontWeight.w700,
+                        height: 1,
+                      ).copyWith(decoration: TextDecoration.underline),
+                    ),
                   ),
                 ),
-              ChunkyButton(
-                color: Colors.white,
-                baseColor: const Color(0xFFE7E1F6),
-                radius: 16,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                onTap: () => openDailyBranching(context),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                const SizedBox(height: 20),
+                Divider(color: Colors.white.withValues(alpha: 0.28), height: 1),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.play_arrow_rounded, size: 20, color: t.hero),
-                    const SizedBox(width: 6),
                     Text(
-                      "Play today's puzzle",
+                      'Level ${s.playerLevel}',
                       style: Fonts.ui(
-                        size: 15,
-                        color: t.hero,
+                        size: 14,
+                        color: Colors.white,
                         weight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      '${s.xpIntoLevel} / ${s.xpLevelSpan} XP',
+                      style: Fonts.numeric(
+                        size: 12,
+                        color: Colors.white.withValues(alpha: 0.85),
                         height: 1,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => g.open(SheetOverlay.how),
-              child: Text(
-                'How to play',
-                style: Fonts.ui(
-                  size: 14,
-                  color: Colors.white,
-                  weight: FontWeight.w700,
-                  height: 1,
-                ).copyWith(decoration: TextDecoration.underline),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Divider(color: Colors.white.withValues(alpha: 0.28), height: 1),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Level ${s.playerLevel}',
-                style: Fonts.ui(
-                  size: 14,
-                  color: Colors.white,
-                  weight: FontWeight.w800,
-                  height: 1,
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: s.levelProgress.clamp(0.0, 1.0),
+                    minHeight: 10,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                  ),
                 ),
-              ),
-              Text(
-                '${s.xpIntoLevel} / ${s.xpLevelSpan} XP',
-                style: Fonts.numeric(
-                  size: 12,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: s.levelProgress.clamp(0.0, 1.0),
-              minHeight: 10,
-              backgroundColor: Colors.white.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ],
+              ],
             ),
           ),
         ],
@@ -445,20 +515,23 @@ class _Blob extends StatelessWidget {
     return blob
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .moveX(
-            begin: 0,
-            end: -14,
-            duration: const Duration(milliseconds: 8000),
-            curve: Curves.easeInOut)
+          begin: 0,
+          end: -14,
+          duration: const Duration(milliseconds: 8000),
+          curve: Curves.easeInOut,
+        )
         .moveY(
-            begin: 0,
-            end: 10,
-            duration: const Duration(milliseconds: 8000),
-            curve: Curves.easeInOut)
+          begin: 0,
+          end: 10,
+          duration: const Duration(milliseconds: 8000),
+          curve: Curves.easeInOut,
+        )
         .scaleXY(
-            begin: 1,
-            end: 1.08,
-            duration: const Duration(milliseconds: 8000),
-            curve: Curves.easeInOut);
+          begin: 1,
+          end: 1.08,
+          duration: const Duration(milliseconds: 8000),
+          curve: Curves.easeInOut,
+        );
   }
 }
 
@@ -493,14 +566,18 @@ class RobotMascot extends StatelessWidget {
       eyes = eyes
           .animate(onPlay: (c) => c.repeat())
           .scaleY(
-              begin: 1,
-              end: 0.1,
-              duration: const Duration(milliseconds: 80),
-              delay: const Duration(milliseconds: 3000),
-              alignment: Alignment.center)
+            begin: 1,
+            end: 0.1,
+            duration: const Duration(milliseconds: 80),
+            delay: const Duration(milliseconds: 3000),
+            alignment: Alignment.center,
+          )
           .then()
           .scaleY(
-              begin: 0.1, end: 1, duration: const Duration(milliseconds: 80));
+            begin: 0.1,
+            end: 1,
+            duration: const Duration(milliseconds: 80),
+          );
     }
 
     Widget tip = Container(
@@ -511,8 +588,9 @@ class RobotMascot extends StatelessWidget {
         color: const Color(0xFFFFD166),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFFFFD166).withValues(alpha: 0.9),
-              blurRadius: 8),
+            color: const Color(0xFFFFD166).withValues(alpha: 0.9),
+            blurRadius: 8,
+          ),
         ],
       ),
     );
@@ -520,14 +598,16 @@ class RobotMascot extends StatelessWidget {
       tip = tip
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scaleXY(
-              begin: 1,
-              end: 1.35,
-              duration: const Duration(milliseconds: 1600),
-              curve: Curves.easeInOut)
+            begin: 1,
+            end: 1.35,
+            duration: const Duration(milliseconds: 1600),
+            curve: Curves.easeInOut,
+          )
           .fade(
-              begin: 1,
-              end: 0.7,
-              duration: const Duration(milliseconds: 1600));
+            begin: 1,
+            end: 0.7,
+            duration: const Duration(milliseconds: 1600),
+          );
     }
 
     Widget bot = SizedBox(
@@ -540,18 +620,24 @@ class RobotMascot extends StatelessWidget {
           Positioned(
             left: 30.5,
             top: 8,
-            child: Container(width: 3, height: 12, color: const Color(0xD9FFFFFF)),
+            child: Container(
+              width: 3,
+              height: 12,
+              color: const Color(0xD9FFFFFF),
+            ),
           ),
           Positioned(left: 27, top: 0, child: tip),
           // arms
           Positioned(
-              left: 0,
-              top: 44,
-              child: _bar(6, 14, const Color(0xFFE3E6FF))),
+            left: 0,
+            top: 44,
+            child: _bar(6, 14, const Color(0xFFE3E6FF)),
+          ),
           Positioned(
-              left: 58,
-              top: 44,
-              child: _bar(6, 14, const Color(0xFFE3E6FF))),
+            left: 58,
+            top: 44,
+            child: _bar(6, 14, const Color(0xFFE3E6FF)),
+          ),
           // feet
           Positioned(left: 16, top: 74, child: _foot()),
           Positioned(left: 42, top: 74, child: _foot()),
@@ -571,9 +657,10 @@ class RobotMascot extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8)),
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
               child: Center(
@@ -601,34 +688,35 @@ class RobotMascot extends StatelessWidget {
       bot = bot
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .moveY(
-              begin: 0,
-              end: -7,
-              duration: const Duration(milliseconds: 4500),
-              curve: Curves.easeInOut)
+            begin: 0,
+            end: -7,
+            duration: const Duration(milliseconds: 4500),
+            curve: Curves.easeInOut,
+          )
           .rotate(
-              begin: -0.008,
-              end: 0.008,
-              duration: const Duration(milliseconds: 4500),
-              curve: Curves.easeInOut);
+            begin: -0.008,
+            end: 0.008,
+            duration: const Duration(milliseconds: 4500),
+            curve: Curves.easeInOut,
+          );
     }
     return bot;
   }
 
   Widget _bar(double w, double h, Color c) => Container(
-        width: w,
-        height: h,
-        decoration:
-            BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
-      );
+    width: w,
+    height: h,
+    decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
+  );
 
   Widget _foot() => Container(
-        width: 14,
-        height: 8,
-        decoration: const BoxDecoration(
-          color: Color(0xFFD7CBFF),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
-        ),
-      );
+    width: 14,
+    height: 8,
+    decoration: const BoxDecoration(
+      color: Color(0xFFD7CBFF),
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
+    ),
+  );
 }
 
 // ── Streak card ──────────────────────────────────────────────────────────────
@@ -672,51 +760,82 @@ class _WeekStripCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('DAILY CALENDAR',
-                        style: Fonts.ui(
-                            size: 10,
-                            color: t.muted,
-                            weight: FontWeight.w800,
-                            letterSpacing: 1.4,
-                            height: 1)),
+                    Text(
+                      'DAILY CALENDAR',
+                      style: Fonts.ui(
+                        size: 10,
+                        color: t.muted,
+                        weight: FontWeight.w800,
+                        letterSpacing: 1.4,
+                        height: 1,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('This week',
-                          style: Fonts.display(size: 20, color: t.text, height: 1)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.chevron_right_rounded, size: 18, color: t.muted),
-                    ]),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'This week',
+                          style: Fonts.display(
+                            size: 20,
+                            color: t.text,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: t.muted,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
               GestureDetector(
                 onTap: () => g.open(SheetOverlay.stats),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: tint(t.text, 0.05),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    // A frozen streak is alive only because banked freezes are
-                    // covering the missed days — say so here rather than let
-                    // the flame imply the player never missed one.
-                    if (frozen > 0)
-                      Icon(Icons.ac_unit_rounded, size: 13, color: t.progress)
-                    else
-                      const Text('🔥', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 5),
-                    Text(frozen > 0 ? '$streak · frozen' : '$streak',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // A frozen streak is alive only because banked freezes are
+                      // covering the missed days — say so here rather than let
+                      // the flame imply the player never missed one.
+                      if (frozen > 0)
+                        Icon(Icons.ac_unit_rounded, size: 13, color: t.progress)
+                      else
+                        const Text('🔥', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 5),
+                      Text(
+                        frozen > 0 ? '$streak · frozen' : '$streak',
                         style: Fonts.ui(
-                            size: 12, color: t.text, weight: FontWeight.w800)),
-                    const SizedBox(width: 8),
-                    Container(width: 1, height: 12, color: t.border),
-                    const SizedBox(width: 8),
-                    Text('Stats',
+                          size: 12,
+                          color: t.text,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(width: 1, height: 12, color: t.border),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Stats',
                         style: Fonts.ui(
-                            size: 12, color: t.text, weight: FontWeight.w800)),
-                  ]),
+                          size: 12,
+                          color: t.text,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -763,9 +882,8 @@ class _WeekStripCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => isToday
-          ? openDailyBranching(context)
-          : g.open(SheetOverlay.archive),
+      onTap: () =>
+          isToday ? openDailyBranching(context) : g.open(SheetOverlay.archive),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
@@ -776,19 +894,25 @@ class _WeekStripCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_wd[(date.weekday - 1) % 7],
-                style: Fonts.ui(
-                    size: 10,
-                    color: t.muted,
-                    weight: FontWeight.w800,
-                    height: 1)),
+            Text(
+              _wd[(date.weekday - 1) % 7],
+              style: Fonts.ui(
+                size: 10,
+                color: t.muted,
+                weight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text('${date.day}',
-                style: Fonts.display(size: 16, color: dayColor, height: 1)),
+            Text(
+              '${date.day}',
+              style: Fonts.display(size: 16, color: dayColor, height: 1),
+            ),
             const SizedBox(height: 5),
-            Text(mark,
-                style: TextStyle(
-                    fontSize: 11, color: markColor, height: 1)),
+            Text(
+              mark,
+              style: TextStyle(fontSize: 11, color: markColor, height: 1),
+            ),
           ],
         ),
       ),
@@ -802,12 +926,13 @@ class _WeekStripCard extends StatelessWidget {
 /// gated behind reduced-motion.
 Widget _arrowNudge(bool on, Widget child) => on
     ? child
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveX(
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .moveX(
             begin: 0,
             end: 4,
             duration: const Duration(milliseconds: 1800),
-            curve: Curves.easeInOut)
+            curve: Curves.easeInOut,
+          )
     : child;
 
 class _NavCard extends StatelessWidget {
@@ -881,8 +1006,10 @@ class _NavCard extends StatelessWidget {
                 ],
               ),
             ),
-            _arrowNudge(!reducedMotion(context),
-                Icon(Icons.chevron_right_rounded, size: 26, color: t.muted)),
+            _arrowNudge(
+              !reducedMotion(context),
+              Icon(Icons.chevron_right_rounded, size: 26, color: t.muted),
+            ),
           ],
         ),
       ),
@@ -938,7 +1065,10 @@ class _ModesScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  _ModeChip(emoji: '🎮', label: '${kSocialEnabled ? 4 : 3} Modes'),
+                  _ModeChip(
+                    emoji: '🎮',
+                    label: '${kSocialEnabled ? 5 : 4} Modes',
+                  ),
                   const SizedBox(width: 8),
                   _ModeChip(emoji: '🗺️', label: '${g.campaignCount} Levels'),
                 ],
@@ -998,6 +1128,32 @@ class _ModesScreen extends StatelessWidget {
                 ),
                 on: on,
                 index: 2,
+              ),
+              const SizedBox(height: 14),
+              entrance(
+                _ModeCard(
+                  icon: Icons.timer_outlined,
+                  color: t.progress,
+                  badge: 'RUN',
+                  kicker: '8 STAGES, ONE CLOCK',
+                  title: 'Timed Run',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TimedTreePage(
+                        onStageSolved: (stage, runDone) {
+                          g.recordTimedStage(stage, runDone: runDone);
+                          return WinRecord(
+                            xpGained: g.lastXpGain,
+                            level: g.playerLevel,
+                            streak: g.streak,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                on: on,
+                index: 3,
               ),
               if (kSocialEnabled) ...[
                 const SizedBox(height: 14),
@@ -1062,13 +1218,16 @@ class _ModeChip extends StatelessWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 13, height: 1)),
           const SizedBox(width: 6),
-          Text(label,
-              style: Fonts.ui(
-                  size: 12,
-                  color: t.text,
-                  weight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  height: 1)),
+          Text(
+            label,
+            style: Fonts.ui(
+              size: 12,
+              color: t.text,
+              weight: FontWeight.w700,
+              letterSpacing: 0.3,
+              height: 1,
+            ),
+          ),
         ],
       ),
     );
@@ -1128,30 +1287,38 @@ class _ModeCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: tint(color, 0.14),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(badge,
-                      style: Fonts.ui(
-                          size: 10,
-                          color: color,
-                          weight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          height: 1)),
+                  child: Text(
+                    badge,
+                    style: Fonts.ui(
+                      size: 10,
+                      color: color,
+                      weight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(kicker,
-                style: Fonts.ui(
-                    size: 10,
-                    color: t.muted,
-                    weight: FontWeight.w800,
-                    letterSpacing: 1,
-                    height: 1)),
+            Text(
+              kicker,
+              style: Fonts.ui(
+                size: 10,
+                color: t.muted,
+                weight: FontWeight.w800,
+                letterSpacing: 1,
+                height: 1,
+              ),
+            ),
             const SizedBox(height: 5),
             Text(title, style: Fonts.display(size: 19, color: t.text)),
             const SizedBox(height: 12),
@@ -1170,10 +1337,15 @@ class _ModeCard extends StatelessWidget {
                   Container(
                     width: 38,
                     height: 38,
-                    decoration:
-                        BoxDecoration(color: color, shape: BoxShape.circle),
-                    child: const Icon(Icons.arrow_forward_rounded,
-                        size: 19, color: Colors.white),
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 19,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -1223,12 +1395,15 @@ class _AvatarStack extends StatelessWidget {
                       border: Border.all(color: t.surface, width: 2),
                     ),
                     alignment: Alignment.center,
-                    child: Text(initials[i],
-                        style: Fonts.ui(
-                            size: 10,
-                            color: Colors.white,
-                            weight: FontWeight.w800,
-                            height: 1)),
+                    child: Text(
+                      initials[i],
+                      style: Fonts.ui(
+                        size: 10,
+                        color: Colors.white,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -1236,11 +1411,17 @@ class _AvatarStack extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Flexible(
-          child: Text('+$extra',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Fonts.ui(
-                  size: 11, color: t.muted, weight: FontWeight.w700, height: 1)),
+          child: Text(
+            '+$extra',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Fonts.ui(
+              size: 11,
+              color: t.muted,
+              weight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
         ),
       ],
     );
@@ -1261,9 +1442,9 @@ class _CampaignCard extends StatelessWidget {
     final maxStars = count * 3;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const CampaignPage()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const CampaignPage())),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1277,19 +1458,27 @@ class _CampaignCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('CAMPAIGN',
-                    style: Fonts.ui(
-                        size: 11,
-                        color: t.muted,
-                        weight: FontWeight.w800,
-                        letterSpacing: 1,
-                        height: 1)),
+                Text(
+                  'CAMPAIGN',
+                  style: Fonts.ui(
+                    size: 11,
+                    color: t.muted,
+                    weight: FontWeight.w800,
+                    letterSpacing: 1,
+                    height: 1,
+                  ),
+                ),
                 const Spacer(),
                 Icon(Icons.star_rounded, size: 15, color: t.progress),
                 const SizedBox(width: 4),
-                Text('${stats.campaignStars} / $maxStars',
-                    style: Fonts.numeric(
-                        size: 13, color: t.text, weight: FontWeight.w700)),
+                Text(
+                  '${stats.campaignStars} / $maxStars',
+                  style: Fonts.numeric(
+                    size: 13,
+                    color: t.text,
+                    weight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -1297,17 +1486,26 @@ class _CampaignCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                      '${stats.campaignCleared} of $count levels cleared',
-                      style: Fonts.ui(
-                          size: 14, color: t.text, weight: FontWeight.w700)),
+                    '${stats.campaignCleared} of $count levels cleared',
+                    style: Fonts.ui(
+                      size: 14,
+                      color: t.text,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ),
                 Container(
                   width: 42,
                   height: 42,
-                  decoration:
-                      BoxDecoration(color: t.tileOrange, shape: BoxShape.circle),
-                  child: const Icon(Icons.arrow_forward_rounded,
-                      size: 20, color: Colors.white),
+                  decoration: BoxDecoration(
+                    color: t.tileOrange,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -1338,12 +1536,13 @@ void openDailyBranching(BuildContext context) {
       builder: (_) => TreeGamePage(
         tier: 'medium',
         puzzle: dailyBranchingPuzzle(),
-        onWin: (m, p) {
-          g.recordDailyWin(m, p);
+        onWin: (m, p, div) {
+          g.recordDailyWin(m, p, usedDivision: div);
           return WinRecord(
-              xpGained: g.lastXpGain,
-              level: g.playerLevel,
-              streak: g.streak);
+            xpGained: g.lastXpGain,
+            level: g.playerLevel,
+            streak: g.streak,
+          );
         },
       ),
     ),
@@ -1381,12 +1580,13 @@ void openCoop(BuildContext context) {
         title: 'WEEKEND CO-OP',
         coop: true,
         puzzle: weekendCoopPuzzle(),
-        onWin: (m, p) {
-          g.recordBranchingWin(GameMode.practice, m, p);
+        onWin: (m, p, div) {
+          g.recordBranchingWin(GameMode.practice, m, p, usedDivision: div);
           return WinRecord(
-              xpGained: g.lastXpGain,
-              level: g.playerLevel,
-              streak: g.streak);
+            xpGained: g.lastXpGain,
+            level: g.playerLevel,
+            streak: g.streak,
+          );
         },
       ),
     ),
@@ -1399,6 +1599,9 @@ void openCoop(BuildContext context) {
 void openFreePlay(BuildContext context) {
   final g = context.read<GameController>();
   final t = NumTheme.of(context);
+  // Captured by the sheet's toggle and read back in .then, so the sheet can
+  // keep popping a plain Difficulty.
+  var timed = false;
   showModalBottomSheet<Difficulty>(
     context: context,
     backgroundColor: t.surface,
@@ -1416,44 +1619,84 @@ void openFreePlay(BuildContext context) {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: t.border, borderRadius: BorderRadius.circular(2)),
+                color: t.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
-            child: Text('Choose a difficulty',
-                style: Fonts.display(size: 22, color: t.text)),
+            child: Text(
+              'Choose a difficulty',
+              style: Fonts.display(size: 22, color: t.text),
+            ),
+          ),
+          // Opt-in countdown, any difficulty. The budget scales with the
+          // board's par (see budgetFor), so Kids gets a gentler clock.
+          StatefulBuilder(
+            builder: (_, setSheet) => SwitchListTile.adaptive(
+              key: const ValueKey('freeplay_timed'),
+              value: timed,
+              onChanged: (v) => setSheet(() => timed = v),
+              title: Text(
+                'Play against the clock',
+                style: Fonts.ui(
+                  size: 14,
+                  color: t.text,
+                  weight: FontWeight.w800,
+                ),
+              ),
+              subtitle: Text(
+                'Time scales with the difficulty you pick',
+                style: Fonts.ui(
+                  size: 12,
+                  color: t.muted,
+                  weight: FontWeight.w700,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            ),
           ),
           for (final d in Difficulty.values)
             InkWell(
               key: ValueKey('freeplay_${d.name}'),
               onTap: () => Navigator.of(sheet).pop(d),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(children: [
-                  Text(d.emoji, style: const TextStyle(fontSize: 24)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(d.label,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Text(d.emoji, style: const TextStyle(fontSize: 24)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            d.label,
                             style: Fonts.ui(
-                                size: 16,
-                                color: t.text,
-                                weight: FontWeight.w800,
-                                height: 1.2)),
-                        Text(d.blurb,
+                              size: 16,
+                              color: t.text,
+                              weight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                          Text(
+                            d.blurb,
                             style: Fonts.ui(
-                                size: 12,
-                                color: t.muted,
-                                weight: FontWeight.w700)),
-                      ],
+                              size: 12,
+                              color: t.muted,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: t.muted),
-                ]),
+                    Icon(Icons.chevron_right_rounded, color: t.muted),
+                  ],
+                ),
               ),
             ),
           const SizedBox(height: 12),
@@ -1466,12 +1709,14 @@ void openFreePlay(BuildContext context) {
       MaterialPageRoute<void>(
         builder: (_) => TreeGamePage(
           tier: d.name,
-          onWin: (m, p) {
-            g.recordBranchingWin(GameMode.practice, m, p);
+          timed: timed,
+          onWin: (m, p, div) {
+            g.recordBranchingWin(GameMode.practice, m, p, usedDivision: div);
             return WinRecord(
-                xpGained: g.lastXpGain,
-                level: g.playerLevel,
-                streak: g.streak);
+              xpGained: g.lastXpGain,
+              level: g.playerLevel,
+              streak: g.streak,
+            );
           },
         ),
       ),

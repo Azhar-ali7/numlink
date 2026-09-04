@@ -20,8 +20,8 @@ class GameController extends ChangeNotifier {
     required StatsRepository statsRepo,
     required GameStats initialStats,
     this.calendar = const PuzzleCalendar(),
-  })  : _statsRepo = statsRepo,
-        _stats = initialStats;
+  }) : _statsRepo = statsRepo,
+       _stats = initialStats;
 
   final StatsRepository _statsRepo;
   final PuzzleCalendar calendar;
@@ -72,19 +72,24 @@ class GameController extends ChangeNotifier {
 
   /// Records a daily win into the shared stats (streak + distribution + XP +
   /// achievements). Idempotent per day.
-  void recordDailyWin(int moves, int par) {
+  void recordDailyWin(int moves, int par, {bool usedDivision = false}) {
     final today = _todayIndex();
     if (_stats.lastDailyDay == today) return; // already logged today
     _stats = _stats.recordWin(moves, par, today: today);
     final under = par - moves;
     _awardXp(10 + (under > 0 ? under * 5 : 0));
-    _finishWin(moves - par);
+    _finishWin(moves - par, usedDivision);
   }
 
   /// Folds a branching win for a non-daily mode into the shared stats
   /// (practice/zen counters, archive-solved set). Never touches the streak.
-  void recordBranchingWin(GameMode mode, int moves, int par,
-      {int archiveNo = 0}) {
+  void recordBranchingWin(
+    GameMode mode,
+    int moves,
+    int par, {
+    int archiveNo = 0,
+    bool usedDivision = false,
+  }) {
     switch (mode) {
       case GameMode.practice:
         _stats = _stats.bumpCounter('practice');
@@ -97,18 +102,23 @@ class GameController extends ChangeNotifier {
     }
     final under = par - moves;
     _awardXp(mode == GameMode.zen ? 10 : 10 + (under > 0 ? under * 5 : 0));
-    _finishWin(moves - par);
+    _finishWin(moves - par, usedDivision);
   }
 
   /// Folds a branching campaign-level win into the shared stats: stars from
   /// moves-vs-par (kept as a per-level max), plus XP with the per-star bonus.
   /// Clearing a level unlocks the next.
-  void recordCampaignWin(int no, int moves, int par) {
+  void recordCampaignWin(
+    int no,
+    int moves,
+    int par, {
+    bool usedDivision = false,
+  }) {
     final stars = starsFor(moves, par);
     _stats = _stats.recordLevel(no, stars);
     final under = par - moves;
     _awardXp(10 + (under > 0 ? under * 5 : 0) + (stars - 1) * 5);
-    _finishWin(moves - par);
+    _finishWin(moves - par, usedDivision);
   }
 
   /// Banks one cleared stage of a branching timed run: every stage lifts the
@@ -120,13 +130,17 @@ class GameController extends ChangeNotifier {
       _stats = _stats.bumpCounter('timedRuns');
       _awardXp(stageCompleted * 5);
     }
-    _finishWin(0);
+    _finishWin(0, false);
   }
 
   /// Shared tail for every bridge: re-evaluate achievements, persist, notify.
-  void _finishWin(int scoreOver) {
-    _stats = _stats.withUnlocked(earnedAchievements(
-        _stats, SolveContext(scoreOver: scoreOver, usedDivision: false)));
+  void _finishWin(int scoreOver, bool usedDivision) {
+    _stats = _stats.withUnlocked(
+      earnedAchievements(
+        _stats,
+        SolveContext(scoreOver: scoreOver, usedDivision: usedDivision),
+      ),
+    );
     _statsRepo.save(_stats);
     notifyListeners();
   }
@@ -143,9 +157,15 @@ class GameController extends ChangeNotifier {
   int _todayIndex() => dayIndexOf(DateTime.now());
 
   /// Local-date day index (days since epoch) for streak-gap math and the week
-  /// strip's per-day lookups. Only day-to-day *differences* matter, so a
-  /// constant tz offset is harmless.
+  /// strip's per-day lookups.
+  ///
+  /// The local calendar date is normalised through [DateTime.utc], the same
+  /// way `PuzzleCalendar` does it. Flooring a *local* midnight instead made the
+  /// index depend on the UTC offset, which is not constant across a DST
+  /// transition: in Europe/London, 2024-03-31 and 2024-04-01 both landed on
+  /// 19813 (so the second day's win was dropped as "already logged today"),
+  /// and 10-27 → 10-28 jumped two, reading a consecutive day as a missed one.
   static int dayIndexOf(DateTime d) =>
-      DateTime(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+      DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
       Duration.millisecondsPerDay;
 }

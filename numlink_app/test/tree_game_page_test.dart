@@ -18,37 +18,37 @@ Operation op(String id, String symbol, int n, {int tokens = 3}) =>
 
 /// Solvable in two taps: 2 →×3→ 6 →+1→ 7 (selection auto-follows each move).
 TreePuzzle winnable() => TreePuzzle(
-      tier: 'test',
-      start: 2,
-      targets: const [6, 7],
-      hands: [
-        [op('m', '×', 3), op('p', '+', 1)]
-      ],
-      hints: 1,
-      shuffles: 1,
-      branchMax: 3,
-      par: 3,
-      optimalPar: 2,
-      optimalEdges: const [(2, 6), (6, 7)],
-      dpValid: true,
-    );
+  tier: 'test',
+  start: 2,
+  targets: const [6, 7],
+  hands: [
+    [op('m', '×', 3), op('p', '+', 1)],
+  ],
+  hints: 1,
+  shuffles: 1,
+  branchMax: 3,
+  par: 3,
+  optimalPar: 2,
+  optimalEdges: const [(2, 6), (6, 7)],
+  dpValid: true,
+);
 
 /// One illegal op so the reject toast fires: 5 ÷ 2 is not integer.
 TreePuzzle rejecting() => TreePuzzle(
-      tier: 'test',
-      start: 5,
-      targets: const [1],
-      hands: [
-        [op('d', '÷', 2)]
-      ],
-      hints: 1,
-      shuffles: 0,
-      branchMax: 3,
-      par: 3,
-      optimalPar: 1,
-      optimalEdges: const [],
-      dpValid: true,
-    );
+  tier: 'test',
+  start: 5,
+  targets: const [1],
+  hands: [
+    [op('d', '÷', 2)],
+  ],
+  hints: 1,
+  shuffles: 0,
+  branchMax: 3,
+  par: 3,
+  optimalPar: 1,
+  optimalEdges: const [],
+  dpValid: true,
+);
 
 /// The app shell caps the board at 440px wide; match it so the pad never
 /// overflows the default 800px test window.
@@ -60,13 +60,13 @@ void phone(WidgetTester tester) {
 }
 
 Widget host(Widget child) => MaterialApp(
-      theme: buildTheme(NumTokens.light, Brightness.light),
-      home: MediaQuery(
-        // kill looping animations so pending timers don't trip teardown
-        data: const MediaQueryData(disableAnimations: true),
-        child: child,
-      ),
-    );
+  theme: buildTheme(NumTokens.light, Brightness.light),
+  home: MediaQuery(
+    // kill looping animations so pending timers don't trip teardown
+    data: const MediaQueryData(disableAnimations: true),
+    child: child,
+  ),
+);
 
 void main() {
   testWidgets('a real generated board renders playable', (tester) async {
@@ -78,8 +78,9 @@ void main() {
     expect(find.byType(OperationButton), findsWidgets);
   });
 
-  testWidgets('solving the board shows the win sheet with Play again',
-      (tester) async {
+  testWidgets('solving the board shows the win sheet with Play again', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
     await tester.pumpAndSettle();
@@ -91,8 +92,9 @@ void main() {
     expect(find.text('Play again'), findsOneWidget);
   });
 
-  testWidgets('Play again dismisses the win sheet and deals a fresh board',
-      (tester) async {
+  testWidgets('Play again dismisses the win sheet and deals a fresh board', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
     await tester.pumpAndSettle();
@@ -107,8 +109,9 @@ void main() {
     expect(find.text('0/2'), findsOneWidget); // fresh: nothing reached
   });
 
-  testWidgets('the win sheet swipes down to reveal the board, and back',
-      (tester) async {
+  testWidgets('the win sheet swipes down to reveal the board, and back', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
     await tester.pumpAndSettle();
@@ -120,7 +123,11 @@ void main() {
 
     await tester.fling(find.text('Play again'), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
-    expect(find.text('Play again'), findsNothing, reason: 'collapsed to a pill');
+    expect(
+      find.text('Play again'),
+      findsNothing,
+      reason: 'collapsed to a pill',
+    );
     expect(find.textContaining('2 moves'), findsOneWidget);
 
     await tester.tap(find.textContaining('2 moves'));
@@ -130,14 +137,14 @@ void main() {
 
   // Campaign only: clearing a level should lead into the next one, not send
   // the player back through the roadmap.
-  testWidgets('onNext takes the primary slot and demotes Play again',
-      (tester) async {
+  testWidgets('onNext takes the primary slot and demotes Play again', (
+    tester,
+  ) async {
     phone(tester);
     var next = 0;
-    await tester.pumpWidget(host(TreeGamePage(
-      puzzle: winnable(),
-      onNext: () => next++,
-    )));
+    await tester.pumpWidget(
+      host(TreeGamePage(puzzle: winnable(), onNext: () => next++)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OperationButton, '×3'));
     await tester.pumpAndSettle();
@@ -145,9 +152,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Next level'), findsOneWidget);
-    expect(find.text('Play again'), findsOneWidget, reason: 'demoted, not gone');
+    expect(
+      find.text('Play again'),
+      findsOneWidget,
+      reason: 'demoted, not gone',
+    );
     await tester.tap(find.text('Next level'));
     expect(next, 1);
+  });
+
+  testWidgets('a timed board counts down and ends in the Time\'s up sheet', (
+    tester,
+  ) async {
+    phone(tester);
+    final p = winnable();
+    await tester.pumpWidget(
+      host(TreeGamePage(puzzle: p, timed: true, onWin: null)),
+    );
+    await tester.pump();
+    expect(find.text(clockText(budgetFor(p))), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(clockText(budgetFor(p) - 1)), findsOneWidget);
+
+    // Run the budget out. No win is recorded; the board just freezes.
+    await tester.pump(Duration(seconds: budgetFor(p)));
+    await tester.pump();
+    expect(find.text("Time's up"), findsOneWidget);
+    expect(find.text('0:00'), findsOneWidget);
+
+    // Try again re-arms a full budget.
+    await tester.tap(find.text('Try again'));
+    await tester.pump();
+    expect(find.text("Time's up"), findsNothing);
+    expect(find.text(clockText(budgetFor(p))), findsOneWidget);
   });
 
   testWidgets('onWin fires once with (moves, par) on solve', (tester) async {
@@ -155,15 +193,19 @@ void main() {
     var calls = 0;
     int? gotMoves;
     int? gotPar;
-    await tester.pumpWidget(host(TreeGamePage(
-      puzzle: winnable(),
-      onWin: (m, p) {
-        calls++;
-        gotMoves = m;
-        gotPar = p;
-        return null;
-      },
-    )));
+    await tester.pumpWidget(
+      host(
+        TreeGamePage(
+          puzzle: winnable(),
+          onWin: (m, p, div) {
+            calls++;
+            gotMoves = m;
+            gotPar = p;
+            return null;
+          },
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OperationButton, '×3'));
     await tester.pumpAndSettle();
@@ -174,8 +216,9 @@ void main() {
     expect(gotPar, 3);
   });
 
-  testWidgets('timed page renders stage 1 of the ladder with a live board',
-      (tester) async {
+  testWidgets('timed page renders stage 1 of the ladder with a live board', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(const TimedTreePage()));
     await tester.pump();
@@ -194,17 +237,22 @@ void main() {
     expect(find.textContaining("doesn't divide"), findsOneWidget);
   });
 
-  testWidgets('a kids board is one target, one move, + − × only',
-      (tester) async {
+  testWidgets('a kids board is one target, one move, + − × only', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(const TreeGamePage(tier: 'kids')));
     await tester.pumpAndSettle();
     expect(find.text('Kids'), findsOneWidget);
     expect(find.text('0/1'), findsOneWidget, reason: 'exactly one target');
     for (final b in tester.widgetList<OperationButton>(
-        find.byType(OperationButton))) {
-      expect(['+', '−', '×'], contains(b.op.symbol),
-          reason: 'kids dealt ${b.op.symbol}');
+      find.byType(OperationButton),
+    )) {
+      expect(
+        ['+', '−', '×'],
+        contains(b.op.symbol),
+        reason: 'kids dealt ${b.op.symbol}',
+      );
     }
   });
 
@@ -222,8 +270,9 @@ void main() {
 
   // Handing over the answer on the first look is a spoiler; after two
   // restarts of the same board it's a rescue.
-  testWidgets('Reveal solution appears only after two restarts',
-      (tester) async {
+  testWidgets('Reveal solution appears only after two restarts', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(TreeGamePage(puzzle: winnable())));
     await tester.pumpAndSettle();
@@ -252,8 +301,9 @@ void main() {
     expect(find.text('Reveal solution'), findsNothing);
   });
 
-  testWidgets('changing difficulty deals a board of the new tier',
-      (tester) async {
+  testWidgets('changing difficulty deals a board of the new tier', (
+    tester,
+  ) async {
     phone(tester);
     await tester.pumpWidget(host(const TreeGamePage(tier: 'easy')));
     await tester.pumpAndSettle();
@@ -269,25 +319,33 @@ void main() {
   group('first-board coach marks', () {
     /// The page under a real SettingsController — the tour only mounts when
     /// one is in scope (isolated board tests have no provider, so no overlay).
-    Future<SettingsController> pumpBoard(WidgetTester tester,
-        {bool seen = false}) async {
+    Future<SettingsController> pumpBoard(
+      WidgetTester tester, {
+      bool seen = false,
+    }) async {
       SharedPreferences.setMockInitialValues(
-          seen ? {'coachSeen': true} : <String, Object>{});
+        seen ? {'coachSeen': true} : <String, Object>{},
+      );
       final s = SettingsController(
         prefs: await SharedPreferences.getInstance(),
         feedback: FeedbackService(),
       );
       phone(tester);
-      await tester.pumpWidget(host(ChangeNotifierProvider.value(
-        value: s,
-        child: TreeGamePage(puzzle: winnable()),
-      )));
+      await tester.pumpWidget(
+        host(
+          ChangeNotifierProvider.value(
+            value: s,
+            child: TreeGamePage(puzzle: winnable()),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       return s;
     }
 
-    testWidgets('play through all six steps, then it never comes back',
-        (tester) async {
+    testWidgets('play through all six steps, then it never comes back', (
+      tester,
+    ) async {
       final s = await pumpBoard(tester);
       expect(find.byType(CoachOverlay), findsOneWidget);
       for (var i = 0; i < 5; i++) {
@@ -302,8 +360,7 @@ void main() {
       expect(s.coachSeen, isTrue);
     });
 
-    testWidgets('the spotlighted control still works mid-tour',
-        (tester) async {
+    testWidgets('the spotlighted control still works mid-tour', (tester) async {
       await pumpBoard(tester);
       // Step 3 spotlights the op pad and says "tap an operation" -- so the tap
       // has to reach it. The scrim used to swallow it.

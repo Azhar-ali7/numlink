@@ -37,10 +37,11 @@ class StatsSheet extends StatelessWidget {
               _StatCell(value: '${s.played}', label: 'PLAYED'),
               _StatCell(value: '${s.winRate}', label: 'WIN %'),
               _StatCell(
-                  value: '${g.streak}',
-                  label: 'STREAK',
-                  color: t.success,
-                  flame: true),
+                value: '${g.streak}',
+                label: 'STREAK',
+                color: t.success,
+                flame: true,
+              ),
               _StatCell(value: '${s.maxStreak}', label: 'BEST'),
             ],
           ),
@@ -49,21 +50,26 @@ class StatsSheet extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         entrance(
-            _FreezeCard(freezes: s.freezes, frozenDays: g.streakFrozenDays),
-            on: on,
-            index: 1),
+          _FreezeCard(freezes: s.freezes, frozenDays: g.streakFrozenDays),
+          on: on,
+          index: 1,
+        ),
         const SizedBox(height: 12),
         entrance(
           Row(
             children: [
               Expanded(
                 child: _MetricBox(
-                    label: 'HANDICAP', value: s.handicap.toStringAsFixed(1)),
+                  label: 'HANDICAP',
+                  value: s.handicap.toStringAsFixed(1),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricBox(
-                    label: 'COURSE RECORD', value: s.courseRecord),
+                  label: 'COURSE RECORD',
+                  value: s.courseRecord,
+                ),
               ),
             ],
           ),
@@ -71,13 +77,16 @@ class StatsSheet extends StatelessWidget {
           index: 2,
         ),
         const SizedBox(height: 22),
-        Text('MOVES vs PAR',
-            style: Fonts.ui(
-                size: 11,
-                color: t.muted,
-                weight: FontWeight.w700,
-                letterSpacing: 1.5,
-                height: 1)),
+        Text(
+          'MOVES vs PAR',
+          style: Fonts.ui(
+            size: 11,
+            color: t.muted,
+            weight: FontWeight.w700,
+            letterSpacing: 1.5,
+            height: 1,
+          ),
+        ),
         const SizedBox(height: 12),
         ...GameStats.bucketKeys.map((k) {
           final count = s.dist[k] ?? 0;
@@ -88,9 +97,14 @@ class StatsSheet extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 40,
-                  child: Text(k == 'par' ? 'PAR' : k,
-                      style: Fonts.numeric(
-                          size: 13, color: t.text, weight: FontWeight.w700)),
+                  child: Text(
+                    k == 'par' ? 'PAR' : k,
+                    style: Fonts.numeric(
+                      size: 13,
+                      color: t.text,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -110,11 +124,14 @@ class StatsSheet extends StatelessWidget {
                           color: t.muted,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 8),
-                          child: Text('$count',
-                              style: Fonts.numeric(
-                                  size: 12,
-                                  color: Colors.white,
-                                  weight: FontWeight.w700)),
+                          child: Text(
+                            '$count',
+                            style: Fonts.numeric(
+                              size: 12,
+                              color: Colors.white,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -132,10 +149,7 @@ class StatsSheet extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (final a in kAchievements)
-              _BadgeChip(
-                achievement: a,
-                unlocked: s.unlocked.contains(a.id),
-              ),
+              _BadgeChip(achievement: a, unlocked: s.unlocked.contains(a.id)),
           ],
         ),
       ],
@@ -149,13 +163,16 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
-    return Text(text,
-        style: Fonts.ui(
-            size: 11,
-            color: t.muted,
-            weight: FontWeight.w700,
-            letterSpacing: 1.5,
-            height: 1));
+    return Text(
+      text,
+      style: Fonts.ui(
+        size: 11,
+        color: t.muted,
+        weight: FontWeight.w700,
+        letterSpacing: 1.5,
+        height: 1,
+      ),
+    );
   }
 }
 
@@ -204,26 +221,35 @@ class _FreezeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('$freezes',
-                        style: Fonts.numeric(
-                            size: 20, color: t.text, weight: FontWeight.w700)),
+                    Text(
+                      '$freezes',
+                      style: Fonts.numeric(
+                        size: 20,
+                        color: t.text,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Text('STREAK FREEZE${freezes == 1 ? '' : 'S'}',
-                        style: Fonts.ui(
-                            size: 12,
-                            color: t.text,
-                            weight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            height: 1)),
+                    Text(
+                      'STREAK FREEZE${freezes == 1 ? '' : 'S'}',
+                      style: Fonts.ui(
+                        size: 12,
+                        color: t.text,
+                        weight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        height: 1,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(
-                    frozenDays > 0
-                        ? '$frozenDays holding your streak — play today.'
-                        : 'Banked saves for a missed day (max '
+                  frozenDays > 0
+                      ? '$frozenDays holding your streak — play today.'
+                      : 'Banked saves for a missed day (max '
                             '${GameStats.maxFreezes}).',
-                    style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
+                  style: Fonts.ui(size: 12, color: t.muted, height: 1.3),
+                ),
               ],
             ),
           ),
@@ -253,17 +279,25 @@ class _MetricBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: Fonts.numeric(
-                  size: 22, color: t.text, weight: FontWeight.w700)),
+          Text(
+            value,
+            style: Fonts.numeric(
+              size: 22,
+              color: t.text,
+              weight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 3),
-          Text(label,
-              style: Fonts.ui(
-                  size: 10,
-                  color: t.muted,
-                  weight: FontWeight.w700,
-                  letterSpacing: 1,
-                  height: 1)),
+          Text(
+            label,
+            style: Fonts.ui(
+              size: 10,
+              color: t.muted,
+              weight: FontWeight.w700,
+              letterSpacing: 1,
+              height: 1,
+            ),
+          ),
         ],
       ),
     );
@@ -287,24 +321,38 @@ class _BadgeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: unlocked ? tint(t.success, 0.12) : t.surface,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-              color: unlocked ? t.success : t.border, width: 2),
+          border: Border.all(color: unlocked ? t.success : t.border, width: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(unlocked ? '★' : '☆',
-                style: Fonts.numeric(
-                    size: 13,
-                    color: unlocked ? t.success : t.muted,
-                    weight: FontWeight.w700)),
+            Text(
+              unlocked ? '★' : '☆',
+              style: Fonts.numeric(
+                size: 13,
+                color: unlocked ? t.success : t.muted,
+                weight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(width: 6),
-            Text(achievement.name,
-                style: Fonts.ui(
-                    size: 12.5,
-                    color: unlocked ? t.text : t.muted,
-                    weight: FontWeight.w700,
-                    height: 1)),
+            Text(
+              achievement.name,
+              style: Fonts.ui(
+                size: 12.5,
+                color: unlocked ? t.text : t.muted,
+                weight: FontWeight.w700,
+                height: 1,
+              ),
+            ),
+            // Locked chips used to be a name and nothing else, so there was no
+            // way to learn how to earn one. `desc` was already on the model.
+            if (!unlocked) ...[
+              const SizedBox(width: 6),
+              Text(
+                '· ${achievement.desc}',
+                style: Fonts.ui(size: 11, color: t.muted, height: 1),
+              ),
+            ],
           ],
         ),
       ),
@@ -336,8 +384,14 @@ class _StatCell extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(value,
-                  style: Fonts.numeric(size: 28, color: c, weight: FontWeight.w700)),
+              Text(
+                value,
+                style: Fonts.numeric(
+                  size: 28,
+                  color: c,
+                  weight: FontWeight.w700,
+                ),
+              ),
               if (flame && streak > 0) ...[
                 const SizedBox(width: 4),
                 StreakFlame(streak: streak, color: c, size: 18),
@@ -345,13 +399,16 @@ class _StatCell extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
-          Text(label,
-              style: Fonts.ui(
-                  size: 10,
-                  color: t.muted,
-                  weight: FontWeight.w700,
-                  letterSpacing: 1,
-                  height: 1)),
+          Text(
+            label,
+            style: Fonts.ui(
+              size: 10,
+              color: t.muted,
+              weight: FontWeight.w700,
+              letterSpacing: 1,
+              height: 1,
+            ),
+          ),
         ],
       ),
     );

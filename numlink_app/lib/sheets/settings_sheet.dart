@@ -45,6 +45,14 @@ class SettingsSheet extends StatelessWidget {
           ),
         ),
         _Row(
+          title: 'Orange for success',
+          subtitle: 'Use orange instead of green for solved states',
+          trailing: _Pill(
+            value: s.orangeSuccess,
+            onTap: () => s.setOrangeSuccess(!s.orangeSuccess),
+          ),
+        ),
+        _Row(
           title: 'Show result previews',
           subtitle: 'Preview each operator\'s result under its tile',
           trailing: _Pill(
@@ -85,7 +93,21 @@ class SettingsSheet extends StatelessWidget {
                 'when the new board is up — tap to change the time',
             trailing: _Pill(
               value: s.reminderOn,
-              onTap: () => s.setReminderOn(!s.reminderOn),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                if (await s.setReminderOn(!s.reminderOn)) return;
+                // A denial used to leave the pill sitting there unmoved with no
+                // explanation. SnackBar rather than GameToast: this is a sheet,
+                // not a board, and there is no toast host up here.
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Turn on notifications for NUMLINK in system settings '
+                      'to get the daily reminder.',
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -127,7 +149,7 @@ class SettingsSheet extends StatelessWidget {
           },
           child: _Row(
             title: 'How to play',
-            subtitle: 'Replay the intro and the board tour',
+            subtitle: 'Replay the intro, then the board tour',
             trailing: Icon(Icons.chevron_right, color: t.muted),
           ),
         ),

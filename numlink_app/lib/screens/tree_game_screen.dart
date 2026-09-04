@@ -13,18 +13,22 @@ import '../widgets/radial_board.dart';
 /// Branching-tree game screen: status bar · radial board · op pad.
 /// Reads a [TreeController] from the widget tree.
 class TreeGameScreen extends StatelessWidget {
-  const TreeGameScreen({super.key});
+  const TreeGameScreen({super.key, this.statusKey, this.boardKey, this.padKey});
+
+  /// Optional handles for the first-board coach marks to spotlight. Null
+  /// everywhere else, including every existing const usage.
+  final GlobalKey? statusKey, boardKey, padKey;
 
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
     return ColoredBox(
       color: t.bg,
-      child: const Column(
+      child: Column(
         children: [
-          _StatusBar(),
-          Expanded(child: RadialBoard()),
-          _OpPad(),
+          _StatusBar(key: statusKey),
+          Expanded(child: RadialBoard(key: boardKey)),
+          _OpPad(key: padKey),
         ],
       ),
     );
@@ -32,7 +36,7 @@ class TreeGameScreen extends StatelessWidget {
 }
 
 class _StatusBar extends StatelessWidget {
-  const _StatusBar();
+  const _StatusBar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +113,7 @@ class _StatusBar extends StatelessWidget {
 }
 
 class _OpPad extends StatelessWidget {
-  const _OpPad();
+  const _OpPad({super.key});
 
   @override
   Widget build(BuildContext context) {

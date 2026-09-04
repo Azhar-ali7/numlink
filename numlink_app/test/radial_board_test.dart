@@ -14,20 +14,20 @@ Operation op(String id, String symbol, int n, {int tokens = 3}) =>
     Operation(id: id, symbol: symbol, n: n, tokens: tokens);
 
 TreePuzzle fixture() => TreePuzzle(
-      tier: 'test',
-      start: 2,
-      targets: const [6, 7],
-      hands: [
-        [op('m', '×', 3), op('p', '+', 1)]
-      ],
-      hints: 1,
-      shuffles: 1,
-      branchMax: 3,
-      par: 3,
-      optimalPar: 2,
-      optimalEdges: const [(2, 6), (6, 7)],
-      dpValid: false,
-    );
+  tier: 'test',
+  start: 2,
+  targets: const [6, 7],
+  hands: [
+    [op('m', '×', 3), op('p', '+', 1)],
+  ],
+  hints: 1,
+  shuffles: 1,
+  branchMax: 3,
+  par: 3,
+  optimalPar: 2,
+  optimalEdges: const [(2, 6), (6, 7)],
+  dpValid: false,
+);
 
 /// Match production: the app shell caps the board at 440px wide.
 void phone(WidgetTester tester) {
@@ -38,16 +38,16 @@ void phone(WidgetTester tester) {
 }
 
 Widget host(TreeController c) => MaterialApp(
-      theme: buildTheme(NumTokens.light, Brightness.light),
-      home: MediaQuery(
-        // disable looping animations so pending timers don't trip teardown
-        data: const MediaQueryData(disableAnimations: true),
-        child: ChangeNotifierProvider<TreeController>.value(
-          value: c,
-          child: const Scaffold(body: TreeGameScreen()),
-        ),
-      ),
-    );
+  theme: buildTheme(NumTokens.light, Brightness.light),
+  home: MediaQuery(
+    // disable looping animations so pending timers don't trip teardown
+    data: const MediaQueryData(disableAnimations: true),
+    child: ChangeNotifierProvider<TreeController>.value(
+      value: c,
+      child: const Scaffold(body: TreeGameScreen()),
+    ),
+  ),
+);
 
 void main() {
   group('radial layout', () {
@@ -60,7 +60,10 @@ void main() {
       final pos = radialLayout(nodes);
       expect(pos[0], Offset.zero); // start centred
       expect(pos[1]!.distance, greaterThan(0)); // depth 1 off-centre
-      expect(pos[2]!.distance, greaterThan(pos[1]!.distance)); // deeper = farther
+      expect(
+        pos[2]!.distance,
+        greaterThan(pos[1]!.distance),
+      ); // deeper = farther
     });
 
     test('siblings get distinct angles', () {
@@ -83,8 +86,11 @@ void main() {
     void assertNoOverlap(List<Offset> markers) {
       for (var i = 0; i < markers.length; i++) {
         for (var j = i + 1; j < markers.length; j++) {
-          expect((markers[i] - markers[j]).distance, greaterThanOrEqualTo(minGap),
-              reason: 'markers $i and $j overlap');
+          expect(
+            (markers[i] - markers[j]).distance,
+            greaterThanOrEqualTo(minGap),
+            reason: 'markers $i and $j overlap',
+          );
         }
       }
     }
@@ -99,7 +105,11 @@ void main() {
       ];
       final pos = radialLayout(nodes);
       final g = ghostLayout(
-          missing: const [13, 9], nodes: nodes, nodePos: pos, gap: 120);
+        missing: const [13, 9],
+        nodes: nodes,
+        nodePos: pos,
+        gap: 120,
+      );
       assertNoOverlap([...pos.values, ...g.pos.values]);
     });
 
@@ -107,7 +117,11 @@ void main() {
       final nodes = [const TreeNode(id: 0, v: 6)];
       final pos = radialLayout(nodes);
       final g = ghostLayout(
-          missing: const [13, 9], nodes: nodes, nodePos: pos, gap: 120);
+        missing: const [13, 9],
+        nodes: nodes,
+        nodePos: pos,
+        gap: 120,
+      );
       assertNoOverlap([...pos.values, ...g.pos.values]);
     });
 
@@ -118,7 +132,11 @@ void main() {
       ];
       final pos = radialLayout(nodes);
       final g = ghostLayout(
-          missing: const [7, 8, 9, 10], nodes: nodes, nodePos: pos, gap: 120);
+        missing: const [7, 8, 9, 10],
+        nodes: nodes,
+        nodePos: pos,
+        gap: 120,
+      );
       assertNoOverlap([...pos.values, ...g.pos.values]);
     });
   });
@@ -135,8 +153,9 @@ void main() {
       expect(find.byType(OperationButton), findsNWidgets(2));
     });
 
-    testWidgets('tapping an op places a node and updates reached count',
-        (tester) async {
+    testWidgets('tapping an op places a node and updates reached count', (
+      tester,
+    ) async {
       phone(tester);
       final c = TreeController(fixture())..init();
       await tester.pumpWidget(host(c));
@@ -160,8 +179,45 @@ void main() {
       expect(find.text('2/2'), findsOneWidget);
     });
 
-    testWidgets('a real generated board renders without exceptions',
-        (tester) async {
+    testWidgets('a node far outside the viewport is still tappable', (
+      tester,
+    ) async {
+      phone(tester);
+      // A deep chain makes the canvas taller than the viewport. The board used
+      // to be silently clamped to the viewport by its parent Stack, so chips
+      // past that rect painted but never hit-tested.
+      final c = TreeController(
+        TreePuzzle(
+          tier: 'test',
+          start: 2,
+          targets: const [11],
+          hands: [
+            [op('p', '+', 1, tokens: 12)],
+          ],
+          hints: 0,
+          shuffles: 0,
+          branchMax: 12,
+          par: 12,
+          optimalPar: 12,
+          optimalEdges: const [],
+          dpValid: false,
+        ),
+      )..init();
+      for (var i = 0; i < 8; i++) {
+        c.apply(op('p', '+', 1, tokens: 12));
+      }
+      await tester.pumpWidget(host(c));
+      await tester.pumpAndSettle();
+      expect(c.nodes.last.v, 10);
+      c.select(0); // so the tap below is what moves the selection
+      await tester.tap(find.text('10'));
+      expect(c.sel, c.nodes.last.id, reason: 'the tap selects immediately');
+      await tester.pump(const Duration(seconds: 3)); // drain controller timers
+    });
+
+    testWidgets('a real generated board renders without exceptions', (
+      tester,
+    ) async {
       phone(tester);
       final c = TreeController(buildPuzzle('hard', 7001234))..init();
       await tester.pumpWidget(host(c));

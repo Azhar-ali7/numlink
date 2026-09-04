@@ -89,6 +89,7 @@ class SettingsController extends ChangeNotifier {
     _playerName = _prefs.getString('playerName') ?? 'Player';
     _notificationsSeen = _prefs.getInt('notificationsSeen') ?? 0;
     _tutorialSeen = _prefs.getBool('tutorialSeen') ?? false;
+    _coachSeen = _prefs.getBool('coachSeen') ?? false;
     _tutorialOpen = !_tutorialSeen; // auto-show the intro on first launch
     // Re-arm on every launch: the OS drops pending alarms on reinstall and on
     // some upgrades, and re-scheduling an identical notification is a no-op.
@@ -107,6 +108,11 @@ class SettingsController extends ChangeNotifier {
   // Settings).
   late bool _tutorialSeen;
   bool _tutorialOpen = false;
+
+  // The in-board spotlight tour, shown once on the first board of any mode.
+  // Separate from [_tutorialSeen]: the carousel plays on the home hub before a
+  // board exists, so neither can stand in for the other.
+  late bool _coachSeen;
 
   // The daily-puzzle number whose notifications the player has already read.
   // Every entry in the sheet is derived from the current daily, so one number
@@ -154,8 +160,22 @@ class SettingsController extends ChangeNotifier {
   /// first launch from a Settings "Replay" (drives the first-run Level 1 CTA).
   bool get tutorialSeen => _tutorialSeen;
 
+  /// True once the board walkthrough has been finished or skipped.
+  bool get coachSeen => _coachSeen;
+
+  void markCoachSeen() {
+    if (_coachSeen) return;
+    _coachSeen = true;
+    _prefs.setBool('coachSeen', true);
+    notifyListeners();
+  }
+
   void openTutorial() {
     _tutorialOpen = true;
+    // "Replay the walkthrough" means the whole thing: the carousel here, and
+    // the board tour again on the next board.
+    _coachSeen = false;
+    _prefs.setBool('coachSeen', false);
     notifyListeners();
   }
 

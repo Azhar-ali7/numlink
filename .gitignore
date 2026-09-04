@@ -19,3 +19,6 @@ run.log
 
 # Design handoff reference (local source of truth, not app code)
 design-handoff-current/
+
+# codegraph daemon runtime state — churns on every session
+.codegraph/daemon.pid

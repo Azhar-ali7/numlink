@@ -302,6 +302,22 @@ void main() {
       expect(s.coachSeen, isTrue);
     });
 
+    testWidgets('the spotlighted control still works mid-tour',
+        (tester) async {
+      await pumpBoard(tester);
+      // Step 3 spotlights the op pad and says "tap an operation" -- so the tap
+      // has to reach it. The scrim used to swallow it.
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('Apply an operation'), findsOneWidget);
+      await tester.tap(find.widgetWithText(OperationButton, '×3'));
+      await tester.pumpAndSettle();
+      expect(find.text('1/2'), findsOneWidget);
+      expect(find.byType(CoachOverlay), findsOneWidget, reason: 'tour stays');
+    });
+
     testWidgets('Skip ends it too', (tester) async {
       final s = await pumpBoard(tester);
       await tester.tap(find.text('Skip'));

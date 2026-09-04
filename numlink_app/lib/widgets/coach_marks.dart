@@ -1,3 +1,5 @@
+import 'dart:math' show max;
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -80,46 +82,64 @@ class _CoachOverlayState extends State<CoachOverlay> {
     // overlaps the hole in that case, which is the lesser evil.
     double pad(double v) => v.clamp(16.0, size.height - 260);
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _next,
-      child: Stack(
-        children: [
-          Positioned.fill(
+    // Tap-to-advance lives in four bands *around* the hole, not in one
+    // full-screen catcher: the spotlighted control has to stay usable, or a
+    // step that says "tap an operation" is a lie -- the tap died on the scrim.
+    Widget band(double left, double top, double w, double h) => Positioned(
+      left: left,
+      top: top,
+      width: max(0, w),
+      height: max(0, h),
+      child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _next),
+    );
+
+    return Stack(
+      children: [
+        // IgnorePointer because CustomPainter.hitTest defaults to true, which
+        // would put the scrim back in front of the hole.
+        Positioned.fill(
+          child: IgnorePointer(
             child: CustomPaint(painter: _ScrimPainter(hole: hole)),
           ),
-          if (hole != null)
-            Positioned.fromRect(
-              rect: hole,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: t.progress, width: 2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+        ),
+        if (hole == null)
+          band(0, 0, size.width, size.height)
+        else ...[
+          band(0, 0, size.width, hole.top),
+          band(0, hole.bottom, size.width, size.height - hole.bottom),
+          band(0, hole.top, hole.left, hole.height),
+          band(hole.right, hole.top, size.width - hole.right, hole.height),
+          Positioned.fromRect(
+            rect: hole,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: t.progress, width: 2),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-            ),
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: hole != null && below ? pad(hole.bottom + 14) : 16,
-                bottom: hole != null && !below
-                    ? pad(size.height - hole.top + 14)
-                    : 16,
-              ),
-              child: Align(
-                alignment: hole == null
-                    ? Alignment.center
-                    : (below ? Alignment.topCenter : Alignment.bottomCenter),
-                child: _Card(step: step, state: this),
               ),
             ),
           ),
         ],
-      ),
+        Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: hole != null && below ? pad(hole.bottom + 14) : 16,
+              bottom: hole != null && !below
+                  ? pad(size.height - hole.top + 14)
+                  : 16,
+            ),
+            child: Align(
+              alignment: hole == null
+                  ? Alignment.center
+                  : (below ? Alignment.topCenter : Alignment.bottomCenter),
+              child: _Card(step: step, state: this),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

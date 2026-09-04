@@ -53,6 +53,9 @@ class GameController extends ChangeNotifier {
   /// daily win, so read this anywhere it is shown.
   int get streak => _stats.streakOn(_todayIndex());
 
+  /// >0 while banked freezes are the only thing holding [streak] up.
+  int get streakFrozenDays => _stats.freezeDaysOn(_todayIndex());
+
   // ---- Overlay routing ----------------------------------------------------
 
   void open(SheetOverlay o) {

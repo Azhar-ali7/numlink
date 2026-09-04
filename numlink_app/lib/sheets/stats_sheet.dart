@@ -48,7 +48,10 @@ class StatsSheet extends StatelessWidget {
           index: 0,
         ),
         const SizedBox(height: 16),
-        entrance(_FreezeCard(freezes: s.freezes), on: on, index: 1),
+        entrance(
+            _FreezeCard(freezes: s.freezes, frozenDays: g.streakFrozenDays),
+            on: on,
+            index: 1),
         const SizedBox(height: 12),
         entrance(
           Row(
@@ -156,10 +159,14 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// The banked streak-freeze card: a shield tile + count + one-line copy.
+/// The banked streak-freeze card: a snowflake tile + count + one-line copy
+/// that says outright when a freeze is the only thing holding the streak up.
 class _FreezeCard extends StatelessWidget {
-  const _FreezeCard({required this.freezes});
+  const _FreezeCard({required this.freezes, required this.frozenDays});
   final int freezes;
+
+  /// Missed days a banked freeze is covering right now (0 = streak is live).
+  final int frozenDays;
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +189,11 @@ class _FreezeCard extends StatelessWidget {
               color: tint(t.accent, 0.14),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: const Text('🛡', style: TextStyle(fontSize: 22)),
+            // A Material icon, not an emoji: the shield here was U+1F6E1,
+            // whose default presentation is *text*, so it rendered blank on
+            // devices whose UI font has no glyph for it. An icon always draws,
+            // and takes the tile's own accent.
+            child: Icon(Icons.ac_unit_rounded, size: 24, color: t.accent),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -207,7 +218,11 @@ class _FreezeCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text('Banked saves for a missed day.',
+                Text(
+                    frozenDays > 0
+                        ? '$frozenDays holding your streak — play today.'
+                        : 'Banked saves for a missed day (max '
+                            '${GameStats.maxFreezes}).',
                     style: Fonts.ui(size: 12, color: t.muted, height: 1.3)),
               ],
             ),

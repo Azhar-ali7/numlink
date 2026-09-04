@@ -14,6 +14,7 @@ import '../game/tree_controller.dart';
 import '../game/tree_generator.dart';
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/coach_marks.dart';
 import '../widgets/confetti_overlay.dart';
 import '../widgets/game_toast.dart';
 import 'tree_game_screen.dart';
@@ -109,6 +110,55 @@ class _TreeGamePageState extends State<TreeGamePage> {
   int _restarts = 0;
   late TreeController _c = _make();
 
+  // Spotlight handles for the first-board tour. GlobalKeys, because the
+  // overlay has to read each element's rect from outside its subtree.
+  final _statusKey = GlobalKey();
+  final _boardKey = GlobalKey();
+  final _padKey = GlobalKey();
+  final _actionsKey = GlobalKey();
+  final _menuKey = GlobalKey();
+
+  late final List<CoachStep> _coachSteps = [
+    CoachStep(
+      target: _boardKey,
+      title: 'Start here',
+      body:
+          'START is the number you begin from. The dashed pills are the '
+          'targets you have to reach.',
+    ),
+    CoachStep(
+      target: _boardKey,
+      title: 'Branch from any chip',
+      body:
+          'The highlighted chip is what you are BUILDING from. Tap any '
+          'other chip to branch from it instead.',
+    ),
+    CoachStep(
+      target: _padKey,
+      title: 'Apply an operation',
+      body:
+          'Tap an operation to apply it to the highlighted chip. The badge '
+          'is how many uses you have left.',
+    ),
+    CoachStep(
+      target: _statusKey,
+      title: 'Your progress',
+      body:
+          'Targets reached, moves against par, and how many moves this arm '
+          'has left before it is full.',
+    ),
+    CoachStep(
+      target: _actionsKey,
+      title: 'Stuck?',
+      body: 'Hint glows a legal move. Shuffle deals you a new hand.',
+    ),
+    CoachStep(
+      target: _menuKey,
+      title: 'More options',
+      body: 'Restart the board, change difficulty, or re-read how to play.',
+    ),
+  ];
+
   TreeController _make() {
     final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))
       ..init();
@@ -193,6 +243,13 @@ class _TreeGamePageState extends State<TreeGamePage> {
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
+    // Settings may be absent in isolated widget tests — no provider, no tour.
+    SettingsController? settings;
+    try {
+      settings = context.watch<SettingsController>();
+    } on ProviderNotFoundException {
+      settings = null;
+    }
     return ChangeNotifierProvider<TreeController>.value(
       value: _c,
       child: Scaffold(
@@ -213,9 +270,17 @@ class _TreeGamePageState extends State<TreeGamePage> {
                     onRestart: _restart,
                     // Null until the player has restarted twice — see _restarts.
                     onSolution: _restarts >= 2 ? _showSolution : null,
+                    actionsKey: _actionsKey,
+                    menuKey: _menuKey,
                   ),
                   if (widget.coop) const _CoopBanner(),
-                  const Expanded(child: TreeGameScreen()),
+                  Expanded(
+                    child: TreeGameScreen(
+                      statusKey: _statusKey,
+                      boardKey: _boardKey,
+                      padKey: _padKey,
+                    ),
+                  ),
                 ],
               ),
               // reject / shuffle status line, floated above the pad
@@ -231,6 +296,13 @@ class _TreeGamePageState extends State<TreeGamePage> {
               ),
               // confetti sits above the board, below the sheet
               Positioned.fill(child: ConfettiOverlay(pulse: _confetti)),
+              if (settings != null && !settings.coachSeen)
+                Positioned.fill(
+                  child: CoachOverlay(
+                    steps: _coachSteps,
+                    onDone: settings.markCoachSeen,
+                  ),
+                ),
               Consumer<TreeController>(
                 builder: (_, c, __) => c.solved
                     ? _WinSheet(
@@ -263,8 +335,13 @@ class _Header extends StatelessWidget {
     required this.onRestart,
     required this.onSolution,
     this.title,
+    this.actionsKey,
+    this.menuKey,
   });
   final String tier;
+
+  /// Coach-mark handles: the hint/shuffle pair and the ⋯ button.
+  final GlobalKey? actionsKey, menuKey;
   final String? title;
   final VoidCallback onNew;
 
@@ -313,11 +390,14 @@ class _Header extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          const _BoardActions(),
-          _RoundIconBtn(
-            key: const Key('difficulty'),
-            icon: Icons.more_horiz_rounded,
-            onTap: () => _showOverflow(context),
+          _BoardActions(key: actionsKey),
+          KeyedSubtree(
+            key: menuKey,
+            child: _RoundIconBtn(
+              key: const Key('difficulty'),
+              icon: Icons.more_horiz_rounded,
+              onTap: () => _showOverflow(context),
+            ),
           ),
         ],
       ),
@@ -558,7 +638,7 @@ class _OverflowMenu extends StatelessWidget {
 /// Shuffle + hint round icon buttons with remaining-count badges. Reads the
 /// board [TreeController], so it drops into either game header.
 class _BoardActions extends StatelessWidget {
-  const _BoardActions();
+  const _BoardActions({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1147,7 +1227,9 @@ class _WinSheetState extends State<_WinSheet> {
                         children: [
                           Expanded(
                             child: _action(
-                              label: onNext == null ? 'Play again' : 'Next level',
+                              label: onNext == null
+                                  ? 'Play again'
+                                  : 'Next level',
                               bg: t.success,
                               fg: Colors.white,
                               onTap: onNext ?? onPlayAgain,
@@ -1185,8 +1267,10 @@ class _WinSheetState extends State<_WinSheet> {
                                 ),
                               ),
                             ),
-                            Text('·',
-                                style: Fonts.ui(size: 13, color: t.muted)),
+                            Text(
+                              '·',
+                              style: Fonts.ui(size: 13, color: t.muted),
+                            ),
                           ],
                           TextButton(
                             onPressed: () => Navigator.of(context).maybePop(),

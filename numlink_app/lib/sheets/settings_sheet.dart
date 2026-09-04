@@ -127,7 +127,7 @@ class SettingsSheet extends StatelessWidget {
           },
           child: _Row(
             title: 'How to play',
-            subtitle: 'Replay the intro walkthrough',
+            subtitle: 'Replay the intro and the board tour',
             trailing: Icon(Icons.chevron_right, color: t.muted),
           ),
         ),

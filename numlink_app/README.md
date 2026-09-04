@@ -17,7 +17,14 @@ Flutter recreation of the `NUMLINK.dc.html` design handoff (see the repo-root
 - **Archive** — replay any past daily.
 
 Per-mode stats, streaks, achievements, and a next-daily countdown. A first-run
-intro carousel introduces the rules and is replayable from Settings.
+intro carousel introduces the rules, and a six-step spotlight tour points at the
+board itself the first time you open one; both replay from Settings -> How to
+play.
+
+Streaks survive a missed day only while a banked freeze covers it. Freezes are
+earned at streak milestones and capped at two, so a third missed day always
+breaks the run -- and the streak reads "frozen" on Home and in Stats while a
+freeze is what is holding it up, rather than showing a healthy flame.
 
 ## Run
 

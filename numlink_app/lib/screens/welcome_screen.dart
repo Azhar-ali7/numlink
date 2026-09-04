@@ -648,6 +648,7 @@ class _WeekStripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
     final streak = g.streak;
+    final frozen = g.streakFrozenDays;
     final today = DateTime.now();
 
     return Container(
@@ -698,9 +699,15 @@ class _WeekStripCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('🔥', style: TextStyle(fontSize: 12)),
+                    // A frozen streak is alive only because banked freezes are
+                    // covering the missed days — say so here rather than let
+                    // the flame imply the player never missed one.
+                    if (frozen > 0)
+                      Icon(Icons.ac_unit_rounded, size: 13, color: t.progress)
+                    else
+                      const Text('🔥', style: TextStyle(fontSize: 12)),
                     const SizedBox(width: 5),
-                    Text('$streak',
+                    Text(frozen > 0 ? '$streak · frozen' : '$streak',
                         style: Fonts.ui(
                             size: 12, color: t.text, weight: FontWeight.w800)),
                     const SizedBox(width: 8),

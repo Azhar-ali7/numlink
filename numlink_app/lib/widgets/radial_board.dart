@@ -36,8 +36,9 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
   final leaves = <int, int>{};
   int countLeaves(int id) {
     final ks = kids[id] ?? const [];
-    return leaves[id] =
-        ks.isEmpty ? 1 : ks.fold(0, (s, k) => s + countLeaves(k));
+    return leaves[id] = ks.isEmpty
+        ? 1
+        : ks.fold(0, (s, k) => s + countLeaves(k));
   }
 
   countLeaves(0);
@@ -84,7 +85,10 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
   // end), never the trunk — anchoring to an interior node draws the dashed
   // connector back across that node's own children (the crossing lines the
   // player saw when START, the trunk, was the nearest value to a target).
-  final parents = {for (final n in nodes) if (n.parent != null) n.parent!};
+  final parents = {
+    for (final n in nodes)
+      if (n.parent != null) n.parent!,
+  };
   final candidates = nodes.where((n) => !parents.contains(n.id)).toList();
   final tips = candidates.isEmpty ? nodes : candidates; // START alone is a leaf
   final anchorOf = <int, TreeNode>{}; // target value → anchor node (a tip)
@@ -110,7 +114,7 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
   // ~120px out, so same-angle/same-radius = overlap).
   final anchorHasChild = {
     for (final n in nodes)
-      if (n.parent != null) n.parent!
+      if (n.parent != null) n.parent!,
   };
   // Recover each node's polar angle from its placed offset; the start sits at
   // the origin, where the layout points straight down (+y = down).
@@ -123,6 +127,7 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
     final step = idx ~/ 2 + 1;
     return idx.isEven ? step.toDouble() : -step.toDouble();
   }
+
   // Every placed node is a fixed obstacle; ghosts are added as they're placed.
   final obstacles = [for (final n in nodes) nodePos[n.id]!];
   final seen = <int, int>{};
@@ -135,14 +140,17 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
     seen[aId] = idx + 1;
     var radius = ap.distance + gap + max(0, count - 2) * 26;
     final spacing = max(0.36, 104 / max(radius, 60));
-    final angle = angleOf(ap) +
+    final angle =
+        angleOf(ap) +
         slotOffset(idx, count, anchorHasChild.contains(aId)) * spacing;
     var p = Offset(cos(angle) * radius, sin(angle) * radius);
     // De-overlap safety net: if the ghost still lands on a node or an earlier
     // ghost, slide it outward along its own ray until it clears (bounded).
-    for (var guard = 0;
-        guard < 64 && obstacles.any((q) => (q - p).distance < minDist);
-        guard++) {
+    for (
+      var guard = 0;
+      guard < 64 && obstacles.any((q) => (q - p).distance < minDist);
+      guard++
+    ) {
       radius += minDist * 0.5;
       p = Offset(cos(angle) * radius, sin(angle) * radius);
     }
@@ -157,8 +165,13 @@ Map<int, Offset> radialLayout(List<TreeNode> nodes) {
 
 /// Multi-target coloring (prototype `TARGET_HUES`). Themed success/progress
 /// first, then three fixed brand accents.
-List<Color> targetHues(NumTokens t) =>
-    [t.success, t.progress, t.accent, t.hero, t.heroTwo];
+List<Color> targetHues(NumTokens t) => [
+  t.success,
+  t.progress,
+  t.accent,
+  t.hero,
+  t.heroTwo,
+];
 
 /// The branching board: a radial tree of placed values with the outstanding
 /// targets floated as ghost pills around the rim. Auto-fits by easing a
@@ -194,14 +207,19 @@ class _RadialBoardState extends State<RadialBoard> {
 
     final pos = radialLayout(g.nodes);
     final gap = ringGapFor(g.nodes.length);
-    final missing =
-        targets.where((tt) => !g.nodes.any((n) => n.v == tt)).toList();
+    final missing = targets
+        .where((tt) => !g.nodes.any((n) => n.v == tt))
+        .toList();
 
     // Ghost targets anchor to the existing node nearest in value, then fan out
     // around that node's own angle past the outer ring — so they trail the arm
     // they'd extend rather than scattering on a full circle (prototype math).
     final ghosts = ghostLayout(
-        missing: missing, nodes: g.nodes, nodePos: pos, gap: gap);
+      missing: missing,
+      nodes: g.nodes,
+      nodePos: pos,
+      gap: gap,
+    );
     final ghostPos = ghosts.pos;
     final ghostAnchor = ghosts.anchor;
 
@@ -219,12 +237,12 @@ class _RadialBoardState extends State<RadialBoard> {
     final canvas = Size(maxX - minX, maxY - minY);
 
     Widget slot(Offset center, double w, double h, Widget child) => Positioned(
-          left: center.dx + shift.dx - w / 2,
-          top: center.dy + shift.dy - h / 2,
-          width: w,
-          height: h,
-          child: Center(child: child),
-        );
+      left: center.dx + shift.dx - w / 2,
+      top: center.dy + shift.dy - h / 2,
+      width: w,
+      height: h,
+      child: Center(child: child),
+    );
 
     final children = <Widget>[
       Positioned.fill(
@@ -243,11 +261,19 @@ class _RadialBoardState extends State<RadialBoard> {
       ),
       for (final n in g.nodes)
         if (n.parent != null && n.opLabel != null)
-          slot((pos[n.parent!]! + pos[n.id]!) / 2, 90, 30,
-              _EdgeLabel(text: n.opLabel!, hue: hueOf(n.v) ?? t.border)),
+          slot(
+            (pos[n.parent!]! + pos[n.id]!) / 2,
+            90,
+            30,
+            _EdgeLabel(text: n.opLabel!, hue: hueOf(n.v) ?? t.border),
+          ),
       for (final v in missing)
-        slot(ghostPos[v]!, 100, 64,
-            _GhostPill(value: v, hue: hueOf(v) ?? t.muted)),
+        slot(
+          ghostPos[v]!,
+          100,
+          64,
+          _GhostPill(value: v, hue: hueOf(v) ?? t.muted),
+        ),
       for (final n in g.nodes)
         slot(
           pos[n.id]!,
@@ -274,39 +300,62 @@ class _RadialBoardState extends State<RadialBoard> {
       minScale: 0.4,
       maxScale: 3,
       boundaryMargin: const EdgeInsets.all(400),
-      child: GestureDetector(
-        onDoubleTap: () => _tc.value = Matrix4.identity(),
-        // Auto-fit that EASES. Each move we recompute the transform that scales
-        // the tight canvas into the viewport and centres it, then animate the
-        // Matrix4 to it — so the board smoothly zooms/pans to its new fit
-        // instead of the abrupt jump ("expanding randomly") a plain FittedBox
-        // gave. InteractiveViewer still layers manual pan/zoom on top.
-        child: LayoutBuilder(
-          builder: (context, box) {
-            final scale = min(
-                box.maxWidth / canvas.width, box.maxHeight / canvas.height);
-            final fit = Matrix4.identity()
-              ..translateByDouble((box.maxWidth - canvas.width * scale) / 2,
-                  (box.maxHeight - canvas.height * scale) / 2, 0, 1)
-              ..scaleByDouble(scale, scale, 1, 1);
-            // The Transform paints the board at the fit position/scale, but a
-            // raw Transform reports its child's UNSCALED size to layout (unlike
-            // FittedBox) — so hold it in a viewport-sized Stack, which lays the
-            // board out at its own canvas size and lets the matrix do the rest.
-            Widget wrap(Matrix4 m) => SizedBox(
-                  width: box.maxWidth,
-                  height: box.maxHeight,
-                  child: Stack(children: [Transform(transform: m, child: board)]),
-                );
-            if (reducedMotion(context)) return wrap(fit);
-            return TweenAnimationBuilder<Matrix4>(
-              tween: Matrix4Tween(end: fit),
-              duration: Motion.standard,
-              curve: Curves.easeOutCubic,
-              builder: (context, m, child) => wrap(m),
-            );
-          },
-        ),
+      // No double-tap-to-reset: an ancestor double-tap recognizer holds the
+      // gesture arena for kDoubleTapTimeout, so every node tap under it only
+      // fired ~300ms late and the board felt unresponsive. Pinch/pan is bounded
+      // by boundaryMargin, and each move re-fits, so the reset earned little.
+      // Auto-fit that EASES. Each move we recompute the transform that scales
+      // the tight canvas into the viewport and centres it, then animate the
+      // Matrix4 to it — so the board smoothly zooms/pans to its new fit
+      // instead of the abrupt jump ("expanding randomly") a plain FittedBox
+      // gave. InteractiveViewer still layers manual pan/zoom on top.
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final scale = min(
+            box.maxWidth / canvas.width,
+            box.maxHeight / canvas.height,
+          );
+          final fit = Matrix4.identity()
+            ..translateByDouble(
+              (box.maxWidth - canvas.width * scale) / 2,
+              (box.maxHeight - canvas.height * scale) / 2,
+              0,
+              1,
+            )
+            ..scaleByDouble(scale, scale, 1, 1);
+          // The Transform paints the board at the fit position/scale, but a
+          // raw Transform reports its child's UNSCALED size to layout (unlike
+          // FittedBox) — so it needs a viewport-sized box around it. NOT a
+          // Stack: a Stack loosens a non-positioned child to the viewport,
+          // which silently clamped the board once the tree outgrew the
+          // screen. It still painted right (Clip.none), but every chip
+          // outside the clamped rect failed hit testing — RenderBox.hitTest
+          // gates on the clamped size — so far nodes stopped selecting.
+          // OverflowBox lets the board lay out at its full canvas size;
+          // topLeft because the matrix already does the centring.
+          Widget wrap(Matrix4 m) => SizedBox(
+            width: box.maxWidth,
+            height: box.maxHeight,
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              // min 0 as well: the incoming constraints are tight, so
+              // overriding only the max leaves min > max on a canvas
+              // smaller than the viewport.
+              minWidth: 0,
+              minHeight: 0,
+              maxWidth: canvas.width,
+              maxHeight: canvas.height,
+              child: Transform(transform: m, child: board),
+            ),
+          );
+          if (reducedMotion(context)) return wrap(fit);
+          return TweenAnimationBuilder<Matrix4>(
+            tween: Matrix4Tween(end: fit),
+            duration: Motion.standard,
+            curve: Curves.easeOutCubic,
+            builder: (context, m, child) => wrap(m),
+          );
+        },
       ),
     );
   }
@@ -333,8 +382,14 @@ class _EdgePainter extends CustomPainter {
   final Color border, muted;
 
   /// Draws a dashed segment from a→b (already shifted into canvas space).
-  void _dashed(Canvas canvas, Offset a, Offset b, Paint paint,
-      {double dash = 7, double gap = 6}) {
+  void _dashed(
+    Canvas canvas,
+    Offset a,
+    Offset b,
+    Paint paint, {
+    double dash = 7,
+    double gap = 6,
+  }) {
     final dir = b - a;
     final len = dir.distance;
     if (len == 0) return;
@@ -425,8 +480,7 @@ class _NodeChip extends StatelessWidget {
     // The selected node keeps its sibling fill (a plain elevated square); it's
     // marked current by the ring + glow below, not by a loud amber block.
     final Color fill = isStart ? t.hero : (isTarget ? hue! : t.elevated);
-    final Color numColor =
-        (isStart || isTarget) ? Colors.white : t.text;
+    final Color numColor = (isStart || isTarget) ? Colors.white : t.text;
     final badge = isTarget
         ? 'TARGET ✓'
         : (isStart ? 'START' : (isSelected ? 'BUILDING' : ''));
@@ -437,14 +491,16 @@ class _NodeChip extends StatelessWidget {
     final chip = GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: BoxConstraints(minWidth: isStart ? 64 : (isPlain ? 38 : 54)),
+        constraints: BoxConstraints(
+          minWidth: isStart ? 64 : (isPlain ? 38 : 54),
+        ),
         width: isStart ? 64 : null,
         height: isStart ? 64 : null,
         padding: isStart
             ? EdgeInsets.zero
             : (isPlain
-                ? const EdgeInsets.symmetric(horizontal: 7, vertical: 4)
-                : const EdgeInsets.symmetric(horizontal: 11, vertical: 7)),
+                  ? const EdgeInsets.symmetric(horizontal: 7, vertical: 4)
+                  : const EdgeInsets.symmetric(horizontal: 11, vertical: 7)),
         // Only START gets an alignment: it has a fixed 64×64 box that needs its
         // content centred. On the others a non-null alignment makes Container
         // expand to fill its loose constraints — i.e. the whole 100×92 slot —
@@ -473,35 +529,43 @@ class _NodeChip extends StatelessWidget {
           boxShadow: isStart
               ? [
                   BoxShadow(
-                      color: tint(t.hero, 0.28),
-                      blurRadius: 0,
-                      spreadRadius: 4),
+                    color: tint(t.hero, 0.28),
+                    blurRadius: 0,
+                    spreadRadius: 4,
+                  ),
                 ]
               : isSelected
-                  ? [
-                      BoxShadow(
-                          color: tint(isTarget ? hue! : t.progress, 0.30),
-                          blurRadius: 12)
-                    ]
-                  : null,
+              ? [
+                  BoxShadow(
+                    color: tint(isTarget ? hue! : t.progress, 0.30),
+                    blurRadius: 12,
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${node.v}',
-                style: Fonts.numeric(
-                    size: isStart ? 21 : (isPlain ? 14 : 19),
-                    color: numColor,
-                    weight: FontWeight.w800,
-                    height: 1)),
+            Text(
+              '${node.v}',
+              style: Fonts.numeric(
+                size: isStart ? 21 : (isPlain ? 14 : 19),
+                color: numColor,
+                weight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
             if (badge.isNotEmpty)
-              Text(badge,
-                  style: Fonts.ui(
-                      size: isPlain ? 7 : 9,
-                      color: (isTarget || isStart) ? Colors.white : ring,
-                      weight: FontWeight.w800,
-                      letterSpacing: isPlain ? 0.4 : 1.3,
-                      height: 1.4)),
+              Text(
+                badge,
+                style: Fonts.ui(
+                  size: isPlain ? 7 : 9,
+                  color: (isTarget || isStart) ? Colors.white : ring,
+                  weight: FontWeight.w800,
+                  letterSpacing: isPlain ? 0.4 : 1.3,
+                  height: 1.4,
+                ),
+              ),
           ],
         ),
       ),
@@ -540,15 +604,21 @@ class _EdgeLabel extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         boxShadow: t.cardShadow,
       ),
-      child: Text(text,
-          style: Fonts.numeric(size: 12, color: hue, weight: FontWeight.w800)),
+      child: Text(
+        text,
+        style: Fonts.numeric(size: 12, color: hue, weight: FontWeight.w800),
+      ),
     );
     if (reducedMotion(context)) return pill;
     return pill
         .animate()
         .fadeIn(duration: 120.ms)
-        .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1),
-            duration: 200.ms, curve: Motion.overshoot);
+        .scale(
+          begin: const Offset(0.8, 0.8),
+          end: const Offset(1, 1),
+          duration: 200.ms,
+          curve: Motion.overshoot,
+        );
   }
 }
 
@@ -571,16 +641,25 @@ class _GhostPill extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$value',
-                style: Fonts.numeric(
-                    size: 24, color: hue, weight: FontWeight.w800, height: 1)),
-            Text('TARGET',
-                style: Fonts.ui(
-                    size: 9,
-                    color: hue,
-                    weight: FontWeight.w800,
-                    letterSpacing: 1.3,
-                    height: 1.5)),
+            Text(
+              '$value',
+              style: Fonts.numeric(
+                size: 24,
+                color: hue,
+                weight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+            Text(
+              'TARGET',
+              style: Fonts.ui(
+                size: 9,
+                color: hue,
+                weight: FontWeight.w800,
+                letterSpacing: 1.3,
+                height: 1.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -589,10 +668,11 @@ class _GhostPill extends StatelessWidget {
       pill = pill
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(
-              begin: const Offset(1, 1),
-              end: const Offset(1.06, 1.06),
-              duration: 1400.ms,
-              curve: Curves.easeInOut);
+            begin: const Offset(1, 1),
+            end: const Offset(1.06, 1.06),
+            duration: 1400.ms,
+            curve: Curves.easeInOut,
+          );
     }
     return pill;
   }
@@ -619,7 +699,9 @@ class _DashedRRectPainter extends CustomPainter {
       var d = 0.0;
       while (d < metric.length) {
         canvas.drawPath(
-            metric.extractPath(d, min(d + dash, metric.length)), paint);
+          metric.extractPath(d, min(d + dash, metric.length)),
+          paint,
+        );
         d += dash + gap;
       }
     }

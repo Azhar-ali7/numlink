@@ -1,4 +1,4 @@
-import 'dart:math' show max;
+import 'dart:math' show max, min;
 
 /// Persisted player statistics, mirroring the prototype's `numlink_stats`
 /// localStorage shape.
@@ -111,9 +111,15 @@ class GameStats {
         lastDailyDay: lastDailyDay,
       );
 
+  /// Most freezes a player may bank. Uncapped, milestones re-trigger after
+  /// every break, so a long-running player accumulated an unbounded immunity:
+  /// missed days vanished with nothing on screen to say why the streak lived.
+  static const int maxFreezes = 2;
+
   /// Streak-freezes banked (earned at streak milestones, spent to survive a
-  /// missed day).
-  int get freezes => counters['freezes'] ?? 0;
+  /// missed day). Clamped on read so saves written before the cap migrate
+  /// themselves.
+  int get freezes => min(maxFreezes, counters['freezes'] ?? 0);
 
   /// Total campaign stars earned (max 3 × level count).
   int get campaignStars =>
@@ -209,6 +215,16 @@ class GameStats {
     return missed <= freezes ? streak : 0;
   }
 
+  /// How many missed days a banked freeze is currently covering (0 when the
+  /// streak is live, or already dead). Read-only like [streakOn] — nothing is
+  /// spent until the next daily win records — but it lets the UI say the
+  /// streak is on life support instead of showing it as healthy.
+  int freezeDaysOn(int today) {
+    if (lastDailyDay == 0) return 0;
+    final missed = today - lastDailyDay - 1;
+    return missed > 0 && missed <= freezes ? missed : 0;
+  }
+
   /// Records a daily win of [moves] against [par]. [today] is the day-index of
   /// the solve (days since epoch); when given it makes the streak *honest*:
   /// same day → unchanged, next day → +1, a gap → reset to 1 unless enough
@@ -234,7 +250,9 @@ class GameStats {
         nextStreak = 1; // streak broken
       }
     }
-    if (freezeMilestones.contains(nextStreak)) freezes += 1;
+    if (freezeMilestones.contains(nextStreak)) {
+      freezes = min(maxFreezes, freezes + 1);
+    }
 
     final newDist = Map<String, int>.from(dist);
     final key = bucketFor(moves, par);

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:numlink_app/data/settings_controller.dart';
 import 'package:numlink_app/game/tree_generator.dart';
 import 'package:numlink_app/models/operation.dart';
 import 'package:numlink_app/screens/tree_game_page.dart';
+import 'package:numlink_app/services/feedback_service.dart';
 import 'package:numlink_app/theme/app_theme.dart';
 import 'package:numlink_app/theme/tokens.dart';
+import 'package:numlink_app/widgets/coach_marks.dart';
 import 'package:numlink_app/widgets/operation_button.dart';
 import 'package:numlink_app/widgets/radial_board.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Operation op(String id, String symbol, int n, {int tokens = 3}) =>
     Operation(id: id, symbol: symbol, n: n, tokens: tokens);
@@ -259,5 +264,58 @@ void main() {
     expect(tester.takeException(), isNull);
     // header reflects the new tier, under its player-facing name
     expect(find.text('Expert'), findsOneWidget);
+  });
+
+  group('first-board coach marks', () {
+    /// The page under a real SettingsController — the tour only mounts when
+    /// one is in scope (isolated board tests have no provider, so no overlay).
+    Future<SettingsController> pumpBoard(WidgetTester tester,
+        {bool seen = false}) async {
+      SharedPreferences.setMockInitialValues(
+          seen ? {'coachSeen': true} : <String, Object>{});
+      final s = SettingsController(
+        prefs: await SharedPreferences.getInstance(),
+        feedback: FeedbackService(),
+      );
+      phone(tester);
+      await tester.pumpWidget(host(ChangeNotifierProvider.value(
+        value: s,
+        child: TreeGamePage(puzzle: winnable()),
+      )));
+      await tester.pumpAndSettle();
+      return s;
+    }
+
+    testWidgets('play through all six steps, then it never comes back',
+        (tester) async {
+      final s = await pumpBoard(tester);
+      expect(find.byType(CoachOverlay), findsOneWidget);
+      for (var i = 0; i < 5; i++) {
+        expect(find.text('Next'), findsOneWidget, reason: 'step ${i + 1} of 6');
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('Got it'), findsOneWidget);
+      await tester.tap(find.text('Got it'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoachOverlay), findsNothing);
+      expect(s.coachSeen, isTrue);
+    });
+
+    testWidgets('Skip ends it too', (tester) async {
+      final s = await pumpBoard(tester);
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoachOverlay), findsNothing);
+      expect(s.coachSeen, isTrue);
+    });
+
+    testWidgets('once seen, the board is immediately playable', (tester) async {
+      await pumpBoard(tester, seen: true);
+      expect(find.byType(CoachOverlay), findsNothing);
+      await tester.tap(find.widgetWithText(OperationButton, '×3'));
+      await tester.pumpAndSettle();
+      expect(find.text('1/2'), findsOneWidget); // the tap landed on the board
+    });
   });
 }

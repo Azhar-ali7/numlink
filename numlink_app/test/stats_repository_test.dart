@@ -103,11 +103,33 @@ void main() {
     });
 
     test('freezes are spent per missed day, not per gap', () {
-      // 3 days missed: two freezes are not enough, three are.
-      expect(at(5, 100, freezes: 2).recordWin(3, 3, today: 104).streak, 1);
-      final saved = at(5, 100, freezes: 3).recordWin(3, 3, today: 104);
+      // 2 days missed: one freeze is not enough, two are.
+      expect(at(5, 100, freezes: 1).recordWin(3, 3, today: 103).streak, 1);
+      final saved = at(5, 100, freezes: 2).recordWin(3, 3, today: 103);
       expect(saved.streak, 6);
       expect(saved.freezes, 0);
+    });
+
+    test('the bank is capped, so a 3-day gap always breaks the streak', () {
+      // Even a save written before the cap only counts for maxFreezes.
+      final hoarder = at(20, 100, freezes: 9);
+      expect(hoarder.freezes, GameStats.maxFreezes);
+      expect(hoarder.streakOn(104), 0, reason: '3 missed > 2 covered');
+      expect(hoarder.recordWin(3, 3, today: 104).streak, 1);
+      // Milestones can never push the bank past the cap either.
+      var s = at(2, 100, freezes: GameStats.maxFreezes);
+      s = s.recordWin(3, 3, today: 101); // → streak 3, a milestone
+      expect(s.freezes, GameStats.maxFreezes);
+    });
+
+    test('freezeDaysOn reports what the freezes are covering', () {
+      final s = at(10, 100, freezes: 2);
+      expect(s.freezeDaysOn(100), 0, reason: 'solved today');
+      expect(s.freezeDaysOn(101), 0, reason: 'nothing missed yet');
+      expect(s.freezeDaysOn(102), 1, reason: 'one missed day, covered');
+      expect(s.freezeDaysOn(103), 2, reason: 'two missed, both covered');
+      expect(s.freezeDaysOn(104), 0, reason: 'three missed — dead, not frozen');
+      expect(s.streakOn(104), 0);
     });
 
     test('streakOn decays the shown streak before the next win lands', () {
@@ -116,6 +138,7 @@ void main() {
       expect(s.streakOn(101), 10, reason: 'still live, nothing missed yet');
       expect(s.streakOn(102), 10, reason: 'one missed day, one banked freeze');
       expect(s.streakOn(103), 0, reason: 'two missed, only one freeze — dead');
+      expect(s.freezeDaysOn(102), 1, reason: 'and the UI can say it is frozen');
       expect(s.streak, 10, reason: 'nothing is spent until a win records');
     });
 

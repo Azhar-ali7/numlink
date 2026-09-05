@@ -79,7 +79,7 @@ class TreeController extends ChangeNotifier {
   /// Show a transient status line that auto-clears after 1.6s, cancelling any
   /// prior auto-clear (prototype `flash`). Non-transient states (solved) set
   /// [message] directly.
-  void _flash(String msg) {
+  void flash(String msg) {
     message = msg;
     _msgTimer?.cancel();
     _msgTimer = Timer(const Duration(milliseconds: 1600), () {
@@ -114,6 +114,11 @@ class TreeController extends ChangeNotifier {
   int get nextId => _nextId;
   List<Operation> get hand => puzzle.hands[handIndex % puzzle.hands.length];
 
+  /// True once any node on the board was reached by dividing. Read at solve
+  /// time for the "Purist" badge, which used to be handed out on every win
+  /// because nothing ever set the flag.
+  bool get usedDivision => nodes.any((n) => n.opSig?.startsWith('÷') ?? false);
+
   /// Value of the currently selected node (what the next op builds from).
   int get selValue => _selNode.v;
 
@@ -125,8 +130,7 @@ class TreeController extends ChangeNotifier {
   int get moves => nodes.length - 1;
 
   /// Moves still allowed on the selected arm before it hits [branchMax].
-  int get armLeft =>
-      (branchMax - depthOf(_selNode)).clamp(0, branchMax);
+  int get armLeft => (branchMax - depthOf(_selNode)).clamp(0, branchMax);
 
   TreeNode get _selNode => nodes.firstWhere((n) => n.id == sel);
 
@@ -168,15 +172,15 @@ class TreeController extends ChangeNotifier {
   /// duplicating these conditions in [hint] is exactly how it ended up
   /// suggesting values already on the board.
   ({int? r, String? why}) _legality(
-      TreeNode from, Operation o, Map<String, int> used) {
+    TreeNode from,
+    Operation o,
+    Map<String, int> used,
+  ) {
     if ((used[o.opSig] ?? 0) >= o.tokens) {
       return (r: null, why: 'No ${o.label} tokens left');
     }
     if (depthOf(from) >= branchMax) {
-      return (
-        r: null,
-        why: 'This arm is at its $branchMax-move limit'
-      );
+      return (r: null, why: 'This arm is at its $branchMax-move limit');
     }
     final r = compute(from.v, o);
     if (r == null) {
@@ -186,7 +190,7 @@ class TreeController extends ChangeNotifier {
           '÷' => "That doesn't divide evenly",
           '√' => 'Not a perfect square',
           _ => 'That goes out of range',
-        }
+        },
       );
     }
     if (r == from.v) return (r: null, why: 'That leaves ${from.v} unchanged');
@@ -198,7 +202,11 @@ class TreeController extends ChangeNotifier {
 
   /// The board [from] + [o] would produce, paired with the token map after it.
   (List<TreeNode>, Map<String, int>) _boardAfter(
-      TreeNode from, Operation o, int r, Map<String, int> used) {
+    TreeNode from,
+    Operation o,
+    int r,
+    Map<String, int> used,
+  ) {
     final node = TreeNode(
       id: _nextId,
       v: r,
@@ -243,7 +251,7 @@ class TreeController extends ChangeNotifier {
 
   ApplyResult _reject(Operation o, String msg) {
     shakeOp = o.id;
-    _flash(msg);
+    flash(msg);
     return ApplyResult.rejected;
   }
 
@@ -252,12 +260,14 @@ class TreeController extends ChangeNotifier {
       _stranded(ns, used);
 
   bool _stranded(List<TreeNode> ns, Map<String, int> used) {
-    final missing =
-        puzzle.targets.where((t) => !ns.any((n) => n.v == t)).toList();
+    final missing = puzzle.targets
+        .where((t) => !ns.any((n) => n.v == t))
+        .toList();
     if (missing.isEmpty) return false;
     final tree = [for (final n in ns) (v: n.v, d: depthOf(n, ns))];
-    Map<String, int> leftFor(List<Operation> h) =>
-        {for (final o in h) o.opSig: o.tokens - (used[o.opSig] ?? 0)};
+    Map<String, int> leftFor(List<Operation> h) => {
+      for (final o in h) o.opSig: o.tokens - (used[o.opSig] ?? 0),
+    };
     if (solveFrom(tree, missing, hand, branchMax, leftFor(hand))) {
       return false;
     }
@@ -274,17 +284,18 @@ class TreeController extends ChangeNotifier {
   /// the current hand. Costs a shuffle either way (prototype 1433–1457).
   void shuffleHand() {
     if (shufflesLeft <= 0) {
-      _flash('No shuffles left');
+      flash('No shuffles left');
       return;
     }
-    final missing =
-        puzzle.targets.where((t) => !nodes.any((n) => n.v == t)).toList();
+    final missing = puzzle.targets
+        .where((t) => !nodes.any((n) => n.v == t))
+        .toList();
     final used = usedMap();
     final tree = [for (final n in nodes) (v: n.v, d: depthOf(n, nodes))];
     bool works(List<Operation> cand) {
       if (missing.isEmpty) return true;
       final left = {
-        for (final o in cand) o.opSig: o.tokens - (used[o.opSig] ?? 0)
+        for (final o in cand) o.opSig: o.tokens - (used[o.opSig] ?? 0),
       };
       return solveFrom(tree, missing, cand, branchMax, left);
     }
@@ -296,12 +307,12 @@ class TreeController extends ChangeNotifier {
         handIndex = idx;
         shufflesLeft--;
         _clearGlow(); // the glowed op may not be in the new hand (proto 1451)
-        _flash('New hand dealt — still solvable');
+        flash('New hand dealt — still solvable');
         return;
       }
     }
     shufflesLeft--;
-    _flash('No alternate hand keeps this solvable — kept your current hand');
+    flash('No alternate hand keeps this solvable — kept your current hand');
   }
 
   /// Glow the available op whose result lands nearest an outstanding target.
@@ -315,11 +326,12 @@ class TreeController extends ChangeNotifier {
   void hint() {
     if (solved) return;
     if (hintsLeft == 0) {
-      _flash('No hints left');
+      flash('No hints left');
       return;
     }
-    final missing =
-        puzzle.targets.where((t) => !nodes.any((n) => n.v == t)).toList();
+    final missing = puzzle.targets
+        .where((t) => !nodes.any((n) => n.v == t))
+        .toList();
     if (missing.isEmpty) return;
     final from = _selNode;
     final used = usedMap();
@@ -328,8 +340,9 @@ class TreeController extends ChangeNotifier {
     for (final o in hand) {
       final r = _legality(from, o, used).r;
       if (r == null) continue;
-      final d =
-          missing.map((t) => (t - r).abs()).reduce((a, b) => a < b ? a : b);
+      final d = missing
+          .map((t) => (t - r).abs())
+          .reduce((a, b) => a < b ? a : b);
       ranked.add((o: o, r: r, d: d));
     }
     ranked.sort((a, b) => a.d.compareTo(b.d));
@@ -341,7 +354,7 @@ class TreeController extends ChangeNotifier {
       _glow(c.o.id);
       return;
     }
-    _flash('No legal move from here — pick another node');
+    flash('No legal move from here — pick another node');
   }
 
   /// Light an op for 2.5s (prototype 1561). Cleared early by [apply],

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/game_stats.dart';
@@ -24,7 +25,12 @@ class LocalStatsRepository implements StatsRepository {
     if (raw == null) return GameStats.empty; // a new player has played nothing
     try {
       return GameStats.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } catch (_) {
+    } catch (e) {
+      // Park the unreadable blob under its own key first: returning empty
+      // alone meant the next save() overwrote it, so one bad decode silently
+      // erased the player's streak, distribution, stars and XP for good.
+      debugPrint('stats decode failed, quarantined to $_key.bad: $e');
+      await _prefs.setString('$_key.bad', raw);
       return GameStats.empty;
     }
   }

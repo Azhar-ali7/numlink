@@ -17,6 +17,7 @@ class BottomSheetShell extends StatelessWidget {
     required this.children,
     this.titleStyleSize = 28,
     this.titleWidget,
+    this.fullScreen = false,
   });
 
   final String title;
@@ -27,6 +28,11 @@ class BottomSheetShell extends StatelessWidget {
   /// Optional custom header (used by the win sheet's kicker + title).
   final Widget? titleWidget;
 
+  /// Fill the shell instead of sitting at the bottom: same chrome and title
+  /// row, no scrim and no rounded top. Settings has too many rows to read as
+  /// a peeking sheet.
+  final bool fullScreen;
+
   @override
   Widget build(BuildContext context) {
     final t = NumTheme.of(context);
@@ -34,13 +40,18 @@ class BottomSheetShell extends StatelessWidget {
 
     Widget panel = Container(
       width: double.infinity,
-      constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.92),
+      constraints: fullScreen
+          ? const BoxConstraints.expand()
+          : BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.92),
       decoration: BoxDecoration(
         color: t.elevated,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(34)),
-        border: Border(top: BorderSide(color: t.border, width: 2)),
+        borderRadius: fullScreen
+            ? null
+            : const BorderRadius.vertical(top: Radius.circular(34)),
+        border: fullScreen
+            ? null
+            : Border(top: BorderSide(color: t.border, width: 2)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       child: SingleChildScrollView(
@@ -84,6 +95,7 @@ class BottomSheetShell extends StatelessWidget {
     }
 
     // Wrapped in Positioned.fill by the app shell; must not return a Positioned.
+    if (fullScreen) return panel;
     return Stack(
       children: [
         Positioned.fill(

@@ -13,6 +13,7 @@ String sig(TreePuzzle p) => [
     ].join('#');
 
 void main() {
+  _fallbackRespectsTier();
   // Port of the prototype `runSelfCheck` (generator-only invariants — the
   // guard false-pos/neg checks land with the controller in phase 3).
   group('buildPuzzle self-check', () {
@@ -73,5 +74,45 @@ void main() {
     final a = buildPuzzle('medium', 111);
     final b = buildPuzzle('medium', 222);
     expect(sig(a), isNot(sig(b)));
+  });
+}
+
+/// The fallback board used to be one hardcoded constant for every tier, so a
+/// kids seed that exhausted the attempt budget got a branch-3, two-target
+/// board with a Σ tile it was never meant to see.
+void _fallbackRespectsTier() {
+  group('fallbackPuzzle', () {
+    for (final entry in kTiers.entries) {
+      test('honours the ${entry.key} tier knobs', () {
+        final t = entry.value;
+        final p = fallbackPuzzle(entry.key, t);
+
+        expect(p.tier, entry.key);
+        expect(p.branchMax, t.branch);
+        expect(p.shuffles, t.shuffles);
+        expect(p.hints, t.hints);
+        expect(p.hands.length, t.shuffles + 1);
+        expect(p.targets.length,
+            inInclusiveRange(t.targetsMin, t.targetsMax));
+        expect(p.optimalEdges.length, p.optimalPar);
+        // The chain is one arm, so it is only playable if it fits under the
+        // per-arm ceiling.
+        expect(p.optimalPar, lessThanOrEqualTo(t.branch));
+        expect(p.par, greaterThan(p.optimalPar));
+
+        // No tile the tier does not deal.
+        for (final o in p.hands.expand((h) => h)) {
+          if (o.isUnary) expect(t.unaries, contains(o.symbol));
+        }
+      });
+    }
+
+    test('kids gets a single target and no unaries', () {
+      final p = fallbackPuzzle('kids', kTiers['kids']!);
+      expect(p.targets, [12]);
+      expect(p.optimalPar, 1);
+      expect(p.branchMax, 1);
+      expect(p.hands.first.any((o) => o.isUnary), isFalse);
+    });
   });
 }

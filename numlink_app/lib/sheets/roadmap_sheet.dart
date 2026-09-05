@@ -65,34 +65,52 @@ class CampaignPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Campaign',
-                            style: Fonts.display(size: 28, color: t.text)),
+                        Text(
+                          'Campaign',
+                          style: Fonts.display(size: 28, color: t.text),
+                        ),
                         const SizedBox(height: 2),
-                        Text(_Trail._chapter(tier),
-                            style: Fonts.ui(
-                                size: 11,
-                                color: t.muted,
-                                weight: FontWeight.w800,
-                                letterSpacing: 1,
-                                height: 1)),
+                        Text(
+                          _Trail._chapter(tier),
+                          style: Fonts.ui(
+                            size: 11,
+                            color: t.muted,
+                            weight: FontWeight.w800,
+                            letterSpacing: 1,
+                            height: 1,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: tint(t.progress, 0.16),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: tint(t.progress, 0.4), width: 2),
+                      border: Border.all(
+                        color: tint(t.progress, 0.4),
+                        width: 2,
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.star_rounded, size: 16, color: t.progress),
-                      const SizedBox(width: 4),
-                      Text('${stats.campaignStars}',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, size: 16, color: t.progress),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${stats.campaignStars}',
                           style: Fonts.numeric(
-                              size: 14, color: t.text, weight: FontWeight.w700)),
-                    ]),
+                            size: 14,
+                            color: t.text,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -100,19 +118,27 @@ class CampaignPage extends StatelessWidget {
               // Progress header: cleared count + star total + bar.
               Row(
                 children: [
-                  Text('${stats.campaignCleared} OF $count CLEARED',
-                      style: Fonts.ui(
-                          size: 12,
-                          color: t.muted,
-                          weight: FontWeight.w800,
-                          letterSpacing: 1,
-                          height: 1)),
+                  Text(
+                    '${stats.campaignCleared} OF $count CLEARED',
+                    style: Fonts.ui(
+                      size: 12,
+                      color: t.muted,
+                      weight: FontWeight.w800,
+                      letterSpacing: 1,
+                      height: 1,
+                    ),
+                  ),
                   const Spacer(),
                   Icon(Icons.star_rounded, size: 16, color: t.progress),
                   const SizedBox(width: 4),
-                  Text('${stats.campaignStars} / $maxStars',
-                      style: Fonts.numeric(
-                          size: 13, color: t.text, weight: FontWeight.w700)),
+                  Text(
+                    '${stats.campaignStars} / $maxStars',
+                    style: Fonts.numeric(
+                      size: 13,
+                      color: t.text,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -126,10 +152,7 @@ class CampaignPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              _Trail(
-                g: g,
-                starColors: starColors,
-              ),
+              _Trail(g: g, starColors: starColors),
             ],
           ),
         ),
@@ -163,7 +186,7 @@ class _Trail extends StatelessWidget {
         double cy(int i) => _top + i * _rowH + _rowH / 2;
         final centers = [for (var i = 0; i < count; i++) Offset(cx(i), cy(i))];
         final unlocked = [
-          for (var i = 0; i < count; i++) stats.levelUnlocked(i + 1)
+          for (var i = 0; i < count; i++) stats.levelUnlocked(i + 1),
         ];
         final height = _top + count * _rowH + 30;
 
@@ -184,42 +207,60 @@ class _Trail extends StatelessWidget {
         for (var i = 0; i < count; i++) {
           final isFirst = i == 0 || kCampaign[i].tier != kCampaign[i - 1].tier;
           if (!isFirst) continue;
-          children.add(Positioned(
-            left: 0,
-            right: 0,
-            top: cy(i) - _rowH / 2 - 4,
-            child: Center(child: _ChapterBand(label: _chapter(kCampaign[i].tier))),
-          ));
+          children.add(
+            Positioned(
+              left: 0,
+              right: 0,
+              top: cy(i) - _rowH / 2 - 4,
+              child: Center(
+                child: _ChapterBand(label: _chapter(kCampaign[i].tier)),
+              ),
+            ),
+          );
         }
 
         // Nodes.
         for (var i = 0; i < count; i++) {
           final stars = stats.levelStars[i + 1];
-          children.add(Positioned(
-            left: centers[i].dx - 60,
-            top: centers[i].dy - _nodeR - 30,
-            width: 120,
-            child: _TrailNode(
-              def: kCampaign[i],
-              stars: stars,
-              unlocked: unlocked[i],
-              starColors: starColors,
-              onTap: () => _openBranchingLevel(context, g, kCampaign[i]),
+          children.add(
+            Positioned(
+              left: centers[i].dx - 60,
+              top: centers[i].dy - _nodeR - 30,
+              width: 120,
+              child: _TrailNode(
+                def: kCampaign[i],
+                stars: stars,
+                unlocked: unlocked[i],
+                starColors: starColors,
+                // A locked node used to be a silent dead end (onTap: null); say
+                // what unlocks it instead. SnackBar because a sheet has no
+                // GameToast host.
+                onTap: () => unlocked[i]
+                    ? _openBranchingLevel(context, g, kCampaign[i])
+                    : ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Clear level $i to unlock this one.'),
+                        ),
+                      ),
+              ),
             ),
-          ));
+          );
         }
 
-        return SizedBox(height: height, child: Stack(children: children));
+        return SizedBox(
+          height: height,
+          child: Stack(children: children),
+        );
       },
     );
   }
 
   static String _chapter(Difficulty tier) => switch (tier) {
-        Difficulty.kids => 'FIRST STEPS',
-        Difficulty.easy => 'FOUNDATIONS',
-        Difficulty.medium => 'ADVANCED',
-        Difficulty.hard => 'EXPERT',
-      };
+    Difficulty.kids => 'FIRST STEPS',
+    Difficulty.easy => 'FOUNDATIONS',
+    Difficulty.medium => 'ADVANCED',
+    Difficulty.hard => 'EXPERT',
+  };
 }
 
 /// Paints the ribbon: a chunky rounded teal stroke through reached segments and
@@ -288,13 +329,16 @@ class _ChapterBand extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: t.border, width: 2),
       ),
-      child: Text(label,
-          style: Fonts.ui(
-              size: 12,
-              color: t.text,
-              weight: FontWeight.w800,
-              letterSpacing: 1,
-              height: 1)),
+      child: Text(
+        label,
+        style: Fonts.ui(
+          size: 12,
+          color: t.text,
+          weight: FontWeight.w800,
+          letterSpacing: 1,
+          height: 1,
+        ),
+      ),
     );
   }
 }
@@ -326,13 +370,13 @@ class _TrailNode extends StatelessWidget {
     final circleColor = cleared
         ? t.success
         : current
-            ? t.progress
-            : t.surface;
+        ? t.progress
+        : t.surface;
     final numberColor = cleared
         ? Colors.white
         : current
-            ? const Color(0xFF2B2622)
-            : t.muted;
+        ? const Color(0xFF2B2622)
+        : t.muted;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -346,7 +390,9 @@ class _TrailNode extends StatelessWidget {
                   children: [
                     for (var i = 0; i < 3; i++)
                       Icon(
-                        i < stars! ? Icons.star_rounded : Icons.star_outline_rounded,
+                        i < stars!
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         size: 20,
                         color: i < stars! ? starColors[i] : t.border,
                       ),
@@ -356,7 +402,7 @@ class _TrailNode extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         GestureDetector(
-          onTap: unlocked ? onTap : null,
+          onTap: onTap,
           // Current node breathes so the eye lands on where to play next
           // (handoff `glow`), gated behind reduced-motion.
           child: _pulse(
@@ -371,15 +417,16 @@ class _TrailNode extends StatelessWidget {
                   color: current
                       ? t.progress
                       : cleared
-                          ? t.success
-                          : t.border,
+                      ? t.success
+                      : t.border,
                   width: current ? 3 : 2,
                 ),
                 boxShadow: unlocked
                     ? [
                         BoxShadow(
-                          color: (cleared ? t.success : t.progress)
-                              .withValues(alpha: 0.35),
+                          color: (cleared ? t.success : t.progress).withValues(
+                            alpha: 0.35,
+                          ),
                           blurRadius: 14,
                           spreadRadius: -3,
                           offset: const Offset(0, 6),
@@ -389,8 +436,10 @@ class _TrailNode extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: unlocked
-                  ? Text('${def.no}',
-                      style: Fonts.display(size: 24, color: numberColor))
+                  ? Text(
+                      '${def.no}',
+                      style: Fonts.display(size: 24, color: numberColor),
+                    )
                   : Icon(Icons.lock_rounded, size: 22, color: t.muted),
             ),
           ),
@@ -402,8 +451,10 @@ class _TrailNode extends StatelessWidget {
             GestureDetector(
               onTap: onTap,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: t.accent,
                   borderRadius: BorderRadius.circular(999),
@@ -411,27 +462,35 @@ class _TrailNode extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.play_arrow_rounded,
-                        size: 15, color: Colors.white),
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      size: 15,
+                      color: Colors.white,
+                    ),
                     const SizedBox(width: 3),
-                    Text('PLAY',
-                        style: Fonts.ui(
-                            size: 12,
-                            color: Colors.white,
-                            weight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            height: 1)),
+                    Text(
+                      'PLAY',
+                      style: Fonts.ui(
+                        size: 12,
+                        color: Colors.white,
+                        weight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        height: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           )
         else if (def.unlocks != null && cleared)
-          Text('new: ${def.unlocks}',
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Fonts.ui(size: 10, color: t.muted, height: 1)),
+          Text(
+            'new: ${def.unlocks}',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Fonts.ui(size: 10, color: t.muted, height: 1),
+          ),
       ],
     );
   }
@@ -439,23 +498,25 @@ class _TrailNode extends StatelessWidget {
   /// Slow breathe for the current node (handoff `glow`).
   Widget _pulse(bool on, Widget child) => on
       ? child
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .scaleXY(
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .scaleXY(
               begin: 1,
               end: 1.06,
               duration: const Duration(milliseconds: 1000),
-              curve: Curves.easeInOut)
+              curve: Curves.easeInOut,
+            )
       : child;
 
   /// Up-and-down hop for the PLAY pill (handoff `lvlBounce`).
   Widget _bounce(bool on, Widget child) => on
       ? child
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .moveY(
               begin: 0,
               end: -8,
               duration: const Duration(milliseconds: 900),
-              curve: Curves.easeInOut)
+              curve: Curves.easeInOut,
+            )
       : child;
 }
 
@@ -479,12 +540,13 @@ void _openBranchingLevel(BuildContext context, GameController g, LevelDef def) {
                 nav.pop();
                 _openBranchingLevel(context, g, next);
               },
-        onWin: (m, p) {
-          g.recordCampaignWin(def.no, m, p);
+        onWin: (m, p, div) {
+          g.recordCampaignWin(def.no, m, p, usedDivision: div);
           return WinRecord(
-              xpGained: g.lastXpGain,
-              level: g.playerLevel,
-              streak: g.streak);
+            xpGained: g.lastXpGain,
+            level: g.playerLevel,
+            streak: g.streak,
+          );
         },
       ),
     ),

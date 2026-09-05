@@ -12,8 +12,8 @@ Flutter recreation of the `NUMLINK.dc.html` design handoff (see the repo-root
 
 - **Daily** — one shared puzzle per day (Wordle-style), reproducible from the date.
 - **Practice** — unlimited puzzles at a chosen difficulty.
-- **Zen** — no timer, pick a difficulty and play.
-- **Timed** — a difficulty ladder against the clock.
+- **Play against the clock** — a Settings toggle, not a mode: switch it on and
+  every board gets a countdown scaled to its par, from Kids to Hard.
 - **Archive** — replay any past daily.
 
 Per-mode stats, streaks, achievements, and a next-daily countdown. A first-run

@@ -43,8 +43,8 @@ class _IntroCarouselState extends State<IntroCarousel> {
       kicker: 'HOW IT WORKS',
       title: 'Tap to build the chain',
       body:
-          'Tap an operation like ×3 or +7 to apply it. The chain grows '
-          'downward, and the orange node is where you are now.',
+          'Tap an operation like ×3 or +7 to apply it. The chain branches '
+          'outward, and the highlighted node is where you are now.',
     ),
     // The arm limit is the one rule players hit without ever being told it
     // exists — the board just refuses the tap. Explain it before that happens.
@@ -76,22 +76,25 @@ class _IntroCarouselState extends State<IntroCarousel> {
 
   void _dismiss() => context.read<SettingsController>().dismissTutorial();
 
-  /// Finish the intro. On a genuine first launch (not a Settings replay), drop
-  /// the player straight into (branching) Level 1 — a guaranteed easy first win
-  /// — instead of the medium daily.
+  /// Finish the intro by dropping the player into (branching) Level 1 — a
+  /// guaranteed easy first win, instead of the medium daily.
+  ///
+  /// A Settings replay lands on the same board rather than back on the hub:
+  /// the spotlight tour only exists *on* a board, so ending the replay at home
+  /// is why "How to play" looked like it did nothing. The win is only recorded
+  /// on a genuine first run, so replaying can't farm the level again.
   void _finish() {
     final firstRun = !context.read<SettingsController>().tutorialSeen;
     final g = context.read<GameController>();
     _dismiss();
-    if (!firstRun) return;
     final def = kCampaign[0];
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => TreeGamePage(
           tier: def.tier.name,
           puzzle: buildPuzzle(def.tier.name, def.seed),
-          onWin: (m, p) {
-            g.recordCampaignWin(def.no, m, p);
+          onWin: (m, p, div) {
+            if (firstRun) g.recordCampaignWin(def.no, m, p, usedDivision: div);
             return WinRecord(
               xpGained: g.lastXpGain,
               level: g.playerLevel,
@@ -190,10 +193,10 @@ class _IntroCarouselState extends State<IntroCarousel> {
 
 /// One theme accent pair per slide, straight off the tokens the hub cards use.
 (Color, Color) _gradient(NumTokens t, int index) => switch (index) {
-      0 => (t.accent, t.hero),
-      1 => (t.hero, t.success),
-      _ => (t.tileOrange, t.accent),
-    };
+  0 => (t.accent, t.hero),
+  1 => (t.hero, t.success),
+  _ => (t.tileOrange, t.accent),
+};
 
 class _Slide extends StatelessWidget {
   const _Slide({required this.slide});
@@ -279,8 +282,7 @@ class _Dots extends StatelessWidget {
             width: i == active ? 22 : 8,
             height: 8,
             decoration: BoxDecoration(
-              color: Colors.white
-                  .withValues(alpha: i == active ? 1 : 0.35),
+              color: Colors.white.withValues(alpha: i == active ? 1 : 0.35),
               borderRadius: BorderRadius.circular(999),
             ),
           ),

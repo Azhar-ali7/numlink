@@ -25,6 +25,19 @@ void main() {
     expect(reloaded.dist['par'], (seeded.dist['par'] ?? 0) + 1);
   });
 
+  test('an undecodable blob is quarantined, not overwritten', () async {
+    SharedPreferences.setMockInitialValues({'numlink_stats': '{"invalid json'});
+    final prefs = await SharedPreferences.getInstance();
+    final repo = LocalStatsRepository(prefs);
+
+    expect((await repo.load()).played, 0);
+    // The original bytes survive the next save, so a bad decode can't silently
+    // wipe a player's streak/XP for good.
+    expect(prefs.getString('numlink_stats.bad'), '{"invalid json');
+    await repo.save(GameStats.empty.recordWin(3, 3));
+    expect(prefs.getString('numlink_stats.bad'), '{"invalid json');
+  });
+
   test('bucketFor maps moves-over-par correctly', () {
     expect(GameStats.bucketFor(3, 3), 'par');
     expect(GameStats.bucketFor(2, 3), 'par');
@@ -65,14 +78,14 @@ void main() {
   group('honest streak + freeze', () {
     // A day-2 win at streak 2, no freezes banked, no prior-day gap.
     GameStats at(int streak, int lastDay, {int freezes = 0}) => GameStats(
-          played: 5,
-          wins: 5,
-          streak: streak,
-          maxStreak: streak,
-          dist: const {},
-          counters: {'freezes': freezes},
-          lastDailyDay: lastDay,
-        );
+      played: 5,
+      wins: 5,
+      streak: streak,
+      maxStreak: streak,
+      dist: const {},
+      counters: {'freezes': freezes},
+      lastDailyDay: lastDay,
+    );
 
     test('first-ever daily win increments (no prior day)', () {
       final s = GameStats.empty.recordWin(3, 3, today: 100);

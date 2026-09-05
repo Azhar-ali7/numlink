@@ -27,8 +27,13 @@ List<List<int>> permute(List<int> arr) {
 /// memo keyed by (target, existing values, remaining tokens) is shared across
 /// orders. [tokensLeft] (by op signature) caps the budget; when null, each
 /// tile's full `tokens` is used.
-bool solveFrom(List<Vd> nodes, List<int> missing, List<Operation> hand,
-    int branchMax, [Map<String, int>? tokensLeft]) {
+bool solveFrom(
+  List<Vd> nodes,
+  List<int> missing,
+  List<Operation> hand,
+  int branchMax, [
+  Map<String, int>? tokensLeft,
+]) {
   final caps = <String, int>{};
   for (final o in hand) {
     caps[o.opSig] = tokensLeft != null ? (tokensLeft[o.opSig] ?? 0) : o.tokens;
@@ -60,8 +65,14 @@ bool solveFrom(List<Vd> nodes, List<int> missing, List<Operation> hand,
 /// value already on the board or produced earlier on this same arm. Layered
 /// BFS ≤ [branchMax] steps with a same-step dominance prune (cheapest arm to
 /// each value) and a shared [memo].
-List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
-    int branchMax, Map<String, int> left, Map<String, List<Step>?> memo) {
+List<Step>? _armTo(
+  List<Vd> tree,
+  int target,
+  List<Operation> hand,
+  int branchMax,
+  Map<String, int> left,
+  Map<String, List<Step>?> memo,
+) {
   final existing = [for (final n in tree) n.v]..sort();
   // Keyed on (value, depth), not value alone: the same value multiset at
   // different depths admits different arms — a node already at branchMax can
@@ -75,7 +86,8 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
 
   final existingSet = existing.toSet();
   var front = [
-    for (final n in tree) _Front(n.v, n.d, List.filled(hand.length, 0), const [])
+    for (final n in tree)
+      _Front(n.v, n.d, List.filled(hand.length, 0), const []),
   ];
   List<Step>? result;
   outer:
@@ -88,7 +100,9 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
         final o = hand[hi];
         final r = compute(cur.v, o);
         if (r == null || r == cur.v) continue;
-        if (existingSet.contains(r) || cur.path.any((st) => st.to == r)) continue;
+        if (existingSet.contains(r) || cur.path.any((st) => st.to == r)) {
+          continue;
+        }
         final path = [...cur.path, (sig: o.opSig, to: r, d: cur.d + 1)];
         if (r == target) {
           result = path;
@@ -107,9 +121,7 @@ List<Step>? _armTo(List<Vd> tree, int target, List<Operation> hand,
         final spentTotal = cur.spent.fold<int>(0, (a, b) => a + b) + 1;
         final depth = cur.d + 1;
         final prev = bestAt[r];
-        if (prev != null &&
-            prev.cost <= spentTotal &&
-            prev.d <= depth) {
+        if (prev != null && prev.cost <= spentTotal && prev.d <= depth) {
           continue;
         }
         final spent = [...cur.spent];

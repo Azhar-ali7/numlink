@@ -21,6 +21,7 @@ class SettingsSheet extends StatelessWidget {
     return BottomSheetShell(
       title: 'Profile',
       onClose: g.close,
+      fullScreen: true,
       children: [
         _ProfileHeader(level: g.playerLevel),
         const SizedBox(height: 8),
@@ -45,11 +46,30 @@ class SettingsSheet extends StatelessWidget {
           ),
         ),
         _Row(
+          title: 'Orange for success',
+          subtitle: 'Use orange instead of green for solved states',
+          trailing: _Pill(
+            value: s.orangeSuccess,
+            onTap: () => s.setOrangeSuccess(!s.orangeSuccess),
+          ),
+        ),
+        _Row(
           title: 'Show result previews',
           subtitle: 'Preview each operator\'s result under its tile',
           trailing: _Pill(
             value: s.showResultPreviews,
             onTap: () => s.setShowResultPreviews(!s.showResultPreviews),
+          ),
+        ),
+        _Row(
+          title: 'Play against the clock',
+          subtitle:
+              'Every board gets a countdown. The time scales with the '
+              'difficulty, so a Kids board gets a gentler clock than a Hard '
+              'one. Run out and the board freezes — no win, no streak.',
+          trailing: _Pill(
+            value: s.timedBoards,
+            onTap: () => s.setTimedBoards(!s.timedBoards),
           ),
         ),
         _Row(
@@ -85,7 +105,21 @@ class SettingsSheet extends StatelessWidget {
                 'when the new board is up — tap to change the time',
             trailing: _Pill(
               value: s.reminderOn,
-              onTap: () => s.setReminderOn(!s.reminderOn),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                if (await s.setReminderOn(!s.reminderOn)) return;
+                // A denial used to leave the pill sitting there unmoved with no
+                // explanation. SnackBar rather than GameToast: this is a sheet,
+                // not a board, and there is no toast host up here.
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Turn on notifications for NUMLINK in system settings '
+                      'to get the daily reminder.',
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -127,19 +161,24 @@ class SettingsSheet extends StatelessWidget {
           },
           child: _Row(
             title: 'How to play',
-            subtitle: 'Replay the intro and the board tour',
+            subtitle: 'Replay the intro, then the board tour',
             trailing: Icon(Icons.chevron_right, color: t.muted),
           ),
         ),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _showMoreSettings(context),
-          child: _Row(
-            title: 'More settings',
-            subtitle: 'About, help, and privacy',
-            trailing: Icon(Icons.chevron_right, color: t.muted),
+        for (final (title, subtitle, items) in [
+          ('About', 'What NUMLINK is, and how you progress', _about),
+          ('Help', 'Rules, scoring, and why a move gets rejected', _help),
+          ('Privacy', 'What is stored, and what never leaves', _privacy),
+        ])
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _showInfoSheet(context, title, items),
+            child: _Row(
+              title: title,
+              subtitle: subtitle,
+              trailing: Icon(Icons.chevron_right, color: t.muted),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
         Text(
           'NUMLINK #${g.dailyPuzzle.no} · State colors follow the Okabe–Ito palette '
@@ -151,77 +190,193 @@ class SettingsSheet extends StatelessWidget {
   }
 }
 
-/// Lightweight "More settings" info sheet — About / Help / Privacy blurbs.
+/// The static copy behind the About / Help / Privacy rows, as (title, body)
+/// pairs. Data, not widgets — [_showInfoSheet] renders all three the same way.
+///
+/// Every number here is the one the code actually uses (kTiers, kCampaign,
+/// starsFor, GameStats.freezeMilestones, the tree_controller reject toasts).
+/// If you retune those, retune this.
 /// (The handoff's Remove-Ads / Restore-Purchases rows are omitted: no IAP.)
-void _showMoreSettings(BuildContext context) {
-  final t = NumTheme.of(context);
+const _about = <(String, String)>[
+  (
+    'The game',
+    'Every board gives you a starting number, a handful of operator tiles and '
+        'a ring of targets. Apply tiles to grow a branching chain and land '
+        'exactly on every target.',
+  ),
+  (
+    'Where to play',
+    'A new Daily Puzzle each day; the Archive, which holds every daily since '
+        'launch; a 24-level Campaign that ramps from one-move Kids boards to '
+        'four-deep Expert ones; and Free Play at Kids, Easy, Normal or Expert.',
+  ),
+  (
+    'Progress',
+    'Solving earns XP (10 a win, +5 for every move under par) which raises '
+        'your level. Campaign levels also score 1-3 stars, and eight badges — '
+        'First Link through Ladder Climber — unlock as you go. Stats has the '
+        'lot.',
+  ),
+  (
+    'Boards are generated, not authored',
+    'Each board is built solution-first from a seed, so it is always solvable, '
+        'and the same puzzle number is the same board for everyone.',
+  ),
+];
+
+const _help = <(String, String)>[
+  (
+    'Playing a board',
+    'Tap an operator tile — ×3, +7, −4 — to apply it to the number you are on. '
+        'To branch, tap any number already on the board and apply a tile from '
+        'there. Land exactly on a target to claim it; claim them all to solve '
+        'the board.',
+  ),
+  (
+    'Tiles run out',
+    'Each tile carries a limited number of uses. When they are spent, that '
+        'tile is done for the board — which is why the same +7 cannot carry you '
+        'all the way round.',
+  ),
+  (
+    'Arms',
+    'An arm is one branch of the chain, and it can only run so deep: 1 move on '
+        'Kids, 2 on Easy, 3 on Normal, 4 on Expert. Hit the limit and you '
+        'branch from an earlier number instead. "Relaxed arms" in Settings '
+        'lifts the cap if you would rather not think about it.',
+  ),
+  (
+    'Par and stars',
+    'Par is what a clean solve takes. Par or better is three stars, one over is '
+        'two, anything finished is one. Under par also pays +5 XP a move.',
+  ),
+  (
+    'Shuffle and hint',
+    'Shuffle deals a different set of tiles that still solves the board; a hint '
+        'points at the next useful tile. Both are limited and easier tiers get '
+        'more: Kids has 3 shuffles and 3 hints, Easy 3 and 2, Normal 2 and 1, '
+        'Expert 2 and 1.',
+  ),
+  (
+    'The operators',
+    '+ − × arrive first. ÷ joins on Easy, % (remainder) on Normal along with Σ '
+        '(add the digits), and Expert adds √. ÷ and √ only work when they come '
+        'out whole.',
+  ),
+  (
+    'Streaks and freezes',
+    'Solving the daily on its own day extends your streak. Reaching a 3-, 7-, '
+        '14- or 30-day streak banks a freeze (two at most), and a missed day '
+        'spends one freeze to keep the streak alive. Replaying an archive board '
+        'is just for fun — it never touches the streak.',
+  ),
+  (
+    'The clock',
+    'On by default: every board counts down from a budget scaled to its par, so '
+        'a Kids board gets a gentler clock than an Expert one. Run out and the '
+        'board freezes — no win, no streak, and Try again deals a fresh board. '
+        'Turn "Play against the clock" off in Settings to play untimed.',
+  ),
+  (
+    'Why a move gets rejected',
+    'The toast at the top of the board always names the reason, and it is '
+        'usually one of five: the tile is out of uses, the arm is at its move '
+        'limit, ÷ would not divide evenly (or √ is not a perfect square), the '
+        'result is already on the board, or the move leaves the number '
+        'unchanged.',
+  ),
+  (
+    'Want the walkthrough again?',
+    'Settings, then How to play, replays the intro and then the on-board tour '
+        'from the beginning.',
+  ),
+  (
+    'The daily reminder never arrives',
+    'It is a local notification, so it needs notification permission for '
+        'NUMLINK in your system settings. Once permission is granted, switch '
+        'the Settings pill off and on again.',
+  ),
+];
+
+const _privacy = <(String, String)>[
+  (
+    'The short version',
+    'NUMLINK runs entirely on this device. No account, no sign-in, no '
+        'analytics, no ads, no trackers, and no third-party SDK collecting '
+        'anything about you.',
+  ),
+  (
+    'What is stored',
+    'Your progress and preferences — streak, freezes, XP and level, campaign '
+        'stars, which dailies you solved, the display name you type, and every '
+        'Settings toggle — are saved in this app\'s own storage on this device.',
+  ),
+  (
+    'What leaves the device',
+    'Nothing. Boards are generated on-device from a seed, and the fonts and '
+        'sounds ship inside the app, so the game makes no network requests at '
+        'all. Copy on the win sheet puts your result text on this device\'s '
+        'clipboard and stops there — where it goes next is up to you.',
+  ),
+  (
+    'Notifications',
+    'The daily reminder is scheduled locally by your device at the time you '
+        'pick. No server is involved and no one is told whether you played.',
+  ),
+  (
+    'Children',
+    'No personal information is collected from anyone, of any age. There is '
+        'nothing to request, correct or delete from a server, because there is '
+        'no server.',
+  ),
+  (
+    'Deleting your data',
+    'Deleting the app removes everything it saved. There is no copy anywhere '
+        'else.',
+  ),
+];
+
+/// One bottom sheet of headed paragraphs.
+void _showInfoSheet(
+  BuildContext context,
+  String title,
+  List<(String, String)> items,
+) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: t.elevated,
+    backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
-    builder: (_) {
-      Widget item(String title, String body) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Fonts.ui(size: 15, color: t.text, weight: FontWeight.w800),
+    builder: (sheetContext) {
+      final t = NumTheme.of(sheetContext);
+      return BottomSheetShell(
+        title: title,
+        onClose: () => Navigator.of(sheetContext).pop(),
+        titleStyleSize: 24,
+        children: [
+          for (final (heading, body) in items)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    heading,
+                    style: Fonts.ui(
+                      size: 15,
+                      color: t.text,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    body,
+                    style: Fonts.ui(size: 13, color: t.muted, height: 1.45),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 3),
-            Text(body, style: Fonts.ui(size: 13, color: t.muted, height: 1.4)),
-          ],
-        ),
-      );
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'More settings',
-                style: Fonts.display(size: 24, color: t.text, weight: 700),
-              ),
-              const SizedBox(height: 6),
-              item(
-                'About NUMLINK',
-                'Chain numbers together to reach each target in as few moves as possible.',
-              ),
-              // The words the board uses without ever defining them. Everything
-              // here is jargon a player meets first as a rejection toast.
-              item(
-                'Arm',
-                'One branch of the tree. Each arm holds only a few moves before it is full — tap an earlier number to start a new one. "Relaxed arms" in Settings lifts the cap.',
-              ),
-              item(
-                'Par',
-                'The move count a clean solve takes. Finishing at or under par is three stars; every move over costs one.',
-              ),
-              item(
-                'Target',
-                'A number you must land on exactly. The counter at the top left is how many you have reached.',
-              ),
-              item(
-                'Shuffle & hint',
-                'Shuffle deals a different set of operators that still solves the board. A hint glows the next useful operator. Both are limited per board, and easier tiers get more.',
-              ),
-              item(
-                'Help',
-                'Tap operators to branch from any reached number. Stuck? Replay the walkthrough from How to play.',
-              ),
-              item(
-                'Privacy',
-                'Your progress lives on this device. Nothing is shared without your say-so.',
-              ),
-            ],
-          ),
-        ),
+          const SizedBox(height: 8),
+        ],
       );
     },
   );

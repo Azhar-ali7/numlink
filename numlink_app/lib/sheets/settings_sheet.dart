@@ -165,15 +165,7 @@ class SettingsSheet extends StatelessWidget {
             trailing: Icon(Icons.chevron_right, color: t.muted),
           ),
         ),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _showMoreSettings(context),
-          child: _Row(
-            title: 'More settings',
-            subtitle: 'About, help, and privacy',
-            trailing: Icon(Icons.chevron_right, color: t.muted),
-          ),
-        ),
+        const _InfoSections(),
         const SizedBox(height: 12),
         Text(
           'NUMLINK #${g.dailyPuzzle.no} · State colors follow the Okabe–Ito palette '
@@ -185,167 +177,162 @@ class SettingsSheet extends StatelessWidget {
   }
 }
 
-/// "More settings": About, a real Help section (play, glossary, fixes) and the
-/// privacy policy. Everything here is static copy, so it is one sheet with
-/// headed sections rather than three routes.
+/// About, Help and Privacy, inlined at the foot of Settings. Static copy, so
+/// headed sections beat a second sheet or three routes.
 /// (The handoff's Remove-Ads / Restore-Purchases rows are omitted: no IAP.)
-void _showMoreSettings(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (sheetContext) {
-      final t = NumTheme.of(sheetContext);
+class _InfoSections extends StatelessWidget {
+  const _InfoSections();
 
-      Widget head(String text) => Padding(
-        padding: const EdgeInsets.only(top: 22, bottom: 2),
-        child: Text(
-          text.toUpperCase(),
-          style: Fonts.ui(
-            size: 11,
-            color: t.muted,
-            weight: FontWeight.w800,
-            letterSpacing: 1.4,
-          ),
+  @override
+  Widget build(BuildContext context) {
+    final t = NumTheme.of(context);
+
+    Widget head(String text) => Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 2),
+      child: Text(
+        text.toUpperCase(),
+        style: Fonts.ui(
+          size: 11,
+          color: t.muted,
+          weight: FontWeight.w800,
+          letterSpacing: 1.4,
         ),
-      );
+      ),
+    );
 
-      Widget item(String title, String body) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Fonts.ui(size: 15, color: t.text, weight: FontWeight.w800),
-            ),
-            const SizedBox(height: 3),
-            Text(body, style: Fonts.ui(size: 13, color: t.muted, height: 1.45)),
-          ],
-        ),
-      );
-
-      return BottomSheetShell(
-        title: 'More settings',
-        onClose: () => Navigator.of(sheetContext).pop(),
-        titleStyleSize: 24,
+    Widget item(String title, String body) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          item(
-            'About NUMLINK',
-            'Chain numbers together to reach every target in as few moves as '
-                'possible. One new daily puzzle, an archive of past ones, a '
-                'campaign, free play at four difficulties, and a weekend co-op '
-                'board.',
+          Text(
+            title,
+            style: Fonts.ui(size: 15, color: t.text, weight: FontWeight.w800),
           ),
-
-          head('Help'),
-          item(
-            'Playing a board',
-            'You start on one number. Tap an operator tile — ×3, +7, −4 — to '
-                'apply it and grow the chain. Tap any number you have already '
-                'reached to branch a new arm from there. Land exactly on a '
-                'target to claim it; claim them all to solve the board.',
-          ),
-          item(
-            'Arm',
-            'One branch of the tree. Each arm holds only a few moves before it '
-                'is full — tap an earlier number to start a new one. "Relaxed '
-                'arms" in Settings lifts the cap.',
-          ),
-          item(
-            'Par',
-            'The move count a clean solve takes. Finishing at or under par is '
-                'three stars; every move over costs one.',
-          ),
-          item(
-            'Target',
-            'A number you must land on exactly. The counter at the top left is '
-                'how many you have reached.',
-          ),
-          item(
-            'Shuffle & hint',
-            'Shuffle deals a different set of operators that still solves the '
-                'board. A hint glows the next useful operator. Both are limited '
-                'per board, and easier tiers get more.',
-          ),
-          item(
-            'Streaks and freezes',
-            'Solving the daily on the day it appears extends your streak. Miss '
-                'a day and a freeze is spent to cover it, one per missed day, '
-                'if you have one. Replaying an archive board is just for fun — '
-                'it never changes the streak.',
-          ),
-          item(
-            'Playing against the clock',
-            'On by default: every board gets a countdown scaled to its par, so '
-                'a Kids board gets a gentler clock than a Hard one. Run out and '
-                'the board freezes — no win, no streak. Turn it off in Settings '
-                'to play untimed.',
-          ),
-
-          head('Stuck?'),
-          item(
-            'The move I want is rejected',
-            'Three rules do most of it: ÷ only works when it divides evenly, a '
-                'full arm needs you to branch from an earlier number, and a '
-                'target counts only on an exact landing. The toast at the top '
-                'of the board always names which one stopped you.',
-          ),
-          item(
-            'I want the walkthrough again',
-            'Settings → How to play replays the intro and then the on-board '
-                'tour from the beginning.',
-          ),
-          item(
-            'The daily reminder never arrives',
-            'The reminder is a local notification, so it needs notification '
-                'permission for NUMLINK in your system settings. Turn the '
-                'Settings pill off and on again once permission is granted.',
-          ),
-
-          head('Privacy'),
-          item(
-            'The short version',
-            'NUMLINK works entirely on this device. There are no accounts, no '
-                'analytics, no ads, no trackers, and no third-party SDKs '
-                'collecting anything about you.',
-          ),
-          item(
-            'What is stored',
-            'Your progress and preferences — streak, freezes, XP and level, '
-                'stars, solved dailies, the display name you type, and every '
-                'Settings toggle — are saved in this app\'s own storage on this '
-                'device.',
-          ),
-          item(
-            'What leaves the device',
-            'Nothing, unless you press Share. Puzzles are generated on-device '
-                'and fonts and sounds ship inside the app, so the game makes no '
-                'network requests of its own. Sharing a result hands your text '
-                'to the app you choose, and that app\'s privacy policy takes '
-                'over from there.',
-          ),
-          item(
-            'Notifications',
-            'The daily reminder is scheduled locally by your device. No server '
-                'is involved and no one is told whether you played.',
-          ),
-          item(
-            'Children',
-            'No personal information is collected from anyone, of any age. '
-                'There is nothing to request, correct, or delete from a server, '
-                'because there is no server.',
-          ),
-          item(
-            'Deleting your data',
-            'Deleting the app removes everything it saved. There is no copy '
-                'anywhere else.',
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 3),
+          Text(body, style: Fonts.ui(size: 13, color: t.muted, height: 1.45)),
         ],
-      );
-    },
-  );
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        head('About'),
+        item(
+          'About NUMLINK',
+          'Chain numbers together to reach every target in as few moves as '
+              'possible. One new daily puzzle, an archive of past ones, a '
+              'campaign, free play at four difficulties, and a weekend co-op '
+              'board.',
+        ),
+
+        head('Help'),
+        item(
+          'Playing a board',
+          'You start on one number. Tap an operator tile — ×3, +7, −4 — to '
+              'apply it and grow the chain. Tap any number you have already '
+              'reached to branch a new arm from there. Land exactly on a '
+              'target to claim it; claim them all to solve the board.',
+        ),
+        item(
+          'Arm',
+          'One branch of the tree. Each arm holds only a few moves before it '
+              'is full — tap an earlier number to start a new one. "Relaxed '
+              'arms" in Settings lifts the cap.',
+        ),
+        item(
+          'Par',
+          'The move count a clean solve takes. Finishing at or under par is '
+              'three stars; every move over costs one.',
+        ),
+        item(
+          'Target',
+          'A number you must land on exactly. The counter at the top left is '
+              'how many you have reached.',
+        ),
+        item(
+          'Shuffle & hint',
+          'Shuffle deals a different set of operators that still solves the '
+              'board. A hint glows the next useful operator. Both are limited '
+              'per board, and easier tiers get more.',
+        ),
+        item(
+          'Streaks and freezes',
+          'Solving the daily on the day it appears extends your streak. Miss '
+              'a day and a freeze is spent to cover it, one per missed day, '
+              'if you have one. Replaying an archive board is just for fun — '
+              'it never changes the streak.',
+        ),
+        item(
+          'Playing against the clock',
+          'On by default: every board gets a countdown scaled to its par, so '
+              'a Kids board gets a gentler clock than a Hard one. Run out and '
+              'the board freezes — no win, no streak. Turn it off in Settings '
+              'to play untimed.',
+        ),
+
+        head('Stuck?'),
+        item(
+          'The move I want is rejected',
+          'Three rules do most of it: ÷ only works when it divides evenly, a '
+              'full arm needs you to branch from an earlier number, and a '
+              'target counts only on an exact landing. The toast at the top '
+              'of the board always names which one stopped you.',
+        ),
+        item(
+          'I want the walkthrough again',
+          'Settings → How to play replays the intro and then the on-board '
+              'tour from the beginning.',
+        ),
+        item(
+          'The daily reminder never arrives',
+          'The reminder is a local notification, so it needs notification '
+              'permission for NUMLINK in your system settings. Turn the '
+              'Settings pill off and on again once permission is granted.',
+        ),
+
+        head('Privacy'),
+        item(
+          'The short version',
+          'NUMLINK works entirely on this device. There are no accounts, no '
+              'analytics, no ads, no trackers, and no third-party SDKs '
+              'collecting anything about you.',
+        ),
+        item(
+          'What is stored',
+          'Your progress and preferences — streak, freezes, XP and level, '
+              'stars, solved dailies, the display name you type, and every '
+              'Settings toggle — are saved in this app\'s own storage on this '
+              'device.',
+        ),
+        item(
+          'What leaves the device',
+          'Nothing, unless you press Share. Puzzles are generated on-device '
+              'and fonts and sounds ship inside the app, so the game makes no '
+              'network requests of its own. Sharing a result hands your text '
+              'to the app you choose, and that app\'s privacy policy takes '
+              'over from there.',
+        ),
+        item(
+          'Notifications',
+          'The daily reminder is scheduled locally by your device. No server '
+              'is involved and no one is told whether you played.',
+        ),
+        item(
+          'Children',
+          'No personal information is collected from anyone, of any age. '
+              'There is nothing to request, correct, or delete from a server, '
+              'because there is no server.',
+        ),
+        item(
+          'Deleting your data',
+          'Deleting the app removes everything it saved. There is no copy '
+              'anywhere else.',
+        ),
+      ],
+    );
+  }
 }
 
 class _ProfileHeader extends StatefulWidget {

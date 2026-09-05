@@ -166,8 +166,8 @@ class SettingsSheet extends StatelessWidget {
           ),
         ),
         for (final (title, subtitle, items) in [
-          ('About', 'What NUMLINK is', _about),
-          ('Help', 'How to play, and what the words mean', _help),
+          ('About', 'What NUMLINK is, and how you progress', _about),
+          ('Help', 'Rules, scoring, and why a move gets rejected', _help),
           ('Privacy', 'What is stored, and what never leaves', _privacy),
         ])
           GestureDetector(
@@ -192,118 +192,147 @@ class SettingsSheet extends StatelessWidget {
 
 /// The static copy behind the About / Help / Privacy rows, as (title, body)
 /// pairs. Data, not widgets — [_showInfoSheet] renders all three the same way.
+///
+/// Every number here is the one the code actually uses (kTiers, kCampaign,
+/// starsFor, GameStats.freezeMilestones, the tree_controller reject toasts).
+/// If you retune those, retune this.
 /// (The handoff's Remove-Ads / Restore-Purchases rows are omitted: no IAP.)
 const _about = <(String, String)>[
   (
-    'About NUMLINK',
-          'Chain numbers together to reach every target in as few moves as '
-              'possible. One new daily puzzle, an archive of past ones, a '
-              'campaign, free play at four difficulties, and a weekend co-op '
-              'board.',
+    'The game',
+    'Every board gives you a starting number, a handful of operator tiles and '
+        'a ring of targets. Apply tiles to grow a branching chain and land '
+        'exactly on every target.',
+  ),
+  (
+    'Where to play',
+    'A new Daily Puzzle each day; the Archive, which holds every daily since '
+        'launch; a 24-level Campaign that ramps from one-move Kids boards to '
+        'four-deep Expert ones; and Free Play at Kids, Easy, Normal or Expert.',
+  ),
+  (
+    'Progress',
+    'Solving earns XP (10 a win, +5 for every move under par) which raises '
+        'your level. Campaign levels also score 1-3 stars, and eight badges — '
+        'First Link through Ladder Climber — unlock as you go. Stats has the '
+        'lot.',
+  ),
+  (
+    'Boards are generated, not authored',
+    'Each board is built solution-first from a seed, so it is always solvable, '
+        'and the same puzzle number is the same board for everyone.',
   ),
 ];
 
 const _help = <(String, String)>[
   (
     'Playing a board',
-          'You start on one number. Tap an operator tile — ×3, +7, −4 — to '
-              'apply it and grow the chain. Tap any number you have already '
-              'reached to branch a new arm from there. Land exactly on a '
-              'target to claim it; claim them all to solve the board.',
+    'Tap an operator tile — ×3, +7, −4 — to apply it to the number you are on. '
+        'To branch, tap any number already on the board and apply a tile from '
+        'there. Land exactly on a target to claim it; claim them all to solve '
+        'the board.',
   ),
   (
-    'Arm',
-          'One branch of the tree. Each arm holds only a few moves before it '
-              'is full — tap an earlier number to start a new one. "Relaxed '
-              'arms" in Settings lifts the cap.',
+    'Tiles run out',
+    'Each tile carries a limited number of uses. When they are spent, that '
+        'tile is done for the board — which is why the same +7 cannot carry you '
+        'all the way round.',
   ),
   (
-    'Par',
-          'The move count a clean solve takes. Finishing at or under par is '
-              'three stars; every move over costs one.',
+    'Arms',
+    'An arm is one branch of the chain, and it can only run so deep: 1 move on '
+        'Kids, 2 on Easy, 3 on Normal, 4 on Expert. Hit the limit and you '
+        'branch from an earlier number instead. "Relaxed arms" in Settings '
+        'lifts the cap if you would rather not think about it.',
   ),
   (
-    'Target',
-          'A number you must land on exactly. The counter at the top left is '
-              'how many you have reached.',
+    'Par and stars',
+    'Par is what a clean solve takes. Par or better is three stars, one over is '
+        'two, anything finished is one. Under par also pays +5 XP a move.',
   ),
   (
-    'Shuffle & hint',
-          'Shuffle deals a different set of operators that still solves the '
-              'board. A hint glows the next useful operator. Both are limited '
-              'per board, and easier tiers get more.',
+    'Shuffle and hint',
+    'Shuffle deals a different set of tiles that still solves the board; a hint '
+        'points at the next useful tile. Both are limited and easier tiers get '
+        'more: Kids has 3 shuffles and 3 hints, Easy 3 and 2, Normal 2 and 1, '
+        'Expert 2 and 1.',
+  ),
+  (
+    'The operators',
+    '+ − × arrive first. ÷ joins on Easy, % (remainder) on Normal along with Σ '
+        '(add the digits), and Expert adds √. ÷ and √ only work when they come '
+        'out whole.',
   ),
   (
     'Streaks and freezes',
-          'Solving the daily on the day it appears extends your streak. Miss '
-              'a day and a freeze is spent to cover it, one per missed day, '
-              'if you have one. Replaying an archive board is just for fun — '
-              'it never changes the streak.',
+    'Solving the daily on its own day extends your streak. Reaching a 3-, 7-, '
+        '14- or 30-day streak banks a freeze (two at most), and a missed day '
+        'spends one freeze to keep the streak alive. Replaying an archive board '
+        'is just for fun — it never touches the streak.',
   ),
   (
-    'Playing against the clock',
-          'On by default: every board gets a countdown scaled to its par, so '
-              'a Kids board gets a gentler clock than a Hard one. Run out and '
-              'the board freezes — no win, no streak. Turn it off in Settings '
-              'to play untimed.',
+    'The clock',
+    'On by default: every board counts down from a budget scaled to its par, so '
+        'a Kids board gets a gentler clock than an Expert one. Run out and the '
+        'board freezes — no win, no streak, and Try again deals a fresh board. '
+        'Turn "Play against the clock" off in Settings to play untimed.',
   ),
   (
-    'The move I want is rejected',
-          'Three rules do most of it: ÷ only works when it divides evenly, a '
-              'full arm needs you to branch from an earlier number, and a '
-              'target counts only on an exact landing. The toast at the top '
-              'of the board always names which one stopped you.',
+    'Why a move gets rejected',
+    'The toast at the top of the board always names the reason, and it is '
+        'usually one of five: the tile is out of uses, the arm is at its move '
+        'limit, ÷ would not divide evenly (or √ is not a perfect square), the '
+        'result is already on the board, or the move leaves the number '
+        'unchanged.',
   ),
   (
-    'I want the walkthrough again',
-          'Settings → How to play replays the intro and then the on-board '
-              'tour from the beginning.',
+    'Want the walkthrough again?',
+    'Settings, then How to play, replays the intro and then the on-board tour '
+        'from the beginning.',
   ),
   (
     'The daily reminder never arrives',
-          'The reminder is a local notification, so it needs notification '
-              'permission for NUMLINK in your system settings. Turn the '
-              'Settings pill off and on again once permission is granted.',
+    'It is a local notification, so it needs notification permission for '
+        'NUMLINK in your system settings. Once permission is granted, switch '
+        'the Settings pill off and on again.',
   ),
 ];
 
 const _privacy = <(String, String)>[
   (
     'The short version',
-          'NUMLINK works entirely on this device. There are no accounts, no '
-              'analytics, no ads, no trackers, and no third-party SDKs '
-              'collecting anything about you.',
+    'NUMLINK runs entirely on this device. No account, no sign-in, no '
+        'analytics, no ads, no trackers, and no third-party SDK collecting '
+        'anything about you.',
   ),
   (
     'What is stored',
-          'Your progress and preferences — streak, freezes, XP and level, '
-              'stars, solved dailies, the display name you type, and every '
-              'Settings toggle — are saved in this app\'s own storage on this '
-              'device.',
+    'Your progress and preferences — streak, freezes, XP and level, campaign '
+        'stars, which dailies you solved, the display name you type, and every '
+        'Settings toggle — are saved in this app\'s own storage on this device.',
   ),
   (
     'What leaves the device',
-          'Nothing, unless you press Share. Puzzles are generated on-device '
-              'and fonts and sounds ship inside the app, so the game makes no '
-              'network requests of its own. Sharing a result hands your text '
-              'to the app you choose, and that app\'s privacy policy takes '
-              'over from there.',
+    'Nothing. Boards are generated on-device from a seed, and the fonts and '
+        'sounds ship inside the app, so the game makes no network requests at '
+        'all. Copy on the win sheet puts your result text on this device\'s '
+        'clipboard and stops there — where it goes next is up to you.',
   ),
   (
     'Notifications',
-          'The daily reminder is scheduled locally by your device. No server '
-              'is involved and no one is told whether you played.',
+    'The daily reminder is scheduled locally by your device at the time you '
+        'pick. No server is involved and no one is told whether you played.',
   ),
   (
     'Children',
-          'No personal information is collected from anyone, of any age. '
-              'There is nothing to request, correct, or delete from a server, '
-              'because there is no server.',
+    'No personal information is collected from anyone, of any age. There is '
+        'nothing to request, correct or delete from a server, because there is '
+        'no server.',
   ),
   (
     'Deleting your data',
-          'Deleting the app removes everything it saved. There is no copy '
-              'anywhere else.',
+    'Deleting the app removes everything it saved. There is no copy anywhere '
+        'else.',
   ),
 ];
 

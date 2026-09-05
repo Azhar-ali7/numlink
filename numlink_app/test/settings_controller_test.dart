@@ -60,8 +60,9 @@ void main() {
     });
 
     test('denied: reports false and leaves the toggle where it was', () async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'reminderOn': false});
       final fake = _FakeReminders(granted: false);
+      // start from off, so a refused flip is visible as "stayed off"
       final s = await make(fake);
       fake.calls.clear(); // construction schedules once
 
@@ -73,7 +74,7 @@ void main() {
     test('a throwing platform is a denial, not a crash', () async {
       // This is the macOS bug: initialize() threw out of requestPermission()
       // and took the whole toggle down with it.
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'reminderOn': false});
       final fake = _FakeReminders(throwOnRequest: true);
       final s = await make(fake);
 
@@ -120,11 +121,11 @@ void main() {
     expect(s.tutorialOpen, isFalse);
   });
 
-  test('reminder time persists; the toggle defaults off at 9:00', () async {
+  test('reminder time persists; the toggle defaults on at 9:00', () async {
     SharedPreferences.setMockInitialValues({});
 
     final first = await make();
-    expect(first.reminderOn, isFalse);
+    expect(first.reminderOn, isTrue);
     expect(first.reminderHour, 9);
     expect(first.reminderMinute, 0);
 

@@ -84,32 +84,6 @@ class WelcomeScreen extends StatelessWidget {
                 on: on,
                 index: 3,
               ),
-              const SizedBox(height: 14),
-              entrance(
-                _ModeCard(
-                  icon: Icons.timer_outlined,
-                  color: t.progress,
-                  badge: 'RUN',
-                  kicker: '8 STAGES, ONE CLOCK',
-                  title: 'Timed Run',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => TimedTreePage(
-                        onStageSolved: (stage, runDone) {
-                          g.recordTimedStage(stage, runDone: runDone);
-                          return WinRecord(
-                            xpGained: g.lastXpGain,
-                            level: g.playerLevel,
-                            streak: g.streak,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                on: on,
-                index: 3,
-              ),
               if (kSocialEnabled) ...[
                 const SizedBox(height: 14),
                 entrance(
@@ -1067,7 +1041,7 @@ class _ModesScreen extends StatelessWidget {
                 children: [
                   _ModeChip(
                     emoji: '🎮',
-                    label: '${kSocialEnabled ? 5 : 4} Modes',
+                    label: '${kSocialEnabled ? 4 : 3} Modes',
                   ),
                   const SizedBox(width: 8),
                   _ModeChip(emoji: '🗺️', label: '${g.campaignCount} Levels'),
@@ -1128,32 +1102,6 @@ class _ModesScreen extends StatelessWidget {
                 ),
                 on: on,
                 index: 2,
-              ),
-              const SizedBox(height: 14),
-              entrance(
-                _ModeCard(
-                  icon: Icons.timer_outlined,
-                  color: t.progress,
-                  badge: 'RUN',
-                  kicker: '8 STAGES, ONE CLOCK',
-                  title: 'Timed Run',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => TimedTreePage(
-                        onStageSolved: (stage, runDone) {
-                          g.recordTimedStage(stage, runDone: runDone);
-                          return WinRecord(
-                            xpGained: g.lastXpGain,
-                            level: g.playerLevel,
-                            streak: g.streak,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                on: on,
-                index: 3,
               ),
               if (kSocialEnabled) ...[
                 const SizedBox(height: 14),
@@ -1599,9 +1547,6 @@ void openCoop(BuildContext context) {
 void openFreePlay(BuildContext context) {
   final g = context.read<GameController>();
   final t = NumTheme.of(context);
-  // Captured by the sheet's toggle and read back in .then, so the sheet can
-  // keep popping a plain Difficulty.
-  var timed = false;
   showModalBottomSheet<Difficulty>(
     context: context,
     backgroundColor: t.surface,
@@ -1629,32 +1574,6 @@ void openFreePlay(BuildContext context) {
             child: Text(
               'Choose a difficulty',
               style: Fonts.display(size: 22, color: t.text),
-            ),
-          ),
-          // Opt-in countdown, any difficulty. The budget scales with the
-          // board's par (see budgetFor), so Kids gets a gentler clock.
-          StatefulBuilder(
-            builder: (_, setSheet) => SwitchListTile.adaptive(
-              key: const ValueKey('freeplay_timed'),
-              value: timed,
-              onChanged: (v) => setSheet(() => timed = v),
-              title: Text(
-                'Play against the clock',
-                style: Fonts.ui(
-                  size: 14,
-                  color: t.text,
-                  weight: FontWeight.w800,
-                ),
-              ),
-              subtitle: Text(
-                'Time scales with the difficulty you pick',
-                style: Fonts.ui(
-                  size: 12,
-                  color: t.muted,
-                  weight: FontWeight.w700,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
             ),
           ),
           for (final d in Difficulty.values)
@@ -1709,7 +1628,6 @@ void openFreePlay(BuildContext context) {
       MaterialPageRoute<void>(
         builder: (_) => TreeGamePage(
           tier: d.name,
-          timed: timed,
           onWin: (m, p, div) {
             g.recordBranchingWin(GameMode.practice, m, p, usedDivision: div);
             return WinRecord(

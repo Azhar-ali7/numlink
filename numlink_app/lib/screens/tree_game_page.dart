@@ -85,7 +85,7 @@ class TreeGamePage extends StatefulWidget {
     this.onNext,
     this.title,
     this.coop = false,
-    this.timed = false,
+    this.timed,
   });
 
   final String tier;
@@ -96,10 +96,11 @@ class TreeGamePage extends StatefulWidget {
   /// Co-op board: shows the "teammates already started" banner.
   final bool coop;
 
-  /// Play against the clock: a per-board countdown from [budgetFor]. Opt-in
-  /// from Free Play; daily and campaign never set it, so a par-scored streak
-  /// board keeps meaning what it meant.
-  final bool timed;
+  /// Play against the clock: a per-board countdown from [budgetFor]. Null (the
+  /// normal case) means "whatever Settings says", so the one toggle covers
+  /// every mode — daily, archive, campaign, co-op and free play alike. Tests
+  /// pass it explicitly.
+  final bool? timed;
 
   /// Injected board (daily/tests); when set, "New board" re-deals it.
   final TreePuzzle? puzzle;
@@ -127,6 +128,16 @@ class _TreeGamePageState extends State<TreeGamePage> {
   Timer? _ticker;
   int _left = 0;
   bool _outOfTime = false;
+
+  /// The board's own flag, else the global setting (absent in bare tests).
+  bool get _timed {
+    if (widget.timed != null) return widget.timed!;
+    try {
+      return context.read<SettingsController>().timedBoards;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
 
   /// Restarts of the CURRENT puzzle. Gates "Reveal solution": handing over the
   /// answer on the first look is a spoiler, after two retries it's a rescue.
@@ -182,12 +193,6 @@ class _TreeGamePageState extends State<TreeGamePage> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _armClock();
-  }
-
   TreeController _make() {
     final c = TreeController(widget.puzzle ?? buildPuzzle(_tier, _seed))
       ..init();
@@ -203,6 +208,10 @@ class _TreeGamePageState extends State<TreeGamePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // The first board's clock, once the settings provider is reachable.
+    // Flipping the toggle mid-solve does not re-arm: that would hand the
+    // player a fresh budget. It applies from the next board on.
+    if (_ticker == null && !_outOfTime && _left == 0) _armClock();
     try {
       final relaxed = Provider.of<SettingsController>(context).relaxedArms;
       WidgetsBinding.instance.addPostFrameCallback(
@@ -238,7 +247,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
   /// restarted board gets its own budget.
   void _armClock() {
     _ticker?.cancel();
-    if (!widget.timed) return;
+    if (!_timed) return;
     setState(() {
       _left = budgetFor(_c.puzzle);
       _outOfTime = false;
@@ -328,7 +337,7 @@ class _TreeGamePageState extends State<TreeGamePage> {
                       onSolution: _restarts >= 2 ? _showSolution : null,
                       actionsKey: _actionsKey,
                       menuKey: _menuKey,
-                      secondsLeft: widget.timed ? _left : null,
+                      secondsLeft: _timed ? _left : null,
                     ),
                     if (widget.coop) const _CoopBanner(),
                     Expanded(

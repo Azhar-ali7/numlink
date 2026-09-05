@@ -316,6 +316,40 @@ void main() {
     expect(find.text('Expert'), findsOneWidget);
   });
 
+  testWidgets('the Settings toggle alone puts a clock on any board',
+      (tester) async {
+    // No `timed:` argument here — this is the every-mode path: one setting,
+    // and every board that routes through TreeGamePage picks it up.
+    SharedPreferences.setMockInitialValues({
+      'timedBoards': true,
+      'coachSeen': true,
+    });
+    final settings = SettingsController(
+      prefs: await SharedPreferences.getInstance(),
+      feedback: FeedbackService(),
+    );
+    final p = winnable();
+    phone(tester);
+    await tester.pumpWidget(host(ChangeNotifierProvider.value(
+      value: settings,
+      child: TreeGamePage(puzzle: p),
+    )));
+    await tester.pump();
+    expect(find.text(clockText(budgetFor(p))), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(clockText(budgetFor(p) - 1)), findsOneWidget);
+
+    // And off means off.
+    settings.setTimedBoards(false);
+    await tester.pumpWidget(host(ChangeNotifierProvider.value(
+      value: settings,
+      child: TreeGamePage(puzzle: p),
+    )));
+    await tester.pump();
+    expect(find.text(clockText(budgetFor(p))), findsNothing);
+  });
+
   group('first-board coach marks', () {
     /// The page under a real SettingsController — the tour only mounts when
     /// one is in scope (isolated board tests have no provider, so no overlay).

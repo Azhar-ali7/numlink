@@ -61,6 +61,17 @@ class SettingsSheet extends StatelessWidget {
           ),
         ),
         _Row(
+          title: 'Play against the clock',
+          subtitle:
+              'Every board gets a countdown. The time scales with the '
+              'difficulty, so a Kids board gets a gentler clock than a Hard '
+              'one. Run out and the board freezes — no win, no streak.',
+          trailing: _Pill(
+            value: s.timedBoards,
+            onTap: () => s.setTimedBoards(!s.timedBoards),
+          ),
+        ),
+        _Row(
           title: 'Relaxed arms',
           subtitle:
               'An "arm" is one branch of the tree. Normally each can '

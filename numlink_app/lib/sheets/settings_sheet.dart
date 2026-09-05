@@ -21,6 +21,7 @@ class SettingsSheet extends StatelessWidget {
     return BottomSheetShell(
       title: 'Profile',
       onClose: g.close,
+      fullScreen: true,
       children: [
         _ProfileHeader(level: g.playerLevel),
         const SizedBox(height: 8),

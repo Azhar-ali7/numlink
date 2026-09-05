@@ -11,7 +11,7 @@ class HowToPlaySheet extends StatelessWidget {
 
   static const _steps = [
     'Tap an operation (like ×3 or +7) to apply it to the current number.',
-    'The chain grows downward. The orange node is where you are now.',
+    'The chain branches outward. The highlighted node is where you are now.',
     '÷ only works when it divides evenly — no fractions allowed.',
     'Land exactly on the target to close the chain. Fewer moves = better.',
   ];
@@ -41,16 +41,21 @@ class HowToPlaySheet extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 22,
-                  child: Text('${i + 1}',
-                      style: Fonts.numeric(
-                          size: 15,
-                          color: t.success,
-                          weight: FontWeight.w700)),
+                  child: Text(
+                    '${i + 1}',
+                    style: Fonts.numeric(
+                      size: 15,
+                      color: t.success,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(_steps[i],
-                      style: Fonts.ui(size: 14, color: t.text, height: 1.45)),
+                  child: Text(
+                    _steps[i],
+                    style: Fonts.ui(size: 14, color: t.text, height: 1.45),
+                  ),
                 ),
               ],
             ),

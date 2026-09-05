@@ -29,6 +29,14 @@ class ReminderService {
           requestBadgePermission: false,
           requestSoundPermission: false,
         ),
+        // Same Darwin settings for macOS. Without this key the plugin throws
+        // "macOS settings must be set" from initialize(), which took every
+        // reminder call — including the settings toggle — down with it.
+        macOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
     );
     _ready = true;

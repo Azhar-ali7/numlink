@@ -16,20 +16,19 @@ TreePuzzle fixture({
   int shuffles = 1,
   int hints = 1,
   int branchMax = 3,
-}) =>
-    TreePuzzle(
-      tier: 'test',
-      start: start,
-      targets: targets,
-      hands: hands,
-      shuffles: shuffles,
-      hints: hints,
-      branchMax: branchMax,
-      par: 99,
-      optimalPar: 1,
-      optimalEdges: const [],
-      dpValid: true,
-    );
+}) => TreePuzzle(
+  tier: 'test',
+  start: start,
+  targets: targets,
+  hands: hands,
+  shuffles: shuffles,
+  hints: hints,
+  branchMax: branchMax,
+  par: 99,
+  optimalPar: 1,
+  optimalEdges: const [],
+  dpValid: true,
+);
 
 /// Replays a puzzle's own solution edges through the controller; returns whether
 /// it reached a win. Proves apply/win-detection work and the guard never blocks
@@ -51,7 +50,7 @@ bool playOptimal(TreeController c) {
     final rem = {for (final o in c.hand) o.opSig: c.remaining(o)};
     final cands = [
       for (final o in c.hand)
-        if (compute(pick.$1, o) == pick.$2 && (rem[o.opSig] ?? 0) > 0) o
+        if (compute(pick.$1, o) == pick.$2 && (rem[o.opSig] ?? 0) > 0) o,
     ];
     if (cands.isEmpty) break;
     bool keepsRest(Operation choice) {
@@ -59,7 +58,8 @@ bool playOptimal(TreeController c) {
       for (final e in pending) {
         if (e == pick) continue;
         final ok = c.hand.any(
-            (o) => compute(e.$1, o) == e.$2 && (after[o.opSig] ?? 0) > 0);
+          (o) => compute(e.$1, o) == e.$2 && (after[o.opSig] ?? 0) > 0,
+        );
         if (!ok) return false;
       }
       return true;
@@ -74,20 +74,62 @@ bool playOptimal(TreeController c) {
 }
 
 void main() {
+  group('usedDivision (the Purist badge)', () {
+    test('false for a solve with no ÷, true once one lands', () {
+      final clean = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          hands: [
+            [op('m', '×', 3)],
+          ],
+        ),
+      )..init();
+      clean.apply(op('m', '×', 3));
+      expect(clean.solved, isTrue);
+      expect(clean.usedDivision, isFalse);
+
+      final divided = TreeController(
+        fixture(
+          start: 6,
+          targets: [3],
+          hands: [
+            [op('d', '÷', 2)],
+          ],
+        ),
+      )..init();
+      divided.apply(op('d', '÷', 2));
+      expect(divided.solved, isTrue);
+      expect(divided.usedDivision, isTrue);
+    });
+  });
+
   group('apply legality', () {
     test('places a legal child and selects it', () {
-      final c = TreeController(fixture(start: 2, targets: [6, 7], hands: [
-        [op('m', '×', 3), op('p', '+', 1)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6, 7],
+          hands: [
+            [op('m', '×', 3), op('p', '+', 1)],
+          ],
+        ),
+      )..init();
       expect(c.apply(op('m', '×', 3)), ApplyResult.placed);
       expect(c.nodes.map((n) => n.v), [2, 6]);
       expect(c.sel, c.nodes.last.id);
     });
 
     test('rejects when the op has no tokens left', () {
-      final c = TreeController(fixture(start: 2, targets: [6], hands: [
-        [op('m', '×', 3, tokens: 1)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          hands: [
+            [op('m', '×', 3, tokens: 1)],
+          ],
+        ),
+      )..init();
       c.apply(op('m', '×', 3, tokens: 1)); // 2 → 6 (wins, but token now spent)
       final again = c.apply(op('m', '×', 3, tokens: 1));
       expect(again, ApplyResult.ignored); // already solved
@@ -96,11 +138,17 @@ void main() {
     test('rejects a move exceeding the per-arm depth cap', () {
       // target 6 stays reachable via ×3 off the start, so wandering down the
       // +1 arm never strands — isolating the depth-cap check.
-      final c = TreeController(fixture(
-          start: 2, targets: [6], branchMax: 2, shuffles: 0, hands: [
-        [op('p', '+', 1, tokens: 5), op('m', '×', 3, tokens: 1)]
-      ]))
-        ..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          branchMax: 2,
+          shuffles: 0,
+          hands: [
+            [op('p', '+', 1, tokens: 5), op('m', '×', 3, tokens: 1)],
+          ],
+        ),
+      )..init();
       c.apply(op('p', '+', 1, tokens: 5)); // node 2 → 3 (depth 1)
       c.select(c.nodes.firstWhere((n) => n.v == 3).id);
       c.apply(op('p', '+', 1, tokens: 5)); // 3 → 4 (depth 2)
@@ -111,18 +159,31 @@ void main() {
     });
 
     test('rejects an illegal computation (non-integer divide)', () {
-      final c = TreeController(fixture(start: 5, targets: [1], hands: [
-        [op('d', '÷', 2, tokens: 3)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 5,
+          targets: [1],
+          hands: [
+            [op('d', '÷', 2, tokens: 3)],
+          ],
+        ),
+      )..init();
       expect(c.apply(op('d', '÷', 2, tokens: 3)), ApplyResult.rejected);
       expect(c.message, contains("doesn't divide"));
     });
 
     test('rejects a value already on the board', () {
       // target 7 stays reachable (6 → +1), so placing 6 never strands.
-      final c = TreeController(fixture(start: 2, targets: [7], shuffles: 0, hands: [
-        [op('m', '×', 3, tokens: 3), op('p', '+', 1, tokens: 3)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [7],
+          shuffles: 0,
+          hands: [
+            [op('m', '×', 3, tokens: 3), op('p', '+', 1, tokens: 3)],
+          ],
+        ),
+      )..init();
       c.apply(op('m', '×', 3, tokens: 3)); // 2 → 6
       c.select(c.nodes.first.id); // back to start (value 2)
       final r = c.apply(op('m', '×', 3, tokens: 3)); // 2 → 6 again
@@ -132,20 +193,31 @@ void main() {
 
     test('rejects a move that would strand a target', () {
       // one +3 token, two targets both needing it → placing either strands the other
-      final c = TreeController(fixture(
-          start: 2, targets: [5, 8], shuffles: 0, hands: [
-        [op('a', '+', 3, tokens: 1)]
-      ]))
-        ..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [5, 8],
+          shuffles: 0,
+          hands: [
+            [op('a', '+', 3, tokens: 1)],
+          ],
+        ),
+      )..init();
       final r = c.apply(op('a', '+', 3, tokens: 1));
       expect(r, ApplyResult.rejected);
       expect(c.message, contains('strand'));
     });
 
     test('detects a win when every target is on the board', () {
-      final c = TreeController(fixture(start: 2, targets: [6], hands: [
-        [op('m', '×', 3, tokens: 3)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          hands: [
+            [op('m', '×', 3, tokens: 3)],
+          ],
+        ),
+      )..init();
       expect(c.apply(op('m', '×', 3, tokens: 3)), ApplyResult.solved);
       expect(c.solved, isTrue);
       expect(c.moves, 1);
@@ -155,10 +227,17 @@ void main() {
   group('shuffle', () {
     test('deals a solvable alternate and spends a shuffle', () {
       // current hand cannot reach 6; alternate can
-      final c = TreeController(fixture(start: 2, targets: [6], shuffles: 1, hands: [
-        [op('a', '+', 100, tokens: 1)], // dead current hand
-        [op('b', '×', 3, tokens: 1)], // rescue
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          shuffles: 1,
+          hands: [
+            [op('a', '+', 100, tokens: 1)], // dead current hand
+            [op('b', '×', 3, tokens: 1)], // rescue
+          ],
+        ),
+      )..init();
       c.shuffleHand();
       expect(c.handIndex, 1);
       expect(c.shufflesLeft, 0);
@@ -166,9 +245,16 @@ void main() {
     });
 
     test('refuses when no shuffles remain', () {
-      final c = TreeController(fixture(start: 2, targets: [6], shuffles: 0, hands: [
-        [op('b', '×', 3, tokens: 1)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          shuffles: 0,
+          hands: [
+            [op('b', '×', 3, tokens: 1)],
+          ],
+        ),
+      )..init();
       c.shuffleHand();
       expect(c.message, contains('No shuffles left'));
     });
@@ -176,9 +262,15 @@ void main() {
 
   group('hint', () {
     test('glows the op nearest an outstanding target, once per puzzle', () {
-      final c = TreeController(fixture(start: 2, targets: [6], hands: [
-        [op('m', '×', 3, tokens: 3), op('p', '+', 1, tokens: 3)]
-      ]))..init();
+      final c = TreeController(
+        fixture(
+          start: 2,
+          targets: [6],
+          hands: [
+            [op('m', '×', 3, tokens: 3), op('p', '+', 1, tokens: 3)],
+          ],
+        ),
+      )..init();
       c.hint();
       expect(c.hintGlow, 'm'); // ×3 → 6 hits the target exactly
       c.hint();
@@ -221,7 +313,7 @@ void main() {
               if (c.nodes.any((n) => n.v == r)) continue;
               final trial = [
                 ...c.nodes,
-                TreeNode(id: c.nextId, v: r, parent: node.id, opSig: o.opSig)
+                TreeNode(id: c.nextId, v: r, parent: node.id, opSig: o.opSig),
               ];
               final tUsed = {...used, o.opSig: (used[o.opSig] ?? 0) + 1};
               if (!c.stranded(trial, tUsed)) moves.add((node.id, o));
@@ -237,9 +329,11 @@ void main() {
             c.shuffleHand();
             continue;
           }
-          fail('dead-end (guard false negative) on $tier #$i: '
-              'board=${c.nodes.map((n) => n.v).toList()} '
-              'missing=${p.targets.where((t) => !c.nodes.any((n) => n.v == t)).toList()}');
+          fail(
+            'dead-end (guard false negative) on $tier #$i: '
+            'board=${c.nodes.map((n) => n.v).toList()} '
+            'missing=${p.targets.where((t) => !c.nodes.any((n) => n.v == t)).toList()}',
+          );
         }
         expect(c.solved, isTrue, reason: '$tier #$i did not reach a win');
       }
@@ -251,36 +345,40 @@ void main() {
       // 4 →×2→ 8 already placed. ×2 from 4 would re-make 8 (distance 4 from
       // target 12, the nearest of any op) so the old hint picked it; +1 → 5 is
       // farther but legal.
-      final c = TreeController(fixture(
-        start: 4,
-        targets: [8, 12],
-        hands: [
-          [op('m', '×', 2), op('p', '+', 1)]
-        ],
-      ))
-        ..init();
+      final c = TreeController(
+        fixture(
+          start: 4,
+          targets: [8, 12],
+          hands: [
+            [op('m', '×', 2), op('p', '+', 1)],
+          ],
+        ),
+      )..init();
       expect(c.apply(c.hand[0]), ApplyResult.placed); // 4 ×2 → 8
       c.select(0); // back to 4, where ×2 would duplicate 8
 
       c.hint();
       expect(c.hintGlow, isNotNull, reason: '+1 is legal, hint should glow it');
       expect(c.hintGlow, 'p');
-      expect(c.apply(c.hand.firstWhere((o) => o.id == c.hintGlow)),
-          isNot(ApplyResult.rejected));
+      expect(
+        c.apply(c.hand.firstWhere((o) => o.id == c.hintGlow)),
+        isNot(ApplyResult.rejected),
+      );
     });
 
     test('an arm at branchMax flashes instead of glowing an illegal op', () {
       // branchMax 1, so every arm is one move deep. 8 is still reachable from
       // the start, but not from the node the player is standing on.
-      final c = TreeController(fixture(
-        start: 4,
-        targets: [5, 8],
-        hands: [
-          [op('p', '+', 1), op('m', '×', 2)]
-        ],
-        branchMax: 1,
-      ))
-        ..init();
+      final c = TreeController(
+        fixture(
+          start: 4,
+          targets: [5, 8],
+          hands: [
+            [op('p', '+', 1), op('m', '×', 2)],
+          ],
+          branchMax: 1,
+        ),
+      )..init();
       expect(c.apply(c.hand[0]), ApplyResult.placed); // 4 +1 → 5, arm at cap
 
       c.hint();
@@ -290,14 +388,15 @@ void main() {
     });
 
     test('selecting another node drops a stale glow', () {
-      final c = TreeController(fixture(
-        start: 4,
-        targets: [8, 12],
-        hands: [
-          [op('m', '×', 2), op('p', '+', 1)]
-        ],
-      ))
-        ..init();
+      final c = TreeController(
+        fixture(
+          start: 4,
+          targets: [8, 12],
+          hands: [
+            [op('m', '×', 2), op('p', '+', 1)],
+          ],
+        ),
+      )..init();
       c.hint();
       expect(c.hintGlow, isNotNull);
       c.apply(c.hand[0]);
@@ -337,8 +436,11 @@ void main() {
       c.relaxedArms = true;
       final sw = Stopwatch()..start();
       c.hint();
-      expect(sw.elapsedMilliseconds, lessThan(2000),
-          reason: 'depth-12 search must not blow up');
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(2000),
+        reason: 'depth-12 search must not blow up',
+      );
     });
   });
 }

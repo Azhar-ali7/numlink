@@ -28,8 +28,18 @@ class ArchiveSheet extends StatefulWidget {
 
 class _ArchiveSheetState extends State<ArchiveSheet> {
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const _wd = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
@@ -52,7 +62,9 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
     final t = NumTheme.of(context);
 
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    // utc, like GameController.dayIndexOf: a local DateTime makes .inDays
+    // under-count by one across a spring-forward transition.
+    final today = DateTime.utc(now.year, now.month, now.day);
     final todayNo = g.dailyPuzzle.no;
     // Puzzle number for a calendar date, relative to today's known number.
     int noFor(DateTime d) => todayNo + d.difference(today).inDays;
@@ -61,35 +73,47 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
     // Leading blanks so day 1 sits under its weekday (Mon = 0).
     final lead = (DateTime(_month.year, _month.month, 1).weekday - 1) % 7;
 
-    void dismiss() =>
-        widget.asRoute ? Navigator.of(context).pop() : g.close();
+    void dismiss() => widget.asRoute ? Navigator.of(context).pop() : g.close();
 
     return BottomSheetShell(
       title: 'Archive',
       onClose: dismiss,
       children: [
-        Text('Replay any past daily — just for fun, no streak.',
-            style: Fonts.ui(size: 13, color: t.muted, height: 1.3)),
+        Text(
+          'Replay any past daily — just for fun, no streak.',
+          style: Fonts.ui(size: 13, color: t.muted, height: 1.3),
+        ),
         const SizedBox(height: 16),
         // Month header + prev/next.
         Row(
           children: [
-            Text('DAILY ARCHIVE',
-                style: Fonts.ui(
-                    size: 10,
-                    color: t.muted,
-                    weight: FontWeight.w800,
-                    letterSpacing: 1.4,
-                    height: 1)),
+            Text(
+              'DAILY ARCHIVE',
+              style: Fonts.ui(
+                size: 10,
+                color: t.muted,
+                weight: FontWeight.w800,
+                letterSpacing: 1.4,
+                height: 1,
+              ),
+            ),
             const Spacer(),
-            _NavArrow(icon: Icons.chevron_left_rounded, onTap: () => _shift(-1)),
+            _NavArrow(
+              icon: Icons.chevron_left_rounded,
+              onTap: () => _shift(-1),
+            ),
             const SizedBox(width: 6),
-            _NavArrow(icon: Icons.chevron_right_rounded, onTap: () => _shift(1)),
+            _NavArrow(
+              icon: Icons.chevron_right_rounded,
+              onTap: () => _shift(1),
+            ),
           ],
         ),
         const SizedBox(height: 4),
-        Text('${_months[_month.month - 1]} ${_month.year}',
-            style: Fonts.display(size: 22, color: t.text, height: 1.1)),
+        Text(
+          '${_months[_month.month - 1]} ${_month.year}',
+          style: Fonts.display(size: 22, color: t.text, height: 1.1),
+        ),
         const SizedBox(height: 14),
         // Weekday labels.
         Row(
@@ -97,12 +121,15 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
             for (final d in _wd)
               Expanded(
                 child: Center(
-                  child: Text(d,
-                      style: Fonts.ui(
-                          size: 10,
-                          color: t.muted,
-                          weight: FontWeight.w800,
-                          height: 1)),
+                  child: Text(
+                    d,
+                    style: Fonts.ui(
+                      size: 10,
+                      color: t.muted,
+                      weight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -118,8 +145,14 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
           children: [
             for (var i = 0; i < lead; i++) const SizedBox.shrink(),
             for (var day = 1; day <= daysInMonth; day++)
-              _dayCell(context, g, t, DateTime(_month.year, _month.month, day),
-                  today, noFor),
+              _dayCell(
+                context,
+                g,
+                t,
+                DateTime.utc(_month.year, _month.month, day),
+                today,
+                noFor,
+              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -129,8 +162,6 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
           runSpacing: 8,
           children: [
             _Legend(color: t.success, label: 'Solved'),
-            _Legend(color: t.hero, label: 'Under par'),
-            _Legend(color: t.progress, label: 'Over par'),
             _Legend(color: t.accent, label: 'Today'),
             _Legend(color: t.border, label: 'Missed / upcoming'),
           ],
@@ -139,8 +170,14 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
     );
   }
 
-  Widget _dayCell(BuildContext context, GameController g, NumTokens t,
-      DateTime date, DateTime today, int Function(DateTime) noFor) {
+  Widget _dayCell(
+    BuildContext context,
+    GameController g,
+    NumTokens t,
+    DateTime date,
+    DateTime today,
+    int Function(DateTime) noFor,
+  ) {
     final no = noFor(date);
     final isToday = date == today;
     final playablePast = g.archiveNumbers.contains(no);
@@ -187,13 +224,19 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
                   builder: (_) => TreeGamePage(
                     tier: 'medium',
                     puzzle: archiveBranchingPuzzle(no),
-                    onWin: (m, p) {
-                      g.recordBranchingWin(GameMode.archive, m, p,
-                          archiveNo: no);
+                    onWin: (m, p, div) {
+                      g.recordBranchingWin(
+                        GameMode.archive,
+                        m,
+                        p,
+                        archiveNo: no,
+                        usedDivision: div,
+                      );
                       return WinRecord(
-                          xpGained: g.lastXpGain,
-                          level: g.playerLevel,
-                          streak: g.streak);
+                        xpGained: g.lastXpGain,
+                        level: g.playerLevel,
+                        streak: g.streak,
+                      );
                     },
                   ),
                 ),
@@ -209,11 +252,15 @@ class _ArchiveSheetState extends State<ArchiveSheet> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${date.day}',
-                style: Fonts.display(size: 14, color: dayColor, height: 1)),
+            Text(
+              '${date.day}',
+              style: Fonts.display(size: 14, color: dayColor, height: 1),
+            ),
             const SizedBox(height: 3),
-            Text(mark,
-                style: TextStyle(fontSize: 10, color: markColor, height: 1)),
+            Text(
+              mark,
+              style: TextStyle(fontSize: 10, color: markColor, height: 1),
+            ),
           ],
         ),
       ),

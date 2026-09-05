@@ -25,16 +25,23 @@ class Fonts {
   }) =>
       GoogleFonts.baloo2(
         fontSize: size,
-        // Baloo 2 ships 400–800; snap the requested weight to the nearest bold.
-        fontWeight: weight >= 800
-            ? FontWeight.w800
-            : weight >= 700
-                ? FontWeight.w700
-                : FontWeight.w600,
+        // Only Bold/ExtraBold are bundled (see [_nunito] on why a miss throws).
+        fontWeight: weight >= 800 ? FontWeight.w800 : FontWeight.w700,
         color: color,
         letterSpacing: letterSpacing,
         height: height,
       );
+
+  /// Snap to a weight actually bundled in assets/fonts. google_fonts has
+  /// runtime fetching off (App Sandbox blocks the socket), so asking for an
+  /// unbundled weight — w600, with only 400/500/700/800 shipped — throws an
+  /// unhandled exception at paint time instead of falling back.
+  static FontWeight _nunito(FontWeight w) => switch (w.value) {
+    <= 400 => FontWeight.w400,
+    <= 600 => FontWeight.w500,
+    <= 700 => FontWeight.w700,
+    _ => FontWeight.w800,
+  };
 
   static TextStyle ui({
     required double size,
@@ -45,7 +52,7 @@ class Fonts {
   }) =>
       GoogleFonts.nunito(
         fontSize: size,
-        fontWeight: weight,
+        fontWeight: _nunito(weight),
         color: color,
         letterSpacing: letterSpacing,
         height: height,
@@ -62,7 +69,7 @@ class Fonts {
   }) =>
       GoogleFonts.nunito(
         fontSize: size,
-        fontWeight: weight,
+        fontWeight: _nunito(weight),
         color: color,
         letterSpacing: letterSpacing,
         height: height,

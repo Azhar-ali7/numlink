@@ -34,13 +34,49 @@ class Tier {
 const kTiers = <String, Tier>{
   // 🧸 Kids: one target, one move, three operators. No branching to reason
   // about at all — the whole board is "pick the tile that lands on the ring".
-  'kids': Tier(targetsMin: 1, targetsMax: 1, branch: 1, shuffles: 3, hints: 3, pool: [2, 3], kinds: ['+', '−', '×'], unaries: []),
+  'kids': Tier(
+    targetsMin: 1,
+    targetsMax: 1,
+    branch: 1,
+    shuffles: 3,
+    hints: 3,
+    pool: [2, 3],
+    kinds: ['+', '−', '×'],
+    unaries: [],
+  ),
   // 🌱 Easy: a second target (so the first real branch) and ÷ joins.
-  'easy': Tier(targetsMin: 2, targetsMax: 2, branch: 2, shuffles: 3, hints: 2, pool: [2, 3, 4, 5], kinds: ['+', '+', '−', '×', '÷'], unaries: []),
+  'easy': Tier(
+    targetsMin: 2,
+    targetsMax: 2,
+    branch: 2,
+    shuffles: 3,
+    hints: 2,
+    pool: [2, 3, 4, 5],
+    kinds: ['+', '+', '−', '×', '÷'],
+    unaries: [],
+  ),
   // 🎯 Normal: % and the Σ/x²/⧺ extra tile.
-  'medium': Tier(targetsMin: 3, targetsMax: 3, branch: 3, shuffles: 2, hints: 1, pool: [2, 3, 4, 5, 7, 9], kinds: ['×', '+', '+', '−', '÷', '%'], unaries: ['Σ', null]),
+  'medium': Tier(
+    targetsMin: 3,
+    targetsMax: 3,
+    branch: 3,
+    shuffles: 2,
+    hints: 1,
+    pool: [2, 3, 4, 5, 7, 9],
+    kinds: ['×', '+', '+', '−', '÷', '%'],
+    unaries: ['Σ', null],
+  ),
   // 🔥 Expert: everything, four deep, barely any rescues.
-  'hard': Tier(targetsMin: 4, targetsMax: 5, branch: 4, shuffles: 2, hints: 1, pool: [2, 3, 4, 5, 6, 7, 8, 9], kinds: ['×', '+', '+', '−', '÷', '%'], unaries: ['Σ', '√']),
+  'hard': Tier(
+    targetsMin: 4,
+    targetsMax: 5,
+    branch: 4,
+    shuffles: 2,
+    hints: 1,
+    pool: [2, 3, 4, 5, 6, 7, 8, 9],
+    kinds: ['×', '+', '+', '−', '÷', '%'],
+    unaries: ['Σ', '√'],
+  ),
 };
 
 /// A generated branching-tree board. Solution-first, so solvability is a
@@ -78,7 +114,9 @@ List<Operation> makeHand(Rng rnd, Tier t, int h, bool forceMul) {
   final seen = <String>{};
   var guard = 0;
   while (hand.length < 5 && guard++ < 80) {
-    final k = forceMul && hand.length < 2 ? (hand.isNotEmpty ? '+' : '×') : pick(kinds);
+    final k = forceMul && hand.length < 2
+        ? (hand.isNotEmpty ? '+' : '×')
+        : pick(kinds);
     final n = pick(t.pool);
     if (!seen.add('$k$n')) continue; // no duplicate tiles
     hand.add(Operation(id: 'o$h${hand.length}', symbol: k, n: n, tokens: 3));
@@ -86,7 +124,11 @@ List<Operation> makeHand(Rng rnd, Tier t, int h, bool forceMul) {
   for (var i = 0; i < unaries.length; i++) {
     final u = unaries[i];
     final (String sym, int n) = u == null
-        ? pick(const [('↺', 0), ('^', 0), ('⧺', -1)]) // -1 → random concat digit
+        ? pick(const [
+            ('↺', 0),
+            ('^', 0),
+            ('⧺', -1),
+          ]) // -1 → random concat digit
         : (u, 0);
     final operand = (sym == '⧺') ? 1 + (rnd() * 9).floor() : n;
     hand.add(Operation(id: 'o${h}u$i', symbol: sym, n: operand, tokens: 3));
@@ -101,7 +143,8 @@ List<Operation> makeHand(Rng rnd, Tier t, int h, bool forceMul) {
 TreePuzzle buildPuzzle(String tierName, int seed) {
   final t = kTiers[tierName] ?? kTiers['medium']!;
   final rnd = minstd(seed);
-  final count = t.targetsMin + (rnd() * (t.targetsMax - t.targetsMin + 1)).floor();
+  final count =
+      t.targetsMin + (rnd() * (t.targetsMax - t.targetsMin + 1)).floor();
 
   for (var attempt = 0; attempt < 160; attempt++) {
     final start = 2 + (rnd() * 6).floor();
@@ -135,7 +178,9 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
     shuffleInPlace(shuffled, rnd);
     final chosen = <_GNode>[];
     for (final n in shuffled) {
-      if (chosen.length < count && !chosen.any((c) => c.v == n.v)) chosen.add(n);
+      if (chosen.length < count && !chosen.any((c) => c.v == n.v)) {
+        chosen.add(n);
+      }
     }
     if (chosen.length < count) continue;
 
@@ -162,9 +207,10 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
           id: o.id,
           symbol: o.symbol,
           n: o.n,
-          tokens: (need[o.id] ?? 0) +
+          tokens:
+              (need[o.id] ?? 0) +
               ((need[o.id] ?? 0) > 0 ? (rnd() < 0.5 ? 1 : 0) : 1),
-        )
+        ),
     ];
 
     // shuffle deck: t.shuffles verified alternates, or re-roll the whole board
@@ -172,7 +218,12 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
     for (var h = 1; h < 60 && hands.length < t.shuffles + 1; h++) {
       final alt = [
         for (final o in makeHand(rnd, t, h, false))
-          Operation(id: o.id, symbol: o.symbol, n: o.n, tokens: 1 + (rnd() * 2).floor())
+          Operation(
+            id: o.id,
+            symbol: o.symbol,
+            n: o.n,
+            tokens: 1 + (rnd() * 2).floor(),
+          ),
       ];
       if (solveFrom([(v: start, d: 0)], targets, alt, t.branch)) hands.add(alt);
     }
@@ -185,12 +236,18 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
     for (final o in hand) {
       dealtOps.putIfAbsent(o.opSig, () => o);
     }
-    final solved = steinerSolve(start, targets, dealtOps.values.toList(), t.branch);
-    final dpValid = solved.cost != null &&
+    final solved = steinerSolve(
+      start,
+      targets,
+      dealtOps.values.toList(),
+      t.branch,
+    );
+    final dpValid =
+        solved.cost != null &&
         validateHandCovers(solved.edges, hand) &&
         edgesFormUniqueTree(start, solved.edges);
     final fallbackEdges = [
-      for (final n in kept) (nodes.firstWhere((x) => x.i == n.parent).v, n.v)
+      for (final n in kept) (nodes.firstWhere((x) => x.i == n.parent).v, n.v),
     ];
     final trueOptimum = dpValid ? solved.cost! : kept.length;
     final optimalEdges = dpValid ? solved.edges : fallbackEdges;
@@ -211,28 +268,7 @@ TreePuzzle buildPuzzle(String tierName, int seed) {
     );
   }
 
-  // deterministic fallback: 4 →(×3)12 →(+7)19. Enough hands so shuffle is never dead.
-  List<Operation> fb(int h, int mul, int add) => [
-        Operation(id: 'f${h}0', symbol: '×', n: mul, tokens: 2),
-        Operation(id: 'f${h}1', symbol: '+', n: add, tokens: 2),
-        Operation(id: 'f${h}2', symbol: '×', n: 2, tokens: 1),
-        Operation(id: 'f${h}3', symbol: '+', n: 1, tokens: 2),
-        Operation(id: 'f${h}4', symbol: '−', n: 3, tokens: 1),
-        Operation(id: 'f${h}5', symbol: 'Σ', n: 0, tokens: 1),
-      ];
-  return TreePuzzle(
-    tier: tierName,
-    start: 4,
-    targets: const [12, 19],
-    hands: [fb(0, 3, 7), fb(1, 3, 7), fb(2, 3, 7), fb(3, 3, 7)],
-    shuffles: 3,
-    hints: 1,
-    branchMax: 3,
-    par: 3,
-    optimalPar: 2,
-    optimalEdges: const [(4, 12), (12, 19)],
-    dpValid: false,
-  );
+  return fallbackPuzzle(tierName, t);
 }
 
 class _GNode {
@@ -240,4 +276,41 @@ class _GNode {
   final int i, v, d;
   final int? parent;
   final String? op;
+}
+
+/// The board [buildPuzzle] falls back to when a seed exhausts its 160
+/// generation attempts: 4 →(×3)12 →(+7)19, with enough hands that shuffle is
+/// never dead. Every knob comes from [t], not constants — a hardcoded
+/// branchMax 3, second target and Σ tile handed a "kids" board (branch 1, one
+/// target, no unaries) the exact out-of-tier mix this file's header warns
+/// about.
+TreePuzzle fallbackPuzzle(String tierName, Tier t) {
+  // One straight chain 4 →×3→ 12 →+7→ 19 →+7→ 26 …, taking as many links as
+  // the tier wants targets. targetsMin never exceeds t.branch in kTiers, so the
+  // chain always fits under the per-arm ceiling without needing to branch.
+  final n = t.targetsMin;
+  final targets = [for (var i = 0; i < n; i++) 12 + 7 * i];
+  final chain = [4, ...targets];
+  List<Operation> fb(int h) => [
+    Operation(id: 'f${h}0', symbol: '×', n: 3, tokens: 1),
+    Operation(id: 'f${h}1', symbol: '+', n: 7, tokens: n),
+    Operation(id: 'f${h}2', symbol: '×', n: 2, tokens: 1),
+    Operation(id: 'f${h}3', symbol: '+', n: 1, tokens: 2),
+    Operation(id: 'f${h}4', symbol: '−', n: 3, tokens: 1),
+    if (t.unaries.contains('Σ'))
+      Operation(id: 'f${h}5', symbol: 'Σ', n: 0, tokens: 1),
+  ];
+  return TreePuzzle(
+    tier: tierName,
+    start: 4,
+    targets: targets,
+    hands: [for (var h = 0; h <= t.shuffles; h++) fb(h)],
+    shuffles: t.shuffles,
+    hints: t.hints,
+    branchMax: t.branch,
+    par: n + 1,
+    optimalPar: n,
+    optimalEdges: [for (var i = 0; i < n; i++) (chain[i], chain[i + 1])],
+    dpValid: false,
+  );
 }

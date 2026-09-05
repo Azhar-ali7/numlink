@@ -5,19 +5,21 @@ import '../services/feedback_service.dart';
 import '../services/reminder_service.dart';
 
 /// User settings. Defaults to the bright Duo-playful light theme, high-contrast
-/// cues ON, sound + haptics OFF. (Dark stays available via the Settings toggle.)
+/// cues, sound, haptics, the clock and the daily reminder all ON. (Dark stays
+/// available via the Settings toggle.)
 class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.light,
     this.highContrast = true,
     this.orangeSuccess = false,
-    this.sound = false,
-    this.haptics = false,
+    this.sound = true,
+    this.haptics = true,
     this.reduceMotion = false,
     this.socialNudges = false,
     this.showResultPreviews = false,
     this.relaxedArms = false,
-    this.reminderOn = false,
+    this.timedBoards = true,
+    this.reminderOn = true,
     this.reminderHour = 9,
     this.reminderMinute = 0,
   });
@@ -42,6 +44,10 @@ class AppSettings {
   /// growing. Off by default: the cap is what makes a tier a tier.
   final bool relaxedArms;
 
+  /// Play every board against a countdown (see `budgetFor`). One setting rather
+  /// than a per-mode switch: the clock is a way to play, not a mode.
+  final bool timedBoards;
+
   /// Daily local reminder: on/off and the wall-clock time it fires.
   final bool reminderOn;
   final int reminderHour;
@@ -57,6 +63,7 @@ class AppSettings {
     bool? socialNudges,
     bool? showResultPreviews,
     bool? relaxedArms,
+    bool? timedBoards,
     bool? reminderOn,
     int? reminderHour,
     int? reminderMinute,
@@ -70,6 +77,7 @@ class AppSettings {
     socialNudges: socialNudges ?? this.socialNudges,
     showResultPreviews: showResultPreviews ?? this.showResultPreviews,
     relaxedArms: relaxedArms ?? this.relaxedArms,
+    timedBoards: timedBoards ?? this.timedBoards,
     reminderOn: reminderOn ?? this.reminderOn,
     reminderHour: reminderHour ?? this.reminderHour,
     reminderMinute: reminderMinute ?? this.reminderMinute,
@@ -151,6 +159,7 @@ class SettingsController extends ChangeNotifier {
   bool get socialNudges => _settings.socialNudges;
   bool get showResultPreviews => _settings.showResultPreviews;
   bool get relaxedArms => _settings.relaxedArms;
+  bool get timedBoards => _settings.timedBoards;
   bool get reminderOn => _settings.reminderOn;
   int get reminderHour => _settings.reminderHour;
   int get reminderMinute => _settings.reminderMinute;
@@ -194,13 +203,14 @@ class SettingsController extends ChangeNotifier {
         : ThemeMode.light,
     highContrast: _prefs.getBool('highContrast') ?? true,
     orangeSuccess: _prefs.getBool('orangeSuccess') ?? false,
-    sound: _prefs.getBool('sound') ?? false,
-    haptics: _prefs.getBool('haptics') ?? false,
+    sound: _prefs.getBool('sound') ?? true,
+    haptics: _prefs.getBool('haptics') ?? true,
     reduceMotion: _prefs.getBool('reduceMotion') ?? false,
     socialNudges: _prefs.getBool('socialNudges') ?? false,
     showResultPreviews: _prefs.getBool('showResultPreviews') ?? false,
     relaxedArms: _prefs.getBool('relaxedArms') ?? false,
-    reminderOn: _prefs.getBool('reminderOn') ?? false,
+    timedBoards: _prefs.getBool('timedBoards') ?? true,
+    reminderOn: _prefs.getBool('reminderOn') ?? true,
     reminderHour: _prefs.getInt('reminderHour') ?? 9,
     reminderMinute: _prefs.getInt('reminderMinute') ?? 0,
   );
@@ -224,6 +234,7 @@ class SettingsController extends ChangeNotifier {
       ..setBool('socialNudges', next.socialNudges)
       ..setBool('showResultPreviews', next.showResultPreviews)
       ..setBool('relaxedArms', next.relaxedArms)
+      ..setBool('timedBoards', next.timedBoards)
       ..setBool('reminderOn', next.reminderOn)
       ..setInt('reminderHour', next.reminderHour)
       ..setInt('reminderMinute', next.reminderMinute);
@@ -241,14 +252,28 @@ class SettingsController extends ChangeNotifier {
   void setShowResultPreviews(bool v) =>
       _update(_settings.copyWith(showResultPreviews: v));
   void setRelaxedArms(bool v) => _update(_settings.copyWith(relaxedArms: v));
+  void setTimedBoards(bool v) => _update(_settings.copyWith(timedBoards: v));
 
   /// Turn the daily reminder on/off. Asks the OS the first time it goes on and
   /// stays off if the player says no, so the toggle never lies about what will
   /// actually happen.
-  Future<void> setReminderOn(bool v) async {
-    if (v && !(await reminders?.requestPermission() ?? true)) return;
+  /// Returns false when the OS refused (or the platform cannot schedule), so
+  /// the caller can say why instead of leaving a toggle that silently won't
+  /// move. The request is wrapped because a misconfigured platform throws from
+  /// `initialize()` rather than returning false.
+  Future<bool> setReminderOn(bool v) async {
+    if (v) {
+      var ok = false;
+      try {
+        ok = await reminders?.requestPermission() ?? true;
+      } catch (e) {
+        debugPrint('reminder permission failed: $e');
+      }
+      if (!ok) return false;
+    }
     _update(_settings.copyWith(reminderOn: v));
     _reschedule();
+    return true;
   }
 
   void setReminderTime(int hour, int minute) {

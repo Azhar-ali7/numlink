@@ -12,8 +12,18 @@ Widget entrance(Widget child, {required bool on, int index = 0}) {
   return child
       .animate(delay: Duration(milliseconds: index * 60))
       .fadeIn(duration: Motion.standard, curve: Motion.easeOut)
-      .moveY(begin: 16, end: 0, duration: Motion.standard, curve: Motion.easeOut)
-      .scaleXY(begin: 0.97, end: 1, duration: Motion.standard, curve: Motion.easeOut);
+      .moveY(
+        begin: 16,
+        end: 0,
+        duration: Motion.standard,
+        curve: Motion.easeOut,
+      )
+      .scaleXY(
+        begin: 0.97,
+        end: 1,
+        duration: Motion.standard,
+        curve: Motion.easeOut,
+      );
 }
 
 /// A 40×40 bordered icon button (header actions, sheet close). Hover/pressed
@@ -44,8 +54,9 @@ class IconSquareButton extends StatelessWidget {
         onTap: onTap,
         builder: (context, hover) => AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: 38,
-          height: 38,
+          // 44 minimum tap target; the glyph stays 20.
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             border: Border.all(color: hover ? hi : t.border, width: 2),
             borderRadius: BorderRadius.circular(16),
@@ -59,11 +70,7 @@ class IconSquareButton extends StatelessWidget {
 
 /// A tappable widget whose border highlights on hover.
 class HoverBorder extends StatefulWidget {
-  const HoverBorder({
-    super.key,
-    required this.builder,
-    this.onTap,
-  });
+  const HoverBorder({super.key, required this.builder, this.onTap});
 
   final Widget Function(BuildContext context, bool hover) builder;
   final VoidCallback? onTap;

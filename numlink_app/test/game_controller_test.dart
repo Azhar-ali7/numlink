@@ -14,11 +14,12 @@ class FakeStatsRepository implements StatsRepository {
 }
 
 GameController _controller() => GameController(
-      statsRepo: FakeStatsRepository(),
-      initialStats: GameStats.empty,
-    );
+  statsRepo: FakeStatsRepository(),
+  initialStats: GameStats.empty,
+);
 
 void main() {
+  _dstDayIndex();
   group('daily identity + calendar', () {
     test('exposes the daily number/date and archive/campaign counts', () {
       final g = _controller();
@@ -106,5 +107,24 @@ void main() {
       g.close();
       expect(g.overlay, isNull);
     });
+  });
+}
+
+/// The DST cases that the old local-midnight flooring got wrong. Constructed
+/// dates only — CI runs in UTC, where the bug is invisible.
+void _dstDayIndex() {
+  test('dayIndexOf advances by exactly one across a DST transition', () {
+    for (final (a, b) in [
+      (DateTime(2024, 3, 31), DateTime(2024, 4, 1)), // spring forward (London)
+      (DateTime(2024, 10, 27), DateTime(2024, 10, 28)), // fall back
+      (DateTime(2024, 3, 10), DateTime(2024, 3, 11)), // spring forward (US)
+      (DateTime(2024, 11, 3), DateTime(2024, 11, 4)), // fall back (US)
+    ]) {
+      expect(
+        GameController.dayIndexOf(b) - GameController.dayIndexOf(a),
+        1,
+        reason: '$a → $b',
+      );
+    }
   });
 }
